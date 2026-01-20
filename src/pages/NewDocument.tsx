@@ -145,41 +145,37 @@ export default function NewDocument() {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">¿Cómo quieres crear el documento?</h2>
             <div className="space-y-3">
-              <Card
-                className={`cursor-pointer transition-colors hover:bg-accent ${source === "upload" ? "ring-2 ring-primary" : ""
+              <div
+                className={`flex items-center gap-4 rounded-xl border p-4 cursor-pointer transition-all hover:bg-slate-50 hover:border-primary/50 hover:shadow-sm ${source === "upload" ? "ring-2 ring-primary border-transparent" : "bg-white"
                   }`}
                 onClick={() => setSource("upload")}
               >
-                <CardContent className="flex items-center gap-4 p-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                    <Upload className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Subir PDF</p>
-                    <p className="text-sm text-muted-foreground">
-                      Sube un documento que ya tengas preparado
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
+                  <Upload className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Subir PDF</p>
+                  <p className="text-sm text-muted-foreground">
+                    Sube un documento que ya tengas preparado
+                  </p>
+                </div>
+              </div>
 
-              <Card
-                className={`cursor-pointer transition-colors hover:bg-accent ${source === "clara" ? "ring-2 ring-primary" : ""
+              <div
+                className={`flex items-center gap-4 rounded-xl border p-4 cursor-pointer transition-all hover:bg-slate-50 hover:border-primary/50 hover:shadow-sm ${source === "clara" ? "ring-2 ring-primary border-transparent" : "bg-white"
                   }`}
                 onClick={() => setSource("clara")}
               >
-                <CardContent className="flex items-center gap-4 p-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                    <Sparkles className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Crear con Clara</p>
-                    <p className="text-sm text-muted-foreground">
-                      El asistente te ayuda a redactar el documento
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-50">
+                  <Sparkles className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Crear con Clara</p>
+                  <p className="text-sm text-muted-foreground">
+                    El asistente te ayuda a redactar el documento
+                  </p>
+                </div>
+              </div>
             </div>
 
             <Button
@@ -431,12 +427,13 @@ export default function NewDocument() {
   };
 
   return (
-    <div className="container px-4 py-6 max-w-xl mx-auto">
+    <div className="mx-auto max-w-xl py-4 space-y-6">
       {/* Header */}
-      <div className="mb-6 flex items-center gap-3">
+      <div className="flex items-center gap-3 px-1">
         <Button
           variant="ghost"
           size="icon"
+          className="h-8 w-8"
           onClick={() => {
             if (step === "source") {
               navigate("/dashboard");
@@ -452,25 +449,29 @@ export default function NewDocument() {
           }}
           disabled={isSubmitting}
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-lg font-semibold">Nuevo documento</h1>
+        <h1 className="text-xl font-bold tracking-tight">Nuevo documento</h1>
       </div>
 
       {/* Steps indicator */}
-      <div className="mb-6 flex gap-1">
+      <div className="mx-1 flex gap-2">
         {["source", "upload", "signer", "options", "confirm"].map((s, i) => (
           <div
             key={s}
-            className={`h-1 flex-1 rounded-full ${["source", "upload", "signer", "options", "confirm"].indexOf(step) >= i
-                ? "bg-primary"
-                : "bg-muted"
+            className={`h-1.5 flex-1 rounded-full transition-colors ${["source", "upload", "signer", "options", "confirm"].indexOf(step) >= i
+              ? "bg-primary"
+              : "bg-slate-200"
               }`}
           />
         ))}
       </div>
 
-      {renderStep()}
+      <Card className="border-muted/40 shadow-lg">
+        <CardContent className="p-6">
+          {renderStep()}
+        </CardContent>
+      </Card>
     </div>
   );
 }
