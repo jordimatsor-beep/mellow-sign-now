@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { Plus, Sparkles, FileText, Clock, Check, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge, DocumentStatus } from "@/components/shared/StatusBadge";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 interface Document {
   id: string;
@@ -18,26 +20,39 @@ interface Document {
 }
 
 export default function Dashboard() {
-  const userName = "Usuario"; // Still static until auth
+  const { user } = useAuth();
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuario";
+
   const [documents, setDocuments] = useState<Document[]>([]);
   const [credits, setCredits] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        // Fetch Documents
-        const docsRes = await fetch('/api/documents');
-        const docsData = await docsRes.json();
-        if (Array.isArray(docsData)) {
-          setDocuments(docsData);
-        }
+      if (!user) return;
 
-        // Fetch Credits
-        const creditsRes = await fetch('/api/credits');
-        const creditsData = await creditsRes.json();
-        if (typeof creditsData.credits === 'number') {
-          setCredits(creditsData.credits);
+      try {
+        setLoading(true);
+
+        // 1. Fetch Documents (RLS filtered)
+        const { data: docsData, error: docsError } = await supabase
+          .from('documents')
+          .select('id, title, signer_email, status, created_at, sent_at, signed_at')
+          .order('created_at', { ascending: false });
+
+        if (docsError) throw docsError;
+        setDocuments(docsData as unknown as Document[]);
+
+        // 2. Fetch Credits (via RPC or View)
+        // Using RPC for simplicity and security
+        const { data: creditsData, error: creditsError } = await supabase
+          .rpc('get_available_credits', { p_user_id: user.id });
+
+        if (creditsError) {
+          console.error("Error fetching credits:", creditsError);
+          setCredits(0);
+        } else {
+          setCredits(creditsData as number);
         }
 
       } catch (error) {
@@ -48,7 +63,7 @@ export default function Dashboard() {
     };
 
     fetchData();
-  }, []);
+  }, [user]);
 
   // Calculate stats
   const stats = {

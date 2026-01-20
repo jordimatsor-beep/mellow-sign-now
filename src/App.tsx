@@ -4,6 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
+// Context
+import { AuthProvider } from "@/context/AuthContext";
+import { RequireAuth } from "@/components/layout/RequireAuth";
+
 // Layouts
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
@@ -21,45 +25,51 @@ import Help from "@/pages/Help";
 import Onboarding from "@/pages/Onboarding";
 import SignDocument from "@/pages/SignDocument";
 import NotFound from "@/pages/NotFound";
+import Login from "@/pages/Login";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/onboarding" element={<Onboarding />} />
-          
-          {/* Public signing page */}
-          <Route element={<PublicLayout />}>
-            <Route path="/sign/:token" element={<SignDocument />} />
-          </Route>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/onboarding" element={<Onboarding />} />
 
-          {/* Authenticated routes */}
-          <Route element={<AuthenticatedLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/documents" element={<Documents />} />
-            <Route path="/documents/new" element={<NewDocument />} />
-            <Route path="/documents/:id" element={<DocumentDetail />} />
-            <Route path="/clara" element={<Clara />} />
-            <Route path="/credits" element={<Credits />} />
-            <Route path="/credits/purchase" element={<CreditsPurchase />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/help" element={<Help />} />
-          </Route>
+            {/* Public signing page */}
+            <Route element={<PublicLayout />}>
+              <Route path="/sign/:token" element={<SignDocument />} />
+            </Route>
 
-          {/* Redirects */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          
-          {/* 404 */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+            {/* Authenticated routes */}
+            <Route element={<RequireAuth />}>
+              <Route element={<AuthenticatedLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/documents" element={<Documents />} />
+                <Route path="/documents/new" element={<NewDocument />} />
+                <Route path="/documents/:id" element={<DocumentDetail />} />
+                <Route path="/clara" element={<Clara />} />
+                <Route path="/credits" element={<Credits />} />
+                <Route path="/credits/purchase" element={<CreditsPurchase />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/help" element={<Help />} />
+              </Route>
+            </Route>
+
+            {/* Redirects */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+            {/* 404 */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
