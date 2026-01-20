@@ -23,7 +23,7 @@ PERSONALIDAD Y TONO:
 - Tus respuestas deben ser concisas y orientadas a la acción legal/administrativa.
 `;
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY?.trim();
 
 interface Message {
     id: string;
@@ -117,14 +117,27 @@ export function ClaraChat() {
             setMessages((prev) => [...prev, assistantMessage]);
 
         } catch (error: any) {
-            console.error("Error en ClaraChat (Gemini API):", error);
+            // 🔴 LOG ERROR DETALLADO PARA EL USUARIO EN CONSOLA
+            console.error("🔴 Error DETALLADO de ClaraChat (Gemini API):", error);
+
+            if (error.response?.candidates && error.response.candidates.length > 0) {
+                console.error("⚠️ Razón de bloqueo de seguridad:", error.response.candidates[0].finishReason);
+                console.error("⚠️ Calificaciones de seguridad:", error.response.candidates[0].safetyRatings);
+            }
+
+            // Verificación específica de códigos de error HTTP si están disponibles en el objeto
+            if (error.response?.status === 401 || error.status === 401 || error.toString().includes("401")) {
+                console.error("🔒 ERROR 401: API Key inválida o no autorizada.");
+            } else if (error.response?.status === 403 || error.status === 403 || error.toString().includes("403")) {
+                console.error("🚫 ERROR 403: Api Key válida pero sin permisos (quizás billing no activado o restricción de país).");
+            }
 
             let errorMessage = "Lo siento, ha ocurrido un error al procesar tu solicitud.";
 
             // Manejo de errores específicos
             if (error.message?.includes("SAFETY")) {
                 errorMessage = "⚠️ La solicitud ha sido bloqueada por motivos de seguridad.";
-            } else if (error.message?.includes("API_KEY")) {
+            } else if (error.message?.includes("API_KEY") || error.toString().includes("401")) {
                 errorMessage = "Error de autenticación con el servicio de IA.";
             }
 
