@@ -13,6 +13,7 @@ import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 
 // Pages
+// Pages
 import Dashboard from "@/pages/Dashboard";
 import Documents from "@/pages/Documents";
 import DocumentDetail from "@/pages/DocumentDetail";
@@ -25,7 +26,8 @@ import Help from "@/pages/Help";
 import Onboarding from "@/pages/Onboarding";
 import SignDocument from "@/pages/SignDocument";
 import NotFound from "@/pages/NotFound";
-import Login from "@/pages/Login";
+import Login from "@/pages/auth/Login";
+import Register from "@/pages/auth/Register";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +41,7 @@ const App = () => (
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/onboarding" element={<Onboarding />} />
 
             {/* Public signing page */}

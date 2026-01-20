@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Sparkles, FileText, Clock, Check, Loader2 } from "lucide-react";
+import { Plus, Sparkles, FileText, Clock, Check, Loader2, File } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -77,132 +77,163 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-slate-50/50">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Greeting */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Buenos días, {userName}
-        </h1>
-        <p className="text-muted-foreground">
-          Créditos disponibles: <span className="font-semibold text-foreground">{stats.credits}</span>
-        </p>
-      </div>
-
-      {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <Button
-          asChild
-          className="h-auto flex-col gap-2 py-6"
-          size="lg"
-        >
-          <Link to="/documents/new">
-            <Plus className="h-6 w-6" />
-            <span className="text-sm font-medium">Nuevo documento</span>
-          </Link>
-        </Button>
-        <Button
-          asChild
-          variant="outline"
-          className="h-auto flex-col gap-2 py-6 border-2 border-dashed"
-          size="lg"
-        >
-          <Link to="/clara">
-            <Sparkles className="h-6 w-6" />
-            <span className="text-sm font-medium">Asistente Clara</span>
-          </Link>
-        </Button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card className="border-l-4 border-l-warning shadow-sm transition-all hover:shadow-md">
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning/10">
-              <Clock className="h-6 w-6 text-warning" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Pendientes de firma</p>
-              <p className="text-2xl font-bold">{stats.pending}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-success shadow-sm transition-all hover:shadow-md">
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
-              <Check className="h-6 w-6 text-success" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Firmados</p>
-              <p className="text-2xl font-bold">{stats.signed}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-primary shadow-sm transition-all hover:shadow-md">
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <FileText className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Total documentos</p>
-              <p className="text-2xl font-bold">{stats.total}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent documents */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Documentos recientes</h2>
-          <Button variant="link" asChild className="text-sm">
-            <Link to="/documents">Ver todos →</Link>
-          </Button>
+    <div className="min-h-screen bg-slate-50/50 p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Buenos días, {userName}
+          </h1>
+          <p className="text-slate-500 text-sm mt-1">
+            Tienes <span className="font-semibold text-slate-700">{stats.credits} créditos</span> disponibles
+          </p>
         </div>
+        <Button size="sm" asChild>
+          <Link to="/documents/new">Create Document</Link>
+        </Button>
+      </div>
 
-        <div className="space-y-3">
-          {recentDocuments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-xl bg-muted/20">
-              No tienes documentos recientes
+      {/* Stats Grid - Denser */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <Card className="border shadow-sm bg-white hover:border-slate-300 transition-colors">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50 border border-orange-100">
+              <Clock className="h-5 w-5 text-orange-600" />
             </div>
-          ) : (
-            recentDocuments.map((doc) => (
-              <Link
-                key={doc.id}
-                to={`/documents/${doc.id}`}
-                className="group block rounded-xl border bg-white p-4 shadow-sm transition-all hover:border-primary/20 hover:shadow-md"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 group-hover:bg-slate-200 transition-colors">
-                      <FileText className="h-6 w-6 text-slate-500 group-hover:text-primary transition-colors" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-foreground group-hover:text-primary transition-colors truncate pr-4">{doc.title}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <p className="text-sm text-muted-foreground truncate">
-                          {doc.signer_email}
-                        </p>
-                        <span className="text-xs text-muted-foreground">•</span>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: es })}
-                        </p>
+            <div>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Pendientes</p>
+              <p className="text-xl font-bold text-slate-900">{stats.pending}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border shadow-sm bg-white hover:border-slate-300 transition-colors">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-50 border border-green-100">
+              <Check className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Firmados</p>
+              <p className="text-xl font-bold text-slate-900">{stats.signed}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border shadow-sm bg-white hover:border-slate-300 transition-colors">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 border border-blue-100">
+              <FileText className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total</p>
+              <p className="text-xl font-bold text-slate-900">{stats.total}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Main Content Area: Recent Documents */}
+        <div className="md:col-span-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">Documentos recientes</h2>
+            <Link to="/documents" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+              Ver todos
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            {recentDocuments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                  <File className="h-6 w-6 text-slate-400" />
+                </div>
+                <h3 className="text-sm font-medium text-slate-900">No hay documentos</h3>
+                <p className="text-xs text-slate-500 mb-4 mt-1">Empieza creando tu primer contrato</p>
+                <Button size="sm" variant="outline" asChild>
+                  <Link to="/documents/new">
+                    Crear mi primer documento
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              recentDocuments.map((doc) => (
+                <Link
+                  key={doc.id}
+                  to={`/documents/${doc.id}`}
+                  className="group block rounded-lg border border-slate-200 bg-white p-3 hover:border-primary/30 hover:shadow-sm transition-all"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-50 group-hover:bg-primary/5 transition-colors">
+                        <FileText className="h-5 w-5 text-slate-400 group-hover:text-primary transition-colors" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-slate-900 truncate text-sm">{doc.title}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-xs text-slate-500 truncate max-w-[150px]">
+                            {doc.signer_email}
+                          </p>
+                          <span className="text-[10px] text-slate-300">•</span>
+                          <p className="text-[10px] text-slate-400">
+                            {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: es })}
+                          </p>
+                        </div>
                       </div>
                     </div>
+                    <StatusBadge status={doc.status} className="shrink-0 scale-90" />
                   </div>
-                  <StatusBadge status={doc.status} className="shrink-0" />
-                </div>
+                </Link>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar: Quick Actions & Help */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900">Acciones rápidas</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              asChild
+              className="h-auto flex-col gap-2 py-4 bg-white text-slate-700 border hover:bg-slate-50 hover:text-primary shadow-sm"
+              variant="outline"
+            >
+              <Link to="/documents/new">
+                <Plus className="h-5 w-5" />
+                <span className="text-xs font-medium">Nuevo</span>
               </Link>
-            ))
-          )}
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="h-auto flex-col gap-2 py-4 bg-white text-slate-700 border border-dashed hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 shadow-sm"
+            >
+              <Link to="/clara">
+                <Sparkles className="h-5 w-5" />
+                <span className="text-xs font-medium">Clara AI</span>
+              </Link>
+            </Button>
+          </div>
+
+          {/* Mini Help Card */}
+          <Card className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white border-none shadow-md mt-4">
+            <CardContent className="p-4">
+              <h3 className="font-semibold text-sm mb-1">¿Necesitas ayuda?</h3>
+              <p className="text-xs text-indigo-100 mb-3 leading-relaxed">
+                Aprende cómo firmar documentos legalmente vinculantes en minutos.
+              </p>
+              <Button size="sm" variant="secondary" className="w-full text-xs h-8 bg-white/10 hover:bg-white/20 text-white border-0" asChild>
+                <Link to="/help">Ver tutoriales</Link>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
