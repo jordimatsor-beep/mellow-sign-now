@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ArrowLeft, Send, Sparkles, User, AlertTriangle, FileText, Eye, Edit, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Message {
   id: string;
-  role: "clara" | "user";
+  role: "clara" | "user" | "assistant"; // assistant maps to clara
   content: string;
   document?: {
     title: string;
@@ -29,34 +29,76 @@ export default function Clara() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = () => {
+  // Auto-scroll effect
+  useEffect(() => {
+    if (scrollViewportRef.current) {
+      // Small timeout to allow DOM update
+      setTimeout(() => {
+        const viewport = scrollViewportRef.current;
+        if (viewport) {
+          viewport.scrollTop = viewport.scrollHeight;
+        }
+      }, 100);
+    }
+  }, [messages, isTyping]);
+
+  const handleSend = async () => {
     if (!input.trim()) return;
 
+    const userMsgContent = input;
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: input,
+      content: userMsgContent,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsTyping(true);
 
-    // Simulate Clara response
-    setTimeout(() => {
-      const claraResponse: Message = {
+    try {
+      const response = await fetch('/api/clara/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(m => ({
+            role: m.role === 'clara' ? 'assistant' : m.role,
+            content: m.content
+          }))
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch response');
+
+      const data = await response.json();
+
+      const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "clara",
-        content:
-          "Perfecto, te ayudo con eso. Para crear un buen contrato necesito algunos datos:\n\n1. ¿Cuál es el precio acordado?\n2. ¿Plazo de entrega estimado?\n3. ¿Cuántas revisiones incluyes?",
+        content: data.content
+        // Handle document generation flag if API returns it in future
       };
-      setMessages((prev) => [...prev, claraResponse]);
+
+      setMessages((prev) => [...prev, assistantMessage]);
+
+    } catch (error) {
+      console.error("Chat error:", error);
+      // Fallback error message (local)
+      const errorMsg: Message = {
+        id: Date.now().toString(),
+        role: "clara",
+        content: "Lo siento, he tenido un problema de conexión. ¿Puedes intentarlo de nuevo?"
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleGenerateDocument = () => {
+    // Mock for now, or could trigger a specific API intent
     setIsTyping(true);
     setTimeout(() => {
       const documentMessage: Message = {
@@ -64,7 +106,7 @@ export default function Clara() {
         role: "clara",
         content: "He generado el contrato basándome en la información que me has dado. Revísalo antes de enviarlo.",
         document: {
-          title: "Contrato desarrollo web",
+          title: "Contrato autogenerado",
         },
       };
       setMessages((prev) => [...prev, documentMessage]);
@@ -93,21 +135,19 @@ export default function Clara() {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-4" ref={scrollRef} viewportRef={scrollViewportRef}>
         <div className="space-y-4">
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex gap-3 ${
-                message.role === "user" ? "flex-row-reverse" : ""
-              }`}
+              className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""
+                }`}
             >
               <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                  message.role === "clara"
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${message.role === "clara"
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted"
-                }`}
+                  }`}
               >
                 {message.role === "clara" ? (
                   <Sparkles className="h-4 w-4" />
@@ -116,33 +156,28 @@ export default function Clara() {
                 )}
               </div>
               <div
-                className={`max-w-[80%] space-y-2 rounded-2xl px-4 py-2.5 ${
-                  message.role === "clara"
+                className={`max-w-[80%] space-y-2 rounded-2xl px-4 py-2.5 ${message.role === "clara"
                     ? "bg-muted"
                     : "bg-primary text-primary-foreground"
-                }`}
+                  }`}
               >
                 <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-                
+
                 {message.document && (
-                  <Card className="mt-2">
+                  <Card className="mt-2 text-foreground">
                     <CardContent className="p-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
                           <FileText className="h-5 w-5 text-muted-foreground" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{message.document.title}</p>
+                          <p className="text-sm font-medium">{message.document.title}</p>
                         </div>
                       </div>
                       <div className="mt-3 flex gap-2">
                         <Button variant="outline" size="sm" className="flex-1 gap-1">
                           <Eye className="h-3.5 w-3.5" />
                           Ver
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1 gap-1">
-                          <Edit className="h-3.5 w-3.5" />
-                          Editar
                         </Button>
                         <Button size="sm" className="flex-1 gap-1" asChild>
                           <Link to="/documents/new">
@@ -152,7 +187,7 @@ export default function Clara() {
                         </Button>
                       </div>
                       <p className="mt-2 text-xs text-muted-foreground">
-                        ⚠️ Documento generado con IA. Revísalo antes de enviarlo.
+                        ⚠️ Documento generado con IA. Revísalo.
                       </p>
                     </CardContent>
                   </Card>
@@ -175,16 +210,6 @@ export default function Clara() {
               </div>
             </div>
           )}
-
-          {/* Quick action to generate document */}
-          {messages.length === 3 && !isTyping && (
-            <div className="flex justify-center">
-              <Button variant="outline" onClick={handleGenerateDocument}>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Generar documento
-              </Button>
-            </div>
-          )}
         </div>
       </ScrollArea>
 
@@ -202,6 +227,7 @@ export default function Clara() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Escribe tu mensaje..."
             className="flex-1"
+            disabled={isTyping}
           />
           <Button type="submit" size="icon" disabled={!input.trim() || isTyping}>
             <Send className="h-4 w-4" />

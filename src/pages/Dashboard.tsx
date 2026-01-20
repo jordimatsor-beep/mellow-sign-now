@@ -69,7 +69,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="container space-y-6 px-4 py-6">
+    <div className="space-y-6">
       {/* Greeting */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
@@ -145,7 +145,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent documents */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Documentos recientes</h2>
           <Button variant="link" asChild className="text-sm">
@@ -153,9 +153,9 @@ export default function Dashboard() {
           </Button>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {recentDocuments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm border rounded-lg bg-muted/20">
+            <div className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-xl bg-muted/20">
               No tienes documentos recientes
             </div>
           ) : (
@@ -163,24 +163,27 @@ export default function Dashboard() {
               <Link
                 key={doc.id}
                 to={`/documents/${doc.id}`}
-                className="block rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+                className="group block rounded-xl border bg-white p-4 shadow-sm transition-all hover:border-primary/20 hover:shadow-md"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 group-hover:bg-slate-200 transition-colors">
+                      <FileText className="h-6 w-6 text-slate-500 group-hover:text-primary transition-colors" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-medium leading-tight truncate pr-4">{doc.title}</p>
-                      <p className="mt-0.5 text-sm text-muted-foreground truncate">
-                        {doc.signer_email}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: es })}
-                      </p>
+                      <p className="font-semibold text-foreground group-hover:text-primary transition-colors truncate pr-4">{doc.title}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-sm text-muted-foreground truncate">
+                          {doc.signer_email}
+                        </p>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: es })}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <StatusBadge status={doc.status} />
+                  <StatusBadge status={doc.status} className="shrink-0" />
                 </div>
               </Link>
             ))
