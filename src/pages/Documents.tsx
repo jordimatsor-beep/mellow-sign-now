@@ -54,22 +54,25 @@ function DocumentCard({ doc }: { doc: (typeof mockDocuments)[0] }) {
   return (
     <Link
       to={`/documents/${doc.id}`}
-      className="block rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+      className="group block rounded-xl border bg-white p-4 shadow-sm transition-all hover:border-primary/20 hover:shadow-md"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-            <FileText className="h-5 w-5 text-muted-foreground" />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 group-hover:bg-slate-200 transition-colors">
+            <FileText className="h-6 w-6 text-slate-500 group-hover:text-primary transition-colors" />
           </div>
           <div className="min-w-0">
-            <p className="font-medium leading-tight">{doc.title}</p>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {doc.signerName} · {doc.signerEmail}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">{doc.createdAt}</p>
+            <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{doc.title}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-sm text-muted-foreground truncate">
+                {doc.signerName} · {doc.signerEmail}
+              </p>
+              <span className="text-xs text-muted-foreground">•</span>
+              <p className="text-xs text-muted-foreground">{doc.createdAt}</p>
+            </div>
           </div>
         </div>
-        <StatusBadge status={doc.status} />
+        <StatusBadge status={doc.status} className="shrink-0" />
       </div>
     </Link>
   );
@@ -82,7 +85,7 @@ export default function Documents() {
   const signedDocs = mockDocuments.filter((d) => d.status === "signed");
 
   return (
-    <div className="container space-y-4 px-4 py-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Documentos</h1>
