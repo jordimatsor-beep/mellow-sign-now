@@ -213,10 +213,16 @@ export default function Dashboard() {
             <Button
               asChild
               variant="outline"
-              className="h-auto flex-col gap-2 py-4 bg-white text-slate-700 border border-dashed hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 shadow-sm"
+              className="h-auto flex-col gap-2 py-4 border-dashed bg-gradient-to-br from-indigo-50/50 to-white text-indigo-700 border-indigo-200 hover:bg-indigo-50 hover:text-indigo-800 hover:border-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.2)] hover:shadow-[0_0_20px_rgba(99,102,241,0.35)] transition-all duration-300"
             >
               <Link to="/clara">
-                <Sparkles className="h-5 w-5" />
+                <div className="relative">
+                  <Sparkles className="h-5 w-5 animate-pulse" />
+                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                  </span>
+                </div>
                 <span className="text-xs font-medium">Clara AI</span>
               </Link>
             </Button>

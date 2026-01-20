@@ -24,6 +24,8 @@ const initialMessages: Message[] = [
   },
 ];
 
+import { supabase } from "@/lib/supabase";
+
 export default function Clara() {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
@@ -59,20 +61,17 @@ export default function Clara() {
     setIsTyping(true);
 
     try {
-      const response = await fetch('/api/clara/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // Usar Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('clara-chat', {
+        body: {
           messages: [...messages, userMessage].map(m => ({
             role: m.role === 'clara' ? 'assistant' : m.role,
             content: m.content
           }))
-        })
+        }
       });
 
-      if (!response.ok) throw new Error('Failed to fetch response');
-
-      const data = await response.json();
+      if (error) throw error;
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),

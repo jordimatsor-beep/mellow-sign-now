@@ -42,7 +42,12 @@ export default function Login() {
             });
             if (error) throw error;
         } catch (error: any) {
-            toast.error("Login social no configurado en este demo");
+            console.error("Social login error:", error);
+            if (error.message?.includes("Unsupported provider") || error.message?.includes("provider is not enabled")) {
+                toast.error("Proveedor no habilitado. Activa Google/Apple en Supabase > Auth > Providers.");
+            } else {
+                toast.error("Error al iniciar sesión con " + provider + ". Revisa la consola.");
+            }
         }
     };
 

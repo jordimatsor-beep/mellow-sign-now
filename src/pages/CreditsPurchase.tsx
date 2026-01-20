@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Check, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buyCredits } from "@/lib/stripe";
 
 const packs = [
   {
@@ -46,13 +47,12 @@ export default function CreditsPurchase() {
       {/* Packs */}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold">Elige tu pack</h2>
-        
+
         {packs.map((pack) => (
           <Card
             key={pack.id}
-            className={`relative overflow-hidden transition-colors hover:bg-accent ${
-              pack.popular ? "ring-2 ring-primary" : ""
-            }`}
+            className={`relative overflow-hidden transition-colors hover:bg-accent ${pack.popular ? "ring-2 ring-primary" : ""
+              }`}
           >
             {pack.popular && (
               <div className="absolute right-0 top-0 rounded-bl-lg bg-primary px-2 py-1">
@@ -75,7 +75,7 @@ export default function CreditsPurchase() {
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold">{pack.price}€</p>
-                  <Button size="sm" className="mt-2">
+                  <Button size="sm" className="mt-2" onClick={() => buyCredits(pack.id)}>
                     Elegir
                   </Button>
                 </div>

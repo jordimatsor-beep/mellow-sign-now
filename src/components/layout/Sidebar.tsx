@@ -17,7 +17,7 @@ const bottomItems = [
 
 export function Sidebar() {
   return (
-    <aside className="hidden w-64 flex-col border-r bg-sidebar md:flex">
+    <aside className="hidden w-64 flex-col border-r bg-sidebar md:flex h-full">
       {/* Logo */}
       <div className="flex h-14 items-center gap-2 border-b px-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
@@ -45,15 +45,19 @@ export function Sidebar() {
                 to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-300",
                     isActive
                       ? "bg-sidebar-accent text-sidebar-primary"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    item.label === "Clara" && !isActive && "border border-blue-200/50 shadow-[0_0_10px_rgba(59,130,246,0.3)] bg-gradient-to-r from-blue-50/50 to-transparent text-blue-700 hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] hover:border-blue-300"
                   )
                 }
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className={cn("h-5 w-5", item.label === "Clara" && "text-blue-500 animate-pulse")} />
                 {item.label}
+                {item.label === "Clara" && (
+                  <span className="ml-auto inline-flex h-2 w-2 animate-ping rounded-full bg-blue-400 opacity-75"></span>
+                )}
               </NavLink>
             </li>
           ))}
