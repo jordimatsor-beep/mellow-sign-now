@@ -11,6 +11,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
+    session: null,
     loading: true,
     signOut: async () => { },
 });
