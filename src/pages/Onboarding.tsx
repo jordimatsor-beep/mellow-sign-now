@@ -4,8 +4,9 @@ import { ArrowLeft, ArrowRight, Check, Shield, Gift, AlertTriangle } from "lucid
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
+import { ProfileForm } from "@/components/onboarding/ProfileForm";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 export default function Onboarding() {
   const [step, setStep] = useState<Step>(1);
@@ -21,12 +22,11 @@ export default function Onboarding() {
     <div className="flex min-h-screen flex-col">
       {/* Progress */}
       <div className="flex gap-1 p-4">
-        {[1, 2, 3].map((s) => (
+        {[1, 2, 3, 4].map((s) => (
           <div
             key={s}
-            className={`h-1 flex-1 rounded-full ${
-              step >= s ? "bg-primary" : "bg-muted"
-            }`}
+            className={`h-1 flex-1 rounded-full ${step >= s ? "bg-primary" : "bg-muted"
+              }`}
           />
         ))}
       </div>
@@ -46,18 +46,38 @@ export default function Onboarding() {
             </p>
 
             <Button className="mt-8 w-full max-w-xs" onClick={() => setStep(2)}>
-              Continuar
+              Configurar mi cuenta
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         )}
 
         {step === 2 && (
-          <div className="flex flex-1 flex-col">
+          <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
             <Button
               variant="ghost"
               className="mb-4 w-fit gap-2"
               onClick={() => setStep(1)}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Atrás
+            </Button>
+
+            <h1 className="mb-6 text-xl font-bold">Datos del Emisor</h1>
+            <p className="mb-6 text-sm text-muted-foreground">
+              Configura tus datos fiscales para que aparezcan automáticamente en tus contratos.
+            </p>
+
+            <ProfileForm onComplete={() => setStep(3)} />
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="flex flex-1 flex-col">
+            <Button
+              variant="ghost"
+              className="mb-4 w-fit gap-2"
+              onClick={() => setStep(2)}
             >
               <ArrowLeft className="h-4 w-4" />
               Atrás
@@ -104,7 +124,7 @@ export default function Onboarding() {
             </Button>
 
             <div className="mt-auto">
-              <Button className="w-full" onClick={() => setStep(3)}>
+              <Button className="w-full" onClick={() => setStep(4)}>
                 Continuar
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -112,12 +132,12 @@ export default function Onboarding() {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="flex flex-1 flex-col">
             <Button
               variant="ghost"
               className="mb-4 w-fit gap-2"
-              onClick={() => setStep(2)}
+              onClick={() => setStep(3)}
             >
               <ArrowLeft className="h-4 w-4" />
               Atrás

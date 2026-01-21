@@ -230,11 +230,38 @@ export default function SignDocument() {
   return (
     <div className="container space-y-6 px-4 py-6 max-w-4xl mx-auto">
       {/* Document info */}
-      <div className="text-center">
-        <p className="text-sm text-muted-foreground">
-          Documento enviado por <span className="font-medium text-foreground">{docData.sender_name}</span>
-        </p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">{docData.title}</h1>
+      <div className="text-center space-y-4">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Documento enviado por <span className="font-medium text-foreground">{docData.sender_name}</span>
+          </p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight">{docData.title}</h1>
+        </div>
+
+        {/* Issuer Trust Card */}
+        {docData.issuer_data && (
+          <div className="mx-auto max-w-lg rounded-lg border bg-slate-50/50 p-3 text-left">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Datos del Emisor (Verificado)</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <div>
+                <span className="text-muted-foreground text-xs">Razón Social:</span>
+                <p className="font-medium">{docData.issuer_data.name}</p>
+              </div>
+              {docData.issuer_data.id && (
+                <div>
+                  <span className="text-muted-foreground text-xs">NIF/CIF:</span>
+                  <p className="font-medium">{docData.issuer_data.id}</p>
+                </div>
+              )}
+              {docData.issuer_data.email && (
+                <div className="col-span-2">
+                  <span className="text-muted-foreground text-xs">Contacto:</span>
+                  <p className="text-muted-foreground">{docData.issuer_data.email} • {docData.issuer_data.phone}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">

@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useProfile } from "@/context/ProfileContext";
 import { supabase } from "@/lib/supabase";
 import { Send, Sparkles, User, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +52,9 @@ export function ClaraChat() {
         return text.replace(/<[^>]*>?/gm, "").trim();
     };
 
+    const { isProfileComplete } = useProfile();
+    const navigate = useNavigate();
+
     const handleSend = async () => {
         const cleanInput = sanitizeInput(input);
         if (!cleanInput) return;
@@ -63,6 +68,25 @@ export function ClaraChat() {
         setMessages((prev) => [...prev, userMessage]);
         setInput("");
         setIsTyping(true);
+
+        // Check for Contract intent + Missing Profile
+        const contractKeywords = ["contrato", "acuerdo", "redactar", "generar", "crear documento"];
+        const hasContractIntent = contractKeywords.some(w => cleanInput.toLowerCase().includes(w));
+
+        if (hasContractIntent && !isProfileComplete) {
+            setIsTyping(false);
+            setTimeout(() => {
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        id: (Date.now() + 1).toString(),
+                        role: "clara",
+                        content: t('clara.missing_profile', "Antes de generar el texto legal, asegúrate de tener el DNI/CIF y domicilio de ambas partes. ¿Quieres ir a 'Editar perfil' o darmelos por aquí?"),
+                    },
+                ]);
+            }, 600);
+            return;
+        }
 
         try {
             const { data, error } = await supabase.functions.invoke('clara-chat', {
@@ -144,6 +168,16 @@ export function ClaraChat() {
                                         }`}
                                 >
                                     <p className="whitespace-pre-wrap">{message.content}</p>
+                                    {message.content.includes("asegúrate de tener el DNI/CIF") && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="mt-2 w-full border-blue-200 text-blue-700 hover:bg-blue-50"
+                                            onClick={() => navigate("/onboarding")}
+                                        >
+                                            Ir a Editar Perfil
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </div>

@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Download, FileText, User, Mail, Check } from "lucide-react";
+import { ArrowLeft, Download, FileText, User, Mail, Check, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge, DocumentStatus } from "@/components/shared/StatusBadge";
@@ -14,6 +14,7 @@ const mockDocument = {
   status: "signed" as DocumentStatus,
   signedAt: "20/01/2025 a las 14:32",
   timeline: [
+    { date: "20/01/2025 14:32", event: "Certificado emitido", completed: true },
     { date: "20/01/2025 14:32", event: "Firmado", completed: true },
     { date: "20/01/2025 14:30", event: "Visto por firmante", completed: true },
     { date: "20/01/2025 10:00", event: "Enviado", completed: true },
@@ -81,26 +82,37 @@ export default function DocumentDetail() {
       {/* Timeline */}
       <div className="space-y-3">
         <h3 className="font-medium">Cronología</h3>
-        <div className="space-y-3">
+        <div className="space-y-6 pl-2">
           {mockDocument.timeline.map((item, index) => (
-            <div key={index} className="flex gap-3">
-              <div className="relative flex flex-col items-center">
-                <div
-                  className={`h-3 w-3 rounded-full ${
-                    index === 0
-                      ? "bg-success"
-                      : "border-2 border-muted-foreground/30 bg-background"
+            <div key={index} className="flex gap-4 relative">
+              {/* Connector line */}
+              {index < mockDocument.timeline.length - 1 && (
+                <div className="absolute left-[11px] top-8 bottom-0 w-0.5 bg-slate-200 -z-10" />
+              )}
+
+              {/* Icon Status */}
+              <div
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${item.completed
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-slate-300 bg-white"
                   }`}
-                />
-                {index < mockDocument.timeline.length - 1 && (
-                  <div className="w-px flex-1 bg-border" />
-                )}
+              >
+                {item.completed && <Check className="h-3 w-3" />}
               </div>
-              <div className="pb-4">
-                <p className={`text-sm font-medium ${index === 0 ? "text-success" : ""}`}>
+
+              {/* Content */}
+              <div className="pb-2">
+                <p className={`text-sm font-medium ${item.completed ? "text-slate-900" : "text-slate-500"}`}>
                   {item.event}
                 </p>
                 <p className="text-xs text-muted-foreground">{item.date}</p>
+                {/* Visual extra for "Certified" */}
+                {item.event.includes("Certificado") && (
+                  <div className="mt-2 flex items-center gap-2 rounded-md bg-purple-50 p-2 text-xs text-purple-700 border border-purple-100">
+                    <Award className="h-3 w-3" />
+                    <span>Evidencia generada y sellada en blockchain</span>
+                  </div>
+                )}
               </div>
             </div>
           ))}

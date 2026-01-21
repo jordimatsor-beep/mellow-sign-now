@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
-import { Check, Clock, Eye, AlertCircle, FileEdit } from "lucide-react";
+import { Check, Clock, Eye, AlertCircle, FileEdit, Award } from "lucide-react";
 
-export type DocumentStatus = "draft" | "sent" | "viewed" | "signed" | "expired";
+export type DocumentStatus = "draft" | "sent" | "viewed" | "signed" | "expired" | "certified";
 
 interface StatusBadgeProps {
   status: DocumentStatus;
@@ -36,6 +36,11 @@ const statusConfig: Record<
     label: "Expirado",
     icon: AlertCircle,
     className: "bg-destructive/10 text-destructive",
+  },
+  certified: {
+    label: "Certificado",
+    icon: Award,
+    className: "bg-purple-100 text-purple-700 border-purple-200",
   },
 };
 

@@ -190,7 +190,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                     </div>
-                    <StatusBadge status={doc.status} className="shrink-0 scale-90" />
+                    <StatusBadge status={doc.status === 'signed' ? 'certified' : doc.status} className="shrink-0 scale-90" />
                   </div>
                 </Link>
               ))

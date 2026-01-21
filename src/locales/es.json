@@ -8,7 +8,8 @@
         "clara": "Clara",
         "credits": "Créditos",
         "settings": "Configuración",
-        "help": "Ayuda"
+        "help": "Ayuda",
+        "contacts": "Agenda"
     },
     "dashboard": {
         "greeting": "Buenos días",
@@ -103,5 +104,17 @@
     "credits": {
         "title": "Créditos",
         "error_fetch": "No se pudo cargar tu saldo. Inténtalo de nuevo."
+    },
+    "contacts": {
+        "title": "Agenda de Contactos",
+        "new_contact": "Nuevo Contacto",
+        "name": "Nombre",
+        "email": "Email",
+        "phone": "Teléfono",
+        "save": "Guardar Contacto",
+        "saved": "Contacto guardado",
+        "error_saving": "Error al guardar el contacto",
+        "no_contacts": "No tienes contactos guardados.",
+        "search_placeholder": "Buscar contactos..."
     }
 }

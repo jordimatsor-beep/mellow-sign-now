@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Upload, Sparkles, FileText, ArrowRight, Loader2 } from "lucide-react";
+import { useProfile } from "@/context/ProfileContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ type Step = "source" | "upload" | "signer" | "options" | "confirm";
 
 export default function NewDocument() {
   const navigate = useNavigate();
+  const { profile } = useProfile();
   const [step, setStep] = useState<Step>("source");
   const [source, setSource] = useState<"upload" | "clara" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,6 +26,9 @@ export default function NewDocument() {
 
   const [signerName, setSignerName] = useState("");
   const [signerEmail, setSignerEmail] = useState("");
+  const [signerNif, setSignerNif] = useState("");
+  const [signerPhone, setSignerPhone] = useState("");
+  const [signerAddress, setSignerAddress] = useState("");
   const [signatureType, setSignatureType] = useState("full");
 
   const [customMessage, setCustomMessage] = useState("");
@@ -77,9 +82,13 @@ export default function NewDocument() {
             file: base64File,
             signer_name: signerName,
             signer_email: signerEmail,
+            signer_nif: signerNif,
+            signer_phone: signerPhone,
+            signer_address: signerAddress,
             custom_message: customMessage,
             signature_type: signatureType,
-            expires_in_days: parseInt(expiresInDays)
+            expires_in_days: parseInt(expiresInDays),
+            issuer_data: profile // Send current profile as snapshot
           })
         });
 
@@ -257,64 +266,100 @@ export default function NewDocument() {
             <h2 className="text-lg font-semibold">¿Quién debe firmar?</h2>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nombre *</Label>
-                <Input
-                  id="name"
-                  placeholder="Ej: Juan Pérez"
-                  value={signerName}
-                  onChange={(e) => setSignerName(e.target.value)}
-                />
-              </div>
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nombre / Razón Social *</Label>
+                    <Input
+                      id="name"
+                      placeholder="Ej: Juan Pérez"
+                      value={signerName}
+                      onChange={(e) => setSignerName(e.target.value)}
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Ej: juan@email.com"
-                  value={signerEmail}
-                  onChange={(e) => setSignerEmail(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label>Tipo de firma</Label>
-              <RadioGroup value={signatureType} onValueChange={setSignatureType}>
-                <div className="space-y-2">
-                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent [&:has(:checked)]:ring-2 [&:has(:checked)]:ring-primary">
-                    <RadioGroupItem value="full" className="mt-0.5" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">Checkbox + nombre + firma</p>
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                          Recomendado
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">Máxima prueba</p>
-                    </div>
-                  </label>
-
-                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent [&:has(:checked)]:ring-2 [&:has(:checked)]:ring-primary">
-                    <RadioGroupItem value="name" className="mt-0.5" />
-                    <div>
-                      <p className="font-medium">Checkbox + nombre</p>
-                      <p className="text-sm text-muted-foreground">Confirmación con nombre</p>
-                    </div>
-                  </label>
+                  <div className="space-y-2">
+                    <Label htmlFor="nif">CIF / NIF *</Label>
+                    <Input
+                      id="nif"
+                      placeholder="Ej: 12345678Z"
+                      value={signerNif}
+                      onChange={(e) => setSignerNif(e.target.value)}
+                    />
+                  </div>
                 </div>
-              </RadioGroup>
-            </div>
 
-            <Button
-              className="w-full"
-              disabled={!signerName || !signerEmail}
-              onClick={() => setStep("options")}
-            >
-              Continuar
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Ej: juan@email.com"
+                    value={signerEmail}
+                    onChange={(e) => setSignerEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Teléfono *</Label>
+                    <Input
+                      id="phone"
+                      placeholder="+34 600..."
+                      value={signerPhone}
+                      onChange={(e) => setSignerPhone(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Dirección *</Label>
+                    <Input
+                      id="address"
+                      placeholder="Calle, Ciudad..."
+                      value={signerAddress}
+                      onChange={(e) => setSignerAddress(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="space-y-3">
+                <Label>Tipo de firma</Label>
+                <RadioGroup value={signatureType} onValueChange={setSignatureType}>
+                  <div className="space-y-2">
+                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent [&:has(:checked)]:ring-2 [&:has(:checked)]:ring-primary">
+                      <RadioGroupItem value="full" className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">Checkbox + nombre + firma</p>
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            Recomendado
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">Máxima prueba</p>
+                      </div>
+                    </label>
+
+                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent [&:has(:checked)]:ring-2 [&:has(:checked)]:ring-primary">
+                      <RadioGroupItem value="name" className="mt-0.5" />
+                      <div>
+                        <p className="font-medium">Checkbox + nombre</p>
+                        <p className="text-sm text-muted-foreground">Confirmación con nombre</p>
+                      </div>
+                    </label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <Button
+                className="w-full"
+                disabled={!signerName || !signerEmail || !signerNif || !signerPhone || !signerAddress}
+                onClick={() => setStep("options")}
+              >
+                Continuar
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
           </div>
         );
 
@@ -384,7 +429,12 @@ export default function NewDocument() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Firmante</span>
-                <span>{signerName} ({signerEmail})</span>
+                <div className="text-right">
+                  <p>{signerName}</p>
+                  <p className="text-xs text-muted-foreground">{signerEmail}</p>
+                  {signerNif && <p className="text-xs text-muted-foreground">NIF: {signerNif}</p>}
+                  {signerPhone && <p className="text-xs text-muted-foreground">{signerPhone}</p>}
+                </div>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Tipo de firma</span>
@@ -428,7 +478,6 @@ export default function NewDocument() {
 
   return (
     <div className="mx-auto max-w-xl py-4 space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3 px-1">
         <Button
           variant="ghost"
@@ -454,7 +503,6 @@ export default function NewDocument() {
         <h1 className="text-xl font-bold tracking-tight">Nuevo documento</h1>
       </div>
 
-      {/* Steps indicator */}
       <div className="mx-1 flex gap-2">
         {["source", "upload", "signer", "options", "confirm"].map((s, i) => (
           <div
@@ -468,9 +516,7 @@ export default function NewDocument() {
       </div>
 
       <Card className="border-muted/40 shadow-lg">
-        <CardContent className="p-6">
-          {renderStep()}
-        </CardContent>
+        <CardContent className="p-6">{renderStep()}</CardContent>
       </Card>
     </div>
   );

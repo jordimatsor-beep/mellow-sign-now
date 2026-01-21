@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 // Context
 import { AuthProvider } from "@/context/AuthContext";
+import { ProfileProvider } from "@/context/ProfileContext";
 import { RequireAuth } from "@/components/layout/RequireAuth";
 
 // Layouts
@@ -15,6 +16,7 @@ import { PublicLayout } from "@/components/layout/PublicLayout";
 // Pages
 // Pages
 import Dashboard from "@/pages/Dashboard";
+import Index from "@/pages/Index";
 import Documents from "@/pages/Documents";
 import DocumentDetail from "@/pages/DocumentDetail";
 import NewDocument from "@/pages/NewDocument";
@@ -35,45 +37,48 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/update-password" element={<UpdatePassword />} />
-            <Route path="/onboarding" element={<Onboarding />} />
+      <ProfileProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/update-password" element={<UpdatePassword />} />
+              <Route path="/onboarding" element={<Onboarding />} />
 
-            {/* Public signing page */}
-            <Route element={<PublicLayout />}>
-              <Route path="/sign/:token" element={<SignDocument />} />
-            </Route>
-
-            {/* Authenticated routes */}
-            <Route element={<RequireAuth />}>
-              <Route element={<AuthenticatedLayout />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/documents" element={<Documents />} />
-                <Route path="/documents/new" element={<NewDocument />} />
-                <Route path="/documents/:id" element={<DocumentDetail />} />
-                <Route path="/clara" element={<Clara />} />
-                <Route path="/credits" element={<Credits />} />
-                <Route path="/credits/purchase" element={<CreditsPurchase />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/help" element={<Help />} />
+              {/* Public signing page */}
+              <Route element={<PublicLayout />}>
+                <Route path="/sign/:token" element={<SignDocument />} />
               </Route>
-            </Route>
 
-            {/* Redirects */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              {/* Authenticated routes */}
+              <Route element={<RequireAuth />}>
+                <Route element={<AuthenticatedLayout />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/documents" element={<Documents />} />
+                  <Route path="/documents/new" element={<NewDocument />} />
+                  <Route path="/documents/:id" element={<DocumentDetail />} />
+                  <Route path="/clara" element={<Clara />} />
+                  <Route path="/credits" element={<Credits />} />
+                  <Route path="/credits/purchase" element={<CreditsPurchase />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/help" element={<Help />} />
+                </Route>
+              </Route>
 
-            {/* 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+              {/* Redirects */}
+
+
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ProfileProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

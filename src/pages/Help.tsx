@@ -8,6 +8,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { ClaraChat } from "@/components/ClaraChat";
 
 const faqs = [
   {
@@ -52,22 +61,40 @@ export default function Help() {
 
       {/* Quick links */}
       <div className="grid grid-cols-2 gap-3">
-        <Card className="cursor-pointer transition-colors hover:bg-accent">
-          <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <MessageCircle className="h-5 w-5 text-primary" />
+        <Sheet>
+          <SheetTrigger asChild>
+            <Card className="cursor-pointer transition-colors hover:bg-accent">
+              <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <MessageCircle className="h-5 w-5 text-primary" />
+                </div>
+                <p className="text-sm font-medium">Chat de soporte</p>
+              </CardContent>
+            </Card>
+          </SheetTrigger>
+          <SheetContent className="w-[400px] sm:w-[540px]">
+            <SheetHeader>
+              <SheetTitle>Soporte FirmaClara</SheetTitle>
+              <SheetDescription>
+                Habla con nuestro asistente virtual para resolver tus dudas.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-6">
+              <ClaraChat />
             </div>
-            <p className="text-sm font-medium">Chat de soporte</p>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer transition-colors hover:bg-accent">
-          <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <Mail className="h-5 w-5 text-primary" />
-            </div>
-            <p className="text-sm font-medium">Enviar email</p>
-          </CardContent>
-        </Card>
+          </SheetContent>
+        </Sheet>
+
+        <a href="mailto:support@firmaclara.com" className="block">
+          <Card className="cursor-pointer transition-colors hover:bg-accent h-full">
+            <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <Mail className="h-5 w-5 text-primary" />
+              </div>
+              <p className="text-sm font-medium">Enviar email</p>
+            </CardContent>
+          </Card>
+        </a>
       </div>
 
       {/* FAQs */}

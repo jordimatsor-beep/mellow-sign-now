@@ -23,10 +23,17 @@ export default function Credits() {
   useEffect(() => {
     async function fetchCredits() {
       try {
-        const { data, error } = await supabase.functions.invoke('get-credits');
+        const { data, error } = await supabase
+          .from('credit_packs')
+          .select('credits_total, credits_used');
+
         if (error) throw error;
+
         if (data) {
-          setAvailableCredits(data.credits);
+          const total = data.reduce((acc, pack) => {
+            return acc + (pack.credits_total || 0) - (pack.credits_used || 0);
+          }, 0);
+          setAvailableCredits(total);
         }
       } catch (e) {
         console.error("Error fetching credits:", e);
