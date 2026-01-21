@@ -2,28 +2,33 @@ import { Home, FileText, Sparkles, CreditCard, Settings, HelpCircle, Plus } from
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-
-const navItems = [
-  { to: "/dashboard", icon: Home, label: "Inicio" },
-  { to: "/documents", icon: FileText, label: "Documentos" },
-  { to: "/clara", icon: Sparkles, label: "Clara" },
-  { to: "/credits", icon: CreditCard, label: "Créditos" },
-];
-
-const bottomItems = [
-  { to: "/settings", icon: Settings, label: "Configuración" },
-  { to: "/help", icon: HelpCircle, label: "Ayuda" },
-];
+import { useTranslation } from 'react-i18next';
 
 export function Sidebar() {
+  const { t } = useTranslation();
+
+  const navItems = [
+    { to: "/dashboard", icon: Home, label: t('nav.home') },
+    { to: "/documents", icon: FileText, label: t('nav.documents') },
+    { to: "/clara", icon: Sparkles, label: t('nav.clara') },
+    { to: "/credits", icon: CreditCard, label: t('nav.credits') },
+  ];
+
+  const bottomItems = [
+    { to: "/settings", icon: Settings, label: t('nav.settings') },
+    { to: "/help", icon: HelpCircle, label: t('nav.help') },
+  ];
+
   return (
     <aside className="hidden w-64 flex-col border-r bg-sidebar md:flex h-full">
       {/* Logo */}
       <div className="flex h-14 items-center gap-2 border-b px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-          <span className="text-lg font-bold text-primary-foreground">F</span>
-        </div>
-        <span className="text-lg font-semibold tracking-tight">FirmaClara</span>
+        <img
+          src="https://storage.googleapis.com/msgsndr/tdZAorlZ97ZS4xrRVntK/media/6970195cd4fb900ce1a6403e.png"
+          alt="FirmaClara"
+          className="h-8 w-auto object-contain"
+        />
+        <span className="text-lg font-semibold tracking-tight">{t('app.name')}</span>
       </div>
 
       {/* CTA */}
@@ -31,7 +36,7 @@ export function Sidebar() {
         <Button asChild className="w-full gap-2">
           <NavLink to="/documents/new">
             <Plus className="h-4 w-4" />
-            Nuevo documento
+            {t('dashboard.new_document')}
           </NavLink>
         </Button>
       </div>
@@ -49,13 +54,13 @@ export function Sidebar() {
                     isActive
                       ? "bg-sidebar-accent text-sidebar-primary"
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    item.label === "Clara" && !isActive && "border border-blue-200/50 shadow-[0_0_10px_rgba(59,130,246,0.3)] bg-gradient-to-r from-blue-50/50 to-transparent text-blue-700 hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] hover:border-blue-300"
+                    item.to === "/clara" && !isActive && "border border-blue-200/50 shadow-[0_0_10px_rgba(59,130,246,0.3)] bg-gradient-to-r from-blue-50/50 to-transparent text-blue-700 hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] hover:border-blue-300"
                   )
                 }
               >
-                <item.icon className={cn("h-5 w-5", item.label === "Clara" && "text-blue-500 animate-pulse")} />
+                <item.icon className={cn("h-5 w-5", item.to === "/clara" && "text-blue-500 animate-pulse")} />
                 {item.label}
-                {item.label === "Clara" && (
+                {item.to === "/clara" && (
                   <span className="ml-auto inline-flex h-2 w-2 animate-ping rounded-full bg-blue-400 opacity-75"></span>
                 )}
               </NavLink>

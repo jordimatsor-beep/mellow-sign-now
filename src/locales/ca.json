@@ -1,0 +1,102 @@
+{
+    "app": {
+        "name": "FirmaClara"
+    },
+    "nav": {
+        "home": "Inici",
+        "documents": "Documents",
+        "clara": "Clara",
+        "credits": "Crèdits",
+        "settings": "Configuració",
+        "help": "Ajuda"
+    },
+    "dashboard": {
+        "greeting": "Bon dia",
+        "credits_available": "crèdits",
+        "available": "disponibles",
+        "create_document": "Crear document",
+        "new_document": "Nou document",
+        "stats": {
+            "pending": "Pendents",
+            "signed": "Signats",
+            "total": "Total"
+        },
+        "recent_documents": "Documents recents",
+        "view_all": "Veure tots",
+        "no_documents": "No hi ha documents",
+        "no_documents_desc": "Comença creant el teu primer contracte",
+        "create_first": "Crear el meu primer document",
+        "quick_actions": "Accions ràpides",
+        "new": "Nou",
+        "clara_ai": "Clara AI",
+        "need_help": "Necessites ajuda?",
+        "help_desc": "Aprèn com signar documents legalment vinculants en minuts.",
+        "view_tutorials": "Veure tutorials"
+    },
+    "auth": {
+        "login": "Iniciar sessió",
+        "register": "Registrar-se",
+        "welcome_back": "Benvingut de nou a FirmaClara",
+        "email": "Email",
+        "password": "Contrasenya",
+        "forgot_password": "Has oblidat la contrasenya?",
+        "sign_in": "Entrar",
+        "or_continue_with": "O continuar amb",
+        "google": "Google",
+        "apple": "Apple",
+        "no_account": "No tens compte?",
+        "have_account": "Ja tens compte?"
+    },
+    "settings": {
+        "title": "Configuració",
+        "profile": "Perfil",
+        "profile_desc": "Nom, email, empresa",
+        "notifications": "Notificacions",
+        "notifications_desc": "Email i push",
+        "security": "Seguretat",
+        "security_desc": "Contrasenya i 2FA",
+        "edit": "Editar",
+        "edit_profile": "Editar Perfil",
+        "full_name": "Nom complet",
+        "company": "Empresa",
+        "optional": "Opcional",
+        "cancel": "Cancel·lar",
+        "save_changes": "Desar canvis",
+        "profile_updated": "Perfil actualitzat correctament",
+        "notification_prefs": "Preferències de Notificacions",
+        "email_notifications": "Notificacions per email",
+        "email_notifications_desc": "Rebre avisos quan signin",
+        "auto_reminders": "Recordatoris automàtics",
+        "auto_reminders_desc": "Enviar recordatori als signants",
+        "two_factor": "Autenticació de dos passos",
+        "two_factor_desc": "Més seguretat per al teu compte",
+        "configure": "Configurar",
+        "change_password": "Contrasenya",
+        "change_password_desc": "Canviar la teva contrasenya actual",
+        "change": "Canviar",
+        "coming_soon": "Properament",
+        "logout": "Tancar sessió"
+    },
+    "clara": {
+        "title": "Assistent Legal Clara",
+        "greeting": "Hola! Sóc Clara, la teva assistent legal experta en FirmaClara. En què et puc ajudar amb els teus contractes o documents avui?",
+        "placeholder": "Pregunta sobre contractes, clàusules...",
+        "analyzing": "Clara està analitzant...",
+        "error_config": "Error de configuració: VITE_GEMINI_API_KEY no trobada.",
+        "error_processing": "Ho sento, s'ha produït un error en processar la teva sol·licitud.",
+        "error_safety": "⚠️ La sol·licitud ha estat bloquejada per motius de seguretat.",
+        "error_auth": "Error d'autenticació amb el servei d'IA.",
+        "manipulation_detected": "⚠️ Intent de manipulació del sistema detectat. La meva funció és exclusivament legal i contractual."
+    },
+    "common": {
+        "loading": "Carregant...",
+        "error": "Error",
+        "success": "Èxit",
+        "close": "Tancar",
+        "save": "Desar",
+        "delete": "Eliminar",
+        "edit": "Editar",
+        "create": "Crear",
+        "search": "Cercar"
+    }
+}

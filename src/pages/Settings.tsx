@@ -85,6 +85,10 @@ export default function Settings() {
               </DialogHeader>
               <form onSubmit={handleUpdateProfile} className="space-y-4 py-4">
                 <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" value={user?.email || ""} disabled className="bg-muted" />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="name">Nombre completo</Label>
                   <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
                 </div>
@@ -134,8 +138,9 @@ export default function Settings() {
       <Separator />
 
       {/* Quick settings */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Preferencias rápidas</h2>
+      {/* Quick settings - Notifications */}
+      <div className="space-y-4" id="notifications">
+        <h2 className="text-lg font-semibold">Preferencias de Notificaciones</h2>
 
         <div className="flex items-center justify-between">
           <div>
@@ -155,6 +160,29 @@ export default function Settings() {
             </p>
           </div>
           <Switch defaultChecked />
+        </div>
+      </div>
+
+      <Separator />
+
+
+
+      {/* Security Section */}
+      <div className="space-y-4" id="security">
+        <h2 className="text-lg font-semibold">Seguridad</h2>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium">Autenticación de dos pasos</p>
+            <p className="text-sm text-muted-foreground">Más seguridad para tu cuenta</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => toast.info("Próximamente")}>Configurar</Button>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium">Contraseña</p>
+            <p className="text-sm text-muted-foreground">Cambiar tu contraseña actual</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => toast.info("Próximamente")}>Cambiar</Button>
         </div>
       </div>
 

@@ -1,0 +1,102 @@
+{
+    "app": {
+        "name": "FirmaClara"
+    },
+    "nav": {
+        "home": "Accueil",
+        "documents": "Documents",
+        "clara": "Clara",
+        "credits": "Crédits",
+        "settings": "Paramètres",
+        "help": "Aide"
+    },
+    "dashboard": {
+        "greeting": "Bonjour",
+        "credits_available": "crédits",
+        "available": "disponibles",
+        "create_document": "Créer un document",
+        "new_document": "Nouveau document",
+        "stats": {
+            "pending": "En attente",
+            "signed": "Signés",
+            "total": "Total"
+        },
+        "recent_documents": "Documents récents",
+        "view_all": "Voir tout",
+        "no_documents": "Aucun document",
+        "no_documents_desc": "Commencez par créer votre premier contrat",
+        "create_first": "Créer mon premier document",
+        "quick_actions": "Actions rapides",
+        "new": "Nouveau",
+        "clara_ai": "Clara AI",
+        "need_help": "Besoin d'aide?",
+        "help_desc": "Apprenez à signer des documents juridiquement contraignants en quelques minutes.",
+        "view_tutorials": "Voir les tutoriels"
+    },
+    "auth": {
+        "login": "Se connecter",
+        "register": "S'inscrire",
+        "welcome_back": "Bienvenue à FirmaClara",
+        "email": "Email",
+        "password": "Mot de passe",
+        "forgot_password": "Mot de passe oublié?",
+        "sign_in": "Se connecter",
+        "or_continue_with": "Ou continuer avec",
+        "google": "Google",
+        "apple": "Apple",
+        "no_account": "Vous n'avez pas de compte?",
+        "have_account": "Vous avez déjà un compte?"
+    },
+    "settings": {
+        "title": "Paramètres",
+        "profile": "Profil",
+        "profile_desc": "Nom, email, entreprise",
+        "notifications": "Notifications",
+        "notifications_desc": "Email et push",
+        "security": "Sécurité",
+        "security_desc": "Mot de passe et 2FA",
+        "edit": "Modifier",
+        "edit_profile": "Modifier le profil",
+        "full_name": "Nom complet",
+        "company": "Entreprise",
+        "optional": "Optionnel",
+        "cancel": "Annuler",
+        "save_changes": "Enregistrer les modifications",
+        "profile_updated": "Profil mis à jour avec succès",
+        "notification_prefs": "Préférences de notification",
+        "email_notifications": "Notifications par email",
+        "email_notifications_desc": "Recevoir des alertes lors de la signature",
+        "auto_reminders": "Rappels automatiques",
+        "auto_reminders_desc": "Envoyer un rappel aux signataires",
+        "two_factor": "Authentification à deux facteurs",
+        "two_factor_desc": "Plus de sécurité pour votre compte",
+        "configure": "Configurer",
+        "change_password": "Mot de passe",
+        "change_password_desc": "Changer votre mot de passe actuel",
+        "change": "Changer",
+        "coming_soon": "Bientôt disponible",
+        "logout": "Se déconnecter"
+    },
+    "clara": {
+        "title": "Assistant juridique Clara",
+        "greeting": "Bonjour! Je suis Clara, votre assistante juridique experte en FirmaClara. Comment puis-je vous aider avec vos contrats ou documents aujourd'hui?",
+        "placeholder": "Posez des questions sur les contrats, les clauses...",
+        "analyzing": "Clara analyse...",
+        "error_config": "Erreur de configuration: VITE_GEMINI_API_KEY introuvable.",
+        "error_processing": "Désolé, une erreur s'est produite lors du traitement de votre demande.",
+        "error_safety": "⚠️ La demande a été bloquée pour des raisons de sécurité.",
+        "error_auth": "Erreur d'authentification avec le service IA.",
+        "manipulation_detected": "⚠️ Tentative de manipulation du système détectée. Ma fonction est exclusivement juridique et contractuelle."
+    },
+    "common": {
+        "loading": "Chargement...",
+        "error": "Erreur",
+        "success": "Succès",
+        "close": "Fermer",
+        "save": "Enregistrer",
+        "delete": "Supprimer",
+        "edit": "Modifier",
+        "create": "Créer",
+        "search": "Rechercher"
+    }
+}

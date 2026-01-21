@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { useTranslation } from 'react-i18next';
 
 interface Document {
   id: string;
@@ -21,6 +22,7 @@ interface Document {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuario";
 
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -89,14 +91,14 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Buenos días, {userName}
+            {t('dashboard.greeting')}, {userName}
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Tienes <span className="font-semibold text-slate-700">{stats.credits} créditos</span> disponibles
+            {t('dashboard.available')} <span className="font-semibold text-slate-700">{stats.credits} {t('dashboard.credits_available')}</span> {t('dashboard.available')}
           </p>
         </div>
         <Button size="sm" asChild>
-          <Link to="/documents/new">Create Document</Link>
+          <Link to="/documents/new">{t('dashboard.create_document')}</Link>
         </Button>
       </div>
 
@@ -108,7 +110,7 @@ export default function Dashboard() {
               <Clock className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Pendientes</p>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.pending')}</p>
               <p className="text-xl font-bold text-slate-900">{stats.pending}</p>
             </div>
           </CardContent>
@@ -120,7 +122,7 @@ export default function Dashboard() {
               <Check className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Firmados</p>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.signed')}</p>
               <p className="text-xl font-bold text-slate-900">{stats.signed}</p>
             </div>
           </CardContent>
@@ -132,7 +134,7 @@ export default function Dashboard() {
               <FileText className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total</p>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.total')}</p>
               <p className="text-xl font-bold text-slate-900">{stats.total}</p>
             </div>
           </CardContent>
@@ -143,9 +145,9 @@ export default function Dashboard() {
         {/* Main Content Area: Recent Documents */}
         <div className="md:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">Documentos recientes</h2>
+            <h2 className="text-lg font-semibold text-slate-900">{t('dashboard.recent_documents')}</h2>
             <Link to="/documents" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
-              Ver todos
+              {t('dashboard.view_all')}
             </Link>
           </div>
 
@@ -155,11 +157,11 @@ export default function Dashboard() {
                 <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
                   <File className="h-6 w-6 text-slate-400" />
                 </div>
-                <h3 className="text-sm font-medium text-slate-900">No hay documentos</h3>
-                <p className="text-xs text-slate-500 mb-4 mt-1">Empieza creando tu primer contrato</p>
+                <h3 className="text-sm font-medium text-slate-900">{t('dashboard.no_documents')}</h3>
+                <p className="text-xs text-slate-500 mb-4 mt-1">{t('dashboard.no_documents_desc')}</p>
                 <Button size="sm" variant="outline" asChild>
                   <Link to="/documents/new">
-                    Crear mi primer documento
+                    {t('dashboard.create_first')}
                   </Link>
                 </Button>
               </div>
@@ -198,7 +200,7 @@ export default function Dashboard() {
 
         {/* Sidebar: Quick Actions & Help */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">Acciones rápidas</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{t('dashboard.quick_actions')}</h2>
           <div className="grid grid-cols-2 gap-3">
             <Button
               asChild
@@ -207,7 +209,7 @@ export default function Dashboard() {
             >
               <Link to="/documents/new">
                 <Plus className="h-5 w-5" />
-                <span className="text-xs font-medium">Nuevo</span>
+                <span className="text-xs font-medium">{t('dashboard.new')}</span>
               </Link>
             </Button>
             <Button
@@ -223,7 +225,7 @@ export default function Dashboard() {
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
                   </span>
                 </div>
-                <span className="text-xs font-medium">Clara AI</span>
+                <span className="text-xs font-medium">{t('dashboard.clara_ai')}</span>
               </Link>
             </Button>
           </div>
@@ -231,12 +233,12 @@ export default function Dashboard() {
           {/* Mini Help Card */}
           <Card className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white border-none shadow-md mt-4">
             <CardContent className="p-4">
-              <h3 className="font-semibold text-sm mb-1">¿Necesitas ayuda?</h3>
+              <h3 className="font-semibold text-sm mb-1">{t('dashboard.need_help')}</h3>
               <p className="text-xs text-indigo-100 mb-3 leading-relaxed">
-                Aprende cómo firmar documentos legalmente vinculantes en minutos.
+                {t('dashboard.help_desc')}
               </p>
               <Button size="sm" variant="secondary" className="w-full text-xs h-8 bg-white/10 hover:bg-white/20 text-white border-0" asChild>
-                <Link to="/help">Ver tutoriales</Link>
+                <Link to="/help">{t('dashboard.view_tutorials')}</Link>
               </Button>
             </CardContent>
           </Card>

@@ -7,8 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 
 export default function Login() {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -54,18 +56,25 @@ export default function Login() {
     return (
         <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
             <Card className="w-full max-w-md animate-in zoom-in-95 duration-500 shadow-lg border-muted/40">
-                <CardHeader className="space-y-1">
+                <CardHeader className="space-y-3">
+                    <div className="flex justify-center mb-2">
+                        <img
+                            src="https://storage.googleapis.com/msgsndr/tdZAorlZ97ZS4xrRVntK/media/6970195cd4fb900ce1a6403e.png"
+                            alt="FirmaClara"
+                            className="h-12 w-auto object-contain"
+                        />
+                    </div>
                     <CardTitle className="text-2xl font-bold text-center">
-                        Iniciar sesión
+                        {t('auth.login')}
                     </CardTitle>
                     <CardDescription className="text-center">
-                        Bienvenido de nuevo a FirmaClara
+                        {t('auth.welcome_back')}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email">{t('auth.email')}</Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -78,9 +87,9 @@ export default function Login() {
                         </div>
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                                <Label htmlFor="password">Contraseña</Label>
+                                <Label htmlFor="password">{t('auth.password')}</Label>
                                 <Button variant="link" className="p-0 h-auto font-normal text-xs" type="button">
-                                    ¿Olvidaste tu contraseña?
+                                    {t('auth.forgot_password')}
                                 </Button>
                             </div>
                             <Input
@@ -94,7 +103,7 @@ export default function Login() {
                         </div>
                         <Button className="w-full h-11 text-base" type="submit" disabled={loading}>
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Entrar
+                            {t('auth.sign_in')}
                         </Button>
                     </form>
 
@@ -104,7 +113,7 @@ export default function Login() {
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
                             <span className="bg-slate-50 px-2 text-muted-foreground font-medium">
-                                O continuar con
+                                {t('auth.or_continue_with')}
                             </span>
                         </div>
                     </div>
@@ -134,7 +143,7 @@ export default function Login() {
                                     fill="#EA4335"
                                 />
                             </svg>
-                            Google
+                            {t('auth.google')}
                         </Button>
                         <Button
                             variant="outline"
@@ -145,15 +154,15 @@ export default function Login() {
                             <svg className="mr-2 h-4 w-4 fill-current" viewBox="0 0 24 24">
                                 <path d="M17.05 20.28c-.98.95-2.05.88-3.08.35-1.09-.56-2.07-.49-3.17.06-1.5.75-2.19.45-3.03-.45-3.15-3.26-4.05-8.15-1.92-10.74 1.15-1.4 3.08-1.55 4.19-.38.8.84 2 .87 2.76.04 1.29-1.39 3.45-1.12 4.41.04.7.9 2.5 3.35 1.74 3.37-.11.02-.27.09-.4.18-2.03 1.4-1.9 4.35 1.05 5.56-.63 1.25-1.41 2.37-2.55 3.97zm-4.75-14.18c.03-.13.06-.27.07-.4.21-1.8 1.57-3.16 3.19-3.19.12 1.62-.87 3.23-3.26 3.59z" />
                             </svg>
-                            Apple
+                            {t('auth.apple')}
                         </Button>
                     </div>
                 </CardContent>
                 <CardFooter className="flex flex-col gap-4 border-t bg-slate-50/50 p-6">
                     <div className="text-center text-sm text-muted-foreground">
-                        ¿No tienes cuenta?{" "}
+                        {t('auth.no_account')}{" "}
                         <Link to="/register" className="font-medium text-primary hover:underline">
-                            Regístrate
+                            {t('auth.register')}
                         </Link>
                     </div>
                 </CardFooter>

@@ -1,0 +1,102 @@
+{
+    "app": {
+        "name": "FirmaClara"
+    },
+    "nav": {
+        "home": "Home",
+        "documents": "Documents",
+        "clara": "Clara",
+        "credits": "Credits",
+        "settings": "Settings",
+        "help": "Help"
+    },
+    "dashboard": {
+        "greeting": "Good morning",
+        "credits_available": "credits",
+        "available": "available",
+        "create_document": "Create Document",
+        "new_document": "New document",
+        "stats": {
+            "pending": "Pending",
+            "signed": "Signed",
+            "total": "Total"
+        },
+        "recent_documents": "Recent documents",
+        "view_all": "View all",
+        "no_documents": "No documents",
+        "no_documents_desc": "Start by creating your first contract",
+        "create_first": "Create my first document",
+        "quick_actions": "Quick actions",
+        "new": "New",
+        "clara_ai": "Clara AI",
+        "need_help": "Need help?",
+        "help_desc": "Learn how to sign legally binding documents in minutes.",
+        "view_tutorials": "View tutorials"
+    },
+    "auth": {
+        "login": "Sign in",
+        "register": "Sign up",
+        "welcome_back": "Welcome back to FirmaClara",
+        "email": "Email",
+        "password": "Password",
+        "forgot_password": "Forgot your password?",
+        "sign_in": "Sign in",
+        "or_continue_with": "Or continue with",
+        "google": "Google",
+        "apple": "Apple",
+        "no_account": "Don't have an account?",
+        "have_account": "Already have an account?"
+    },
+    "settings": {
+        "title": "Settings",
+        "profile": "Profile",
+        "profile_desc": "Name, email, company",
+        "notifications": "Notifications",
+        "notifications_desc": "Email and push",
+        "security": "Security",
+        "security_desc": "Password and 2FA",
+        "edit": "Edit",
+        "edit_profile": "Edit Profile",
+        "full_name": "Full name",
+        "company": "Company",
+        "optional": "Optional",
+        "cancel": "Cancel",
+        "save_changes": "Save changes",
+        "profile_updated": "Profile updated successfully",
+        "notification_prefs": "Notification Preferences",
+        "email_notifications": "Email notifications",
+        "email_notifications_desc": "Receive alerts when signed",
+        "auto_reminders": "Automatic reminders",
+        "auto_reminders_desc": "Send reminder to signers",
+        "two_factor": "Two-factor authentication",
+        "two_factor_desc": "More security for your account",
+        "configure": "Configure",
+        "change_password": "Password",
+        "change_password_desc": "Change your current password",
+        "change": "Change",
+        "coming_soon": "Coming soon",
+        "logout": "Sign out"
+    },
+    "clara": {
+        "title": "Clara Legal Assistant",
+        "greeting": "Hello! I'm Clara, your legal assistant expert in FirmaClara. How can I help you with your contracts or documents today?",
+        "placeholder": "Ask about contracts, clauses...",
+        "analyzing": "Clara is analyzing...",
+        "error_config": "Configuration error: VITE_GEMINI_API_KEY not found.",
+        "error_processing": "Sorry, an error occurred while processing your request.",
+        "error_safety": "⚠️ The request has been blocked for security reasons.",
+        "error_auth": "Authentication error with AI service.",
+        "manipulation_detected": "⚠️ System manipulation attempt detected. My function is exclusively legal and contractual."
+    },
+    "common": {
+        "loading": "Loading...",
+        "error": "Error",
+        "success": "Success",
+        "close": "Close",
+        "save": "Save",
+        "delete": "Delete",
+        "edit": "Edit",
+        "create": "Create",
+        "search": "Search"
+    }
+}

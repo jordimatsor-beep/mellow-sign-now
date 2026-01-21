@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useTranslation } from 'react-i18next';
 
 // --- CONFIGURACIÓN DE SEGURIDAD Y SISTEMA ---
 const SYSTEM_PROMPT = `
@@ -31,16 +32,16 @@ interface Message {
     content: string;
 }
 
-const initialMessages: Message[] = [
-    {
-        id: "1",
-        role: "clara",
-        content: "¡Hola! Soy Clara, tu asistente legal experta en FirmaClara. ¿En qué puedo ayudarte con tus contratos o documentos hoy?",
-    },
-];
-
 export function ClaraChat() {
-    const [messages, setMessages] = useState<Message[]>(initialMessages);
+    const { t } = useTranslation();
+
+    const [messages, setMessages] = useState<Message[]>(() => [
+        {
+            id: "1",
+            role: "clara",
+            content: t('clara.greeting'),
+        },
+    ]);
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -68,7 +69,7 @@ export function ClaraChat() {
         if (!cleanInput) return;
 
         if (!API_KEY) {
-            toast.error("Error de configuración: VITE_GEMINI_API_KEY no encontrada.");
+            toast.error(t('clara.error_config'));
             console.error("VITE_GEMINI_API_KEY is missing");
             return;
         }
@@ -91,8 +92,12 @@ export function ClaraChat() {
             });
 
             // Construct history for the model
+            // Filter out the welcome message (id: "1") to avoid "First content should be with role 'user'" error
+            // The API expects history to start with a user message or be empty.
+            const historyMessages = messages.filter(m => m.id !== "1");
+
             const chat = model.startChat({
-                history: messages.map(m => ({
+                history: historyMessages.map(m => ({
                     role: m.role === "clara" ? "model" : "user",
                     parts: [{ text: m.content }],
                 })),
@@ -132,13 +137,13 @@ export function ClaraChat() {
                 console.error("🚫 ERROR 403: Api Key válida pero sin permisos (quizás billing no activado o restricción de país).");
             }
 
-            let errorMessage = "Lo siento, ha ocurrido un error al procesar tu solicitud.";
+            let errorMessage = t('clara.error_processing');
 
             // Manejo de errores específicos
             if (error.message?.includes("SAFETY")) {
-                errorMessage = "⚠️ La solicitud ha sido bloqueada por motivos de seguridad.";
+                errorMessage = t('clara.error_safety');
             } else if (error.message?.includes("API_KEY") || error.toString().includes("401")) {
-                errorMessage = "Error de autenticación con el servicio de IA.";
+                errorMessage = t('clara.error_auth');
             }
 
             setMessages((prev) => [
@@ -171,8 +176,8 @@ export function ClaraChat() {
                                 {/* Avatar */}
                                 <div
                                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-sm mt-1 ${message.role === "clara"
-                                            ? "bg-white text-primary border border-slate-100"
-                                            : "bg-blue-600 text-white"
+                                        ? "bg-white text-primary border border-slate-100"
+                                        : "bg-blue-600 text-white"
                                         }`}
                                 >
                                     {message.role === "clara" ? (
@@ -185,8 +190,8 @@ export function ClaraChat() {
                                 {/* Bubble */}
                                 <div
                                     className={`space-y-2 px-5 py-3 shadow-sm text-sm leading-relaxed ${message.role === "clara"
-                                            ? "bg-white text-slate-800 rounded-2xl rounded-tl-none border border-slate-100"
-                                            : "bg-blue-600 text-white rounded-2xl rounded-tr-none"
+                                        ? "bg-white text-slate-800 rounded-2xl rounded-tl-none border border-slate-100"
+                                        : "bg-blue-600 text-white rounded-2xl rounded-tr-none"
                                         }`}
                                 >
                                     <p className="whitespace-pre-wrap">{message.content}</p>
@@ -204,7 +209,7 @@ export function ClaraChat() {
                                 <div className="rounded-2xl rounded-tl-none bg-white border border-slate-100 px-5 py-4 shadow-sm">
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <Loader2 className="h-3 w-3 animate-spin" />
-                                        <span>Clara está analizando...</span>
+                                        <span>{t('clara.analyzing')}</span>
                                     </div>
                                 </div>
                             </div>
@@ -225,7 +230,7 @@ export function ClaraChat() {
                     <Input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Pregunta sobre contratos, cláusulas..."
+                        placeholder={t('clara.placeholder')}
                         className="flex-1 bg-slate-50"
                         disabled={isTyping}
                     />
