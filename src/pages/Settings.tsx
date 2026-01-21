@@ -25,10 +25,29 @@ export default function Settings() {
   const [company, setCompany] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [newPassword, setNewPassword] = useState("");
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+
   useEffect(() => {
     if (user) {
-      setFullName(user.user_metadata?.full_name || "");
-      setCompany(user.user_metadata?.company || "");
+      // Load data from public.users instead of metadata
+      const fetchUserData = async () => {
+        const { data, error } = await supabase
+          .from('users')
+          .select('first_name, company')
+          .eq('id', user.id)
+          .single();
+
+        if (data) {
+          setFullName(data.first_name || "");
+          setCompany(data.company || "");
+        } else {
+          // Fallback to metadata if DB entry missing (shouldn't happen with trigger but good safety)
+          setFullName(user.user_metadata?.full_name || "");
+          setCompany(user.user_metadata?.company || "");
+        }
+      };
+      fetchUserData();
     }
   }, [user]);
 
@@ -36,14 +55,44 @@ export default function Settings() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        data: { full_name: fullName, company: company }
-      });
+      if (!user) throw new Error("No user logged in");
+
+      // Update public.users table
+      const { error } = await supabase
+        .from('users')
+        .update({
+          first_name: fullName,
+          company: company
+        })
+        .eq('id', user.id);
+
       if (error) throw error;
+
+      // Optionally update auth metadata if we want to keep them in sync, 
+      // but the requirement is to use public.users. 
+      // updating metadata is good practice for session consistency if used elsewhere, 
+      // but we will prioritize the table update as requested.
+
       toast.success("Perfil actualizado correctamente");
       setIsEditing(false);
     } catch (error: any) {
+      console.error(error);
       toast.error(error.message || "Error al actualizar perfil");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast.success("Contraseña actualizada correctamente");
+      setShowPasswordDialog(false);
+      setNewPassword("");
+    } catch (error: any) {
+      toast.error(error.message || "Error al cambiar la contraseña");
     } finally {
       setLoading(false);
     }
@@ -182,7 +231,34 @@ export default function Settings() {
             <p className="font-medium">Contraseña</p>
             <p className="text-sm text-muted-foreground">Cambiar tu contraseña actual</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => toast.info("Próximamente")}>Cambiar</Button>
+          <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">Cambiar</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Cambiar Contraseña</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">Nueva Contraseña</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>Cancelar</Button>
+                  <Button onClick={handleChangePassword} disabled={loading || !newPassword}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Actualizar
+                  </Button>
+                </DialogFooter>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

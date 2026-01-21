@@ -3,9 +3,34 @@ import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from 'react-i18next';
+import { useAuth } from "@/context/AuthContext";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export function Sidebar() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const [userName, setUserName] = useState<string>("");
+
+  useEffect(() => {
+    if (user) {
+      const fetchUserName = async () => {
+        const { data, error } = await supabase
+          .from('users')
+          .select('first_name')
+          .eq('id', user.id)
+          .single();
+
+        if (data && data.first_name) {
+          setUserName(data.first_name);
+        } else {
+          // Fallback to metadata if DB is empty or fetching fails, or email
+          setUserName(user.user_metadata?.full_name || user.email?.split('@')[0] || "Usuario");
+        }
+      };
+      fetchUserName();
+    }
+  }, [user]);
 
   const navItems = [
     { to: "/dashboard", icon: Home, label: t('nav.home') },
@@ -100,8 +125,8 @@ export function Sidebar() {
             U
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="truncate text-sm font-medium">Usuario Demo</p>
-            <p className="truncate text-xs text-muted-foreground">demo@firmaclara.es</p>
+            <p className="truncate text-sm font-medium">{userName}</p>
+            <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
           </div>
         </div>
       </div>
