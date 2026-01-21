@@ -26,8 +26,9 @@ serve(async (req) => {
         let event;
         try {
             event = stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET)
-        } catch (err) {
-            return new Response(`Webhook Error: ${err.message}`, { status: 400 })
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Unknown error'
+            return new Response(`Webhook Error: ${message}`, { status: 400 })
         }
 
         if (event.type === 'checkout.session.completed') {
@@ -63,10 +64,11 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' }
         })
 
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error:', error)
+        const message = error instanceof Error ? error.message : 'Unknown error'
         return new Response(
-            JSON.stringify({ error: error.message }),
+            JSON.stringify({ error: message }),
             { status: 500, headers: { 'Content-Type': 'application/json' } }
         )
     }
