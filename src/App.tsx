@@ -28,6 +28,7 @@ import SignDocument from "@/pages/SignDocument";
 import NotFound from "@/pages/NotFound";
 import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
+import UpdatePassword from "@/pages/auth/UpdatePassword";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/update-password" element={<UpdatePassword />} />
             <Route path="/onboarding" element={<Onboarding />} />
 
             {/* Public signing page */}

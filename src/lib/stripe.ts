@@ -1,5 +1,5 @@
 import { loadStripe } from '@stripe/stripe-js';
-
+import { supabase } from "@/lib/supabase";
 import { toast } from 'sonner';
 
 const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
@@ -19,24 +19,23 @@ export async function buyCredits(priceId: string) {
     }
 
     try {
-        const response = await fetch('/api/create-checkout-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ priceId }),
+        const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+            body: { priceId, returnUrl: window.location.origin }
         });
 
-        if (!response.ok) {
-            throw new Error('Error creating checkout session');
+        if (error) throw error;
+
+        if (!data || !data.sessionId) {
+            throw new Error("Invalid session data returned");
         }
 
-        const session = await response.json();
-        const result = await stripe.redirectToCheckout({ sessionId: session.id });
+        const result = await stripe.redirectToCheckout({ sessionId: data.sessionId });
         if (result.error) {
             console.error(result.error.message);
             toast.error(result.error.message);
         }
-    } catch (e) {
-        console.error(e);
-        toast.error("No se pudo conectar con la pasarela de pago.");
+    } catch (e: any) {
+        console.error("Payment Error:", e);
+        toast.error(e.message || "No se pudo conectar con la pasarela de pago.");
     }
 }

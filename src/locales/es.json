@@ -86,7 +86,8 @@
         "error_processing": "Lo siento, ha ocurrido un error al procesar tu solicitud.",
         "error_safety": "⚠️ La solicitud ha sido bloqueada por motivos de seguridad.",
         "error_auth": "Error de autenticación con el servicio de IA.",
-        "manipulation_detected": "⚠️ Intento de manipulación de sistema detectado. Mi función es exclusivamente legal y contractual."
+        "manipulation_detected": "⚠️ Intento de manipulación de sistema detectado. Mi función es exclusivamente legal y contractual.",
+        "error_rate_limit": "⏳ Estás yendo muy rápido. Por favor, espera un momento."
     },
     "common": {
         "loading": "Cargando...",
@@ -98,5 +99,9 @@
         "edit": "Editar",
         "create": "Crear",
         "search": "Buscar"
+    },
+    "credits": {
+        "title": "Créditos",
+        "error_fetch": "No se pudo cargar tu saldo. Inténtalo de nuevo."
     }
 }

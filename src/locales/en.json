@@ -86,7 +86,8 @@
         "error_processing": "Sorry, an error occurred while processing your request.",
         "error_safety": "⚠️ The request has been blocked for security reasons.",
         "error_auth": "Authentication error with AI service.",
-        "manipulation_detected": "⚠️ System manipulation attempt detected. My function is exclusively legal and contractual."
+        "manipulation_detected": "⚠️ System manipulation attempt detected. My function is exclusively legal and contractual.",
+        "error_rate_limit": "⏳ You are going too fast. Please wait a moment."
     },
     "common": {
         "loading": "Loading...",
@@ -98,5 +99,9 @@
         "edit": "Edit",
         "create": "Create",
         "search": "Search"
+    },
+    "credits": {
+        "title": "Credits",
+        "error_fetch": "Could not load your balance. Please try again."
     }
 }

@@ -1,8 +1,12 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, Coins, Plus, Minus, Gift, CreditCard } from "lucide-react";
+import { ArrowLeft, Coins, Plus, Minus, Gift, CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
+import { supabase } from "@/lib/supabase";
 
 const creditHistory = [
   { id: "1", type: "usage", description: "Presupuesto web", amount: -1, date: "20/01/2025" },
@@ -12,7 +16,27 @@ const creditHistory = [
 ];
 
 export default function Credits() {
-  const availableCredits = 8;
+  const { t } = useTranslation();
+  const [availableCredits, setAvailableCredits] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchCredits() {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-credits');
+        if (error) throw error;
+        if (data) {
+          setAvailableCredits(data.credits);
+        }
+      } catch (e) {
+        console.error("Error fetching credits:", e);
+        toast.error(t('credits.error_fetch'));
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchCredits();
+  }, []);
 
   return (
     <div className="container space-y-6 px-4 py-6">
@@ -30,7 +54,11 @@ export default function Credits() {
       <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
         <CardContent className="flex flex-col items-center py-8">
           <Coins className="mb-2 h-10 w-10" />
-          <p className="text-4xl font-bold">{availableCredits}</p>
+          {loading ? (
+            <Loader2 className="h-8 w-8 animate-spin" />
+          ) : (
+            <p className="text-4xl font-bold">{availableCredits}</p>
+          )}
           <p className="text-primary-foreground/80">créditos disponibles</p>
           <Button asChild variant="secondary" className="mt-4">
             <Link to="/credits/purchase">Comprar más</Link>
@@ -51,13 +79,12 @@ export default function Credits() {
             >
               <div className="flex items-center gap-3">
                 <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                    item.type === "usage"
-                      ? "bg-muted"
-                      : item.type === "purchase"
+                  className={`flex h-8 w-8 items-center justify-center rounded-full ${item.type === "usage"
+                    ? "bg-muted"
+                    : item.type === "purchase"
                       ? "bg-primary/10"
                       : "bg-success/10"
-                  }`}
+                    }`}
                 >
                   {item.type === "usage" ? (
                     <Minus className="h-4 w-4 text-muted-foreground" />
@@ -73,9 +100,8 @@ export default function Credits() {
                 </div>
               </div>
               <span
-                className={`text-sm font-semibold ${
-                  item.amount > 0 ? "text-success" : "text-muted-foreground"
-                }`}
+                className={`text-sm font-semibold ${item.amount > 0 ? "text-success" : "text-muted-foreground"
+                  }`}
               >
                 {item.amount > 0 ? `+${item.amount}` : item.amount}
               </span>
