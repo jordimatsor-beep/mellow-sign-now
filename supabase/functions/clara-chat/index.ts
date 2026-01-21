@@ -100,7 +100,6 @@ serve(async (req) => {
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
         const model = genAI.getGenerativeModel({
             model: "gemini-1.5-flash",
-            systemInstruction: SYSTEM_PROMPT,
         });
 
         const history = messages
@@ -157,10 +156,11 @@ serve(async (req) => {
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
 
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error:', error)
+        const message = error instanceof Error ? error.message : 'Unknown error'
         return new Response(
-            JSON.stringify({ error: error.message }),
+            JSON.stringify({ error: message }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
     }
