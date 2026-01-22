@@ -15,14 +15,14 @@ export function Sidebar() {
   useEffect(() => {
     if (user) {
       const fetchUserName = async () => {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('users')
-          .select('first_name')
+          .select('name')
           .eq('id', user.id)
           .single();
 
-        if (data && data.first_name) {
-          setUserName(data.first_name);
+        if (data && data.name) {
+          setUserName(data.name);
         } else {
           // Fallback to metadata if DB is empty or fetching fails, or email
           setUserName(user.user_metadata?.full_name || user.email?.split('@')[0] || "Usuario");

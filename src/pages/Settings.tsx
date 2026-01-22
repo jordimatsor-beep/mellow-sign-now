@@ -32,17 +32,17 @@ export default function Settings() {
     if (user) {
       // Load data from public.users instead of metadata
       const fetchUserData = async () => {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('users')
-          .select('first_name, company')
+          .select('name, company_name')
           .eq('id', user.id)
           .single();
 
         if (data) {
-          setFullName(data.first_name || "");
-          setCompany(data.company || "");
+          setFullName(data.name || "");
+          setCompany(data.company_name || "");
         } else {
-          // Fallback to metadata if DB entry missing (shouldn't happen with trigger but good safety)
+          // Fallback to metadata if DB entry missing
           setFullName(user.user_metadata?.full_name || "");
           setCompany(user.user_metadata?.company || "");
         }
@@ -61,8 +61,8 @@ export default function Settings() {
       const { error } = await supabase
         .from('users')
         .update({
-          first_name: fullName,
-          company: company
+          name: fullName,
+          company_name: company
         })
         .eq('id', user.id);
 
