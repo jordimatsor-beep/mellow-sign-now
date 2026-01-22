@@ -17,56 +17,61 @@ import {
   BadgeCheck,
   CreditCard,
   AlertTriangle,
-  Scale
+  Scale,
+  Building2
 } from "lucide-react";
+import { BrandHeader, PoweredByOperia, MulticentrosLogo, OperiaLogo } from "@/components/brand/BrandHeader";
+import { Separator } from "@/components/ui/separator";
 
 export default function Index() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      {/* Navigation */}
+      {/* Navigation - Dual Brand Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <span className="text-lg font-bold text-primary-foreground">F</span>
-            </div>
-            <span className="text-xl font-bold tracking-tight">FirmaClara</span>
-          </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" asChild className="hidden sm:inline-flex">
-              <Link to="/login">Iniciar sesión</Link>
-            </Button>
-            <Button asChild>
-              <Link to="/register">
-                Empezar gratis
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
+            <MulticentrosLogo className="h-9" />
+            <Separator orientation="vertical" className="h-8 hidden sm:block" />
+            <span className="text-lg font-semibold text-foreground hidden sm:inline">Firma Digital</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <PoweredByOperia className="hidden md:flex" />
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" asChild className="hidden sm:inline-flex">
+                <Link to="/login">Iniciar sesión</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/register">
+                  Acceder
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Hero Section - La Promesa */}
+      {/* Hero Section - Ecosistema Multicentros */}
       <section className="relative overflow-hidden py-16 lg:py-24 bg-gradient-to-b from-primary/5 via-background to-background">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(37,99,235,0.1),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.1),transparent_50%)]" />
         <div className="container relative px-4">
           <div className="mx-auto max-w-4xl text-center">
             {/* Badge */}
             <div className="mb-6 inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-              <BadgeCheck className="mr-2 h-4 w-4" />
-              Validez legal certificada eIDAS
+              <Building2 className="mr-2 h-4 w-4" />
+              Servicio exclusivo Multicentros
             </div>
 
             {/* Main headline */}
             <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Deja de perseguir firmas.{" "}
-              <span className="text-primary">Cierra acuerdos en 1 minuto.</span>
+              Multicentros te trae la{" "}
+              <span className="text-primary">firma digital</span> que estabas esperando.
             </h1>
 
             {/* Subheadline */}
             <p className="mt-6 text-lg text-muted-foreground sm:text-xl max-w-2xl mx-auto">
-              Envía presupuestos y contratos al móvil de tu cliente. 
-              Sin descargas. Sin impresoras. Validez legal certificada eIDAS.
+              Envía contratos desde tu panel de siempre. Un nuevo servicio exclusivo para clientes Multicentros.{" "}
+              <strong className="text-foreground">Tecnología certificada por Operia.</strong>
             </p>
 
             {/* CTA */}
@@ -85,13 +90,13 @@ export default function Index() {
             {/* Trust indicators */}
             <div className="mt-10 flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
               <span className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-green-600" /> Sin tarjeta de crédito
+                <Check className="h-4 w-4 text-success" /> Sin tarjeta de crédito
               </span>
               <span className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-green-600" /> Créditos que no caducan
+                <Check className="h-4 w-4 text-success" /> Créditos que no caducan
               </span>
               <span className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-green-600" /> Soporte en español
+                <Check className="h-4 w-4 text-success" /> Soporte en español
               </span>
             </div>
 
@@ -102,7 +107,7 @@ export default function Index() {
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 h-6 w-20 bg-slate-800 rounded-b-xl" />
                   <div className="aspect-[9/19] rounded-[2rem] bg-white overflow-hidden">
                     <div className="h-full flex flex-col">
-                      {/* Mock app header */}
+                      {/* Mock app header - Multicentros purple */}
                       <div className="bg-primary px-4 py-3 text-white text-center">
                         <p className="text-xs font-medium">Firma tu contrato</p>
                       </div>
@@ -132,8 +137,25 @@ export default function Index() {
         </div>
       </section>
 
+      {/* Confianza - Multicentros + Operia */}
+      <section className="py-12 bg-secondary/50">
+        <div className="container px-4">
+          <div className="mx-auto max-w-4xl text-center">
+            <p className="text-lg text-muted-foreground mb-6">
+              La potencia tecnológica de <strong className="text-foreground">Operia</strong> + 
+              La confianza de <strong className="text-foreground">Multicentros</strong>
+            </p>
+            <div className="flex items-center justify-center gap-8 flex-wrap">
+              <MulticentrosLogo className="h-12 opacity-80 hover:opacity-100 transition-opacity" />
+              <span className="text-2xl text-muted-foreground">+</span>
+              <OperiaLogo className="h-8 opacity-60 hover:opacity-100 transition-opacity" />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Sección "La Verdad Clara" - Semáforo Legal */}
-      <section className="py-16 lg:py-24 bg-slate-50" id="legalidad">
+      <section className="py-16 lg:py-24 bg-muted/30" id="legalidad">
         <div className="container px-4">
           <div className="mx-auto max-w-4xl">
             <div className="text-center mb-12">
@@ -150,13 +172,13 @@ export default function Index() {
 
             <div className="grid md:grid-cols-2 gap-6">
               {/* SÍ sirve para */}
-              <Card className="border-green-200 bg-green-50/50">
+              <Card className="border-success/30 bg-success/5">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                      <Check className="h-5 w-5 text-green-700" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success/20">
+                      <Check className="h-5 w-5 text-success" />
                     </div>
-                    <h3 className="text-lg font-bold text-green-800">SÍ es válido para:</h3>
+                    <h3 className="text-lg font-bold text-success">SÍ es válido para:</h3>
                   </div>
                   <ul className="space-y-3">
                     {[
@@ -169,8 +191,8 @@ export default function Index() {
                       "Contratos de colaboración",
                       "Autorizaciones y permisos"
                     ].map((item, i) => (
-                      <li key={i} className="flex items-start gap-2 text-green-800">
-                        <Check className="h-5 w-5 shrink-0 mt-0.5" />
+                      <li key={i} className="flex items-start gap-2 text-foreground">
+                        <Check className="h-5 w-5 shrink-0 mt-0.5 text-success" />
                         <span>{item}</span>
                       </li>
                     ))}
@@ -179,13 +201,13 @@ export default function Index() {
               </Card>
 
               {/* NO sirve para */}
-              <Card className="border-red-200 bg-red-50/50">
+              <Card className="border-destructive/30 bg-destructive/5">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                      <X className="h-5 w-5 text-red-700" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/20">
+                      <X className="h-5 w-5 text-destructive" />
                     </div>
-                    <h3 className="text-lg font-bold text-red-800">NO es válido para:</h3>
+                    <h3 className="text-lg font-bold text-destructive">NO es válido para:</h3>
                   </div>
                   <ul className="space-y-3">
                     {[
@@ -195,11 +217,11 @@ export default function Index() {
                       { text: "Poderes notariales", reason: "Requiere firma ante notario" },
                       { text: "Documentos judiciales", reason: "Requiere firma cualificada" }
                     ].map((item, i) => (
-                      <li key={i} className="flex items-start gap-2 text-red-800">
-                        <X className="h-5 w-5 shrink-0 mt-0.5" />
+                      <li key={i} className="flex items-start gap-2 text-foreground">
+                        <X className="h-5 w-5 shrink-0 mt-0.5 text-destructive" />
                         <div>
                           <span>{item.text}</span>
-                          <p className="text-xs text-red-600 mt-0.5">{item.reason}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{item.reason}</p>
                         </div>
                       </li>
                     ))}
@@ -209,13 +231,13 @@ export default function Index() {
             </div>
 
             {/* Evidencias de seguridad */}
-            <div className="mt-10 p-6 bg-white rounded-xl border shadow-sm">
+            <div className="mt-10 p-6 bg-card rounded-xl border shadow-sm">
               <h3 className="text-center font-semibold mb-6">
                 Cada firma genera un certificado de evidencias legales:
               </h3>
               <div className="grid sm:grid-cols-3 gap-6">
                 <div className="text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-blue-100 text-blue-600 mb-3">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary mb-3">
                     <Hash className="h-7 w-7" />
                   </div>
                   <h4 className="font-semibold">Integridad (Hash)</h4>
@@ -224,7 +246,7 @@ export default function Index() {
                   </p>
                 </div>
                 <div className="text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-green-100 text-green-600 mb-3">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-success/10 text-success mb-3">
                     <Clock className="h-7 w-7" />
                   </div>
                   <h4 className="font-semibold">Timestamp (Tiempo)</h4>
@@ -233,7 +255,7 @@ export default function Index() {
                   </p>
                 </div>
                 <div className="text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-purple-100 text-purple-600 mb-3">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary mb-3">
                     <MapPin className="h-7 w-7" />
                   </div>
                   <h4 className="font-semibold">IP y Dispositivo</h4>
@@ -260,12 +282,12 @@ export default function Index() {
             <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
               {/* El Caos - Before */}
               <div className="relative">
-                <div className="absolute -top-3 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                <div className="absolute -top-3 left-4 bg-destructive text-destructive-foreground text-xs font-bold px-3 py-1 rounded-full">
                   ANTES
                 </div>
-                <Card className="border-red-200 bg-red-50/30 h-full">
+                <Card className="border-destructive/30 bg-destructive/5 h-full">
                   <CardContent className="p-6">
-                    <h3 className="text-xl font-bold text-red-800 mb-4 flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-destructive mb-4 flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5" />
                       El caos de siempre
                     </h3>
@@ -279,21 +301,21 @@ export default function Index() {
                         { step: "6", text: "Tú lo archivas... en algún sitio", time: "?" }
                       ].map((item, i) => (
                         <div key={i} className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-200 text-red-800 text-sm font-bold">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-destructive/20 text-destructive text-sm font-bold">
                             {item.step}
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm text-red-800">{item.text}</p>
+                            <p className="text-sm">{item.text}</p>
                           </div>
-                          <span className="text-xs text-red-600">{item.time}</span>
+                          <span className="text-xs text-muted-foreground">{item.time}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="mt-6 pt-4 border-t border-red-200">
-                      <p className="text-center text-red-800 font-semibold">
+                    <div className="mt-6 pt-4 border-t border-destructive/20">
+                      <p className="text-center font-semibold">
                         Total: 23+ minutos (si todo va bien)
                       </p>
-                      <p className="text-center text-sm text-red-600 mt-1">
+                      <p className="text-center text-sm text-muted-foreground mt-1">
                         Sin contar "se me olvidó" o "no tengo escáner"
                       </p>
                     </div>
@@ -301,14 +323,14 @@ export default function Index() {
                 </Card>
               </div>
 
-              {/* FirmaClara - After */}
+              {/* Multicentros - After */}
               <div className="relative">
-                <div className="absolute -top-3 left-4 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                  CON FIRMACLARA
+                <div className="absolute -top-3 left-4 bg-success text-success-foreground text-xs font-bold px-3 py-1 rounded-full">
+                  CON MULTICENTROS
                 </div>
-                <Card className="border-green-200 bg-green-50/30 h-full">
+                <Card className="border-success/30 bg-success/5 h-full">
                   <CardContent className="p-6">
-                    <h3 className="text-xl font-bold text-green-800 mb-4 flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-success mb-4 flex items-center gap-2">
                       <Zap className="h-5 w-5" />
                       Así de simple
                     </h3>
@@ -320,21 +342,21 @@ export default function Index() {
                         { step: "4", text: "Ambos recibís el certificado firmado", time: "Inmediato" }
                       ].map((item, i) => (
                         <div key={i} className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-200 text-green-800 text-sm font-bold">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-success/20 text-success text-sm font-bold">
                             {item.step}
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm text-green-800">{item.text}</p>
+                            <p className="text-sm">{item.text}</p>
                           </div>
-                          <span className="text-xs text-green-600 font-medium">{item.time}</span>
+                          <span className="text-xs text-success font-medium">{item.time}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="mt-6 pt-4 border-t border-green-200">
-                      <p className="text-center text-green-800 font-semibold">
+                    <div className="mt-6 pt-4 border-t border-success/20">
+                      <p className="text-center font-semibold text-success">
                         Total: Menos de 1 minuto
                       </p>
-                      <p className="text-center text-sm text-green-600 mt-1">
+                      <p className="text-center text-sm text-muted-foreground mt-1">
                         Sin excusas, sin papel, sin complicaciones
                       </p>
                     </div>
@@ -347,12 +369,12 @@ export default function Index() {
       </section>
 
       {/* Seguridad WhatsApp */}
-      <section className="py-16 lg:py-24 bg-gradient-to-br from-green-50 to-emerald-50">
+      <section className="py-16 lg:py-24 bg-gradient-to-br from-success/5 to-success/10">
         <div className="container px-4">
           <div className="mx-auto max-w-4xl">
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div>
-                <div className="inline-flex items-center rounded-full bg-green-100 px-4 py-1.5 text-sm font-medium text-green-800 mb-4">
+                <div className="inline-flex items-center rounded-full bg-success/20 px-4 py-1.5 text-sm font-medium text-success mb-4">
                   <MessageCircle className="mr-2 h-4 w-4" />
                   Nueva funcionalidad
                 </div>
@@ -371,7 +393,7 @@ export default function Index() {
                     "Opcional: actívalo solo cuando lo necesites"
                   ].map((item, i) => (
                     <li key={i} className="flex items-center gap-3">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-600 text-white">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-success text-success-foreground">
                         <Check className="h-4 w-4" />
                       </div>
                       <span>{item}</span>
@@ -386,7 +408,7 @@ export default function Index() {
                     <div className="bg-[#075e54] px-4 py-3 flex items-center gap-3">
                       <div className="h-10 w-10 rounded-full bg-white/20" />
                       <div>
-                        <p className="text-white font-medium text-sm">FirmaClara</p>
+                        <p className="text-white font-medium text-sm">Multicentros Firma</p>
                         <p className="text-white/70 text-xs">Verificación</p>
                       </div>
                     </div>
@@ -416,7 +438,7 @@ export default function Index() {
         <div className="container px-4">
           <div className="mx-auto max-w-4xl">
             <div className="text-center mb-12">
-              <div className="inline-flex items-center rounded-full bg-amber-100 px-4 py-1.5 text-sm font-medium text-amber-800 mb-4">
+              <div className="inline-flex items-center rounded-full bg-warning/20 px-4 py-1.5 text-sm font-medium text-warning mb-4">
                 <CreditCard className="mr-2 h-4 w-4" />
                 Sin suscripciones • Los créditos NO caducan
               </div>
@@ -441,15 +463,15 @@ export default function Index() {
                   </p>
                   <ul className="mt-6 space-y-2">
                     <li className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-success" />
                       <strong>2 envíos</strong> gratis
                     </li>
                     <li className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-success" />
                       Todas las funcionalidades
                     </li>
                     <li className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-success" />
                       Certificado de evidencias
                     </li>
                   </ul>
@@ -461,7 +483,7 @@ export default function Index() {
 
               {/* Pack Básico */}
               <Card className="relative border-primary shadow-lg">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full">
                   MÁS POPULAR
                 </div>
                 <CardContent className="p-6">
@@ -474,19 +496,19 @@ export default function Index() {
                   </p>
                   <ul className="mt-6 space-y-2">
                     <li className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-success" />
                       <strong>10 envíos</strong> (1,20€/envío)
                     </li>
                     <li className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-success" />
                       Verificación WhatsApp
                     </li>
                     <li className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-success" />
                       Asistente Clara AI
                     </li>
                     <li className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-success" />
                       Soporte por email
                     </li>
                   </ul>
@@ -508,19 +530,19 @@ export default function Index() {
                   </p>
                   <ul className="mt-6 space-y-2">
                     <li className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-success" />
                       <strong>30 envíos</strong> (0,97€/envío)
                     </li>
                     <li className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-success" />
                       Todo del Pack Básico
                     </li>
                     <li className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-success" />
                       Recordatorios automáticos
                     </li>
                     <li className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-success" />
                       Soporte prioritario
                     </li>
                   </ul>
@@ -545,7 +567,7 @@ export default function Index() {
             ¿Listo para cerrar acuerdos más rápido?
           </h2>
           <p className="mt-4 text-primary-foreground/80 text-lg max-w-xl mx-auto">
-            Empieza hoy con 2 envíos gratis. Sin tarjeta, sin compromiso.
+            Cierra acuerdos en 1 minuto con la garantía de tu partner de confianza.
           </p>
           <Button 
             size="lg" 
@@ -561,15 +583,19 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* Footer - Dual brand */}
       <footer className="py-10 bg-slate-900 text-slate-400">
         <div className="container px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
-                <span className="text-lg font-bold text-primary">F</span>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
+                  <span className="text-lg font-bold text-primary">M</span>
+                </div>
+                <span className="text-lg font-semibold text-white">Multicentros</span>
               </div>
-              <span className="text-lg font-semibold text-white">FirmaClara</span>
+              <span className="text-slate-600">|</span>
+              <span className="text-sm">Firma Digital</span>
             </div>
             
             <div className="flex items-center gap-4 text-sm">
@@ -596,8 +622,10 @@ export default function Index() {
             </div>
           </div>
           
-          <div className="mt-8 pt-6 border-t border-slate-800 text-center text-sm">
-            <p>&copy; 2024 FirmaClara. Todos los derechos reservados.</p>
+          <div className="mt-8 pt-6 border-t border-slate-800 text-center text-sm space-y-2">
+            <p>Un servicio del ecosistema <strong className="text-white">Multicentros</strong>.</p>
+            <p className="text-xs">Desarrollado y operado por <strong>Operia</strong>. Cumple eIDAS.</p>
+            <p className="text-xs">&copy; 2024 Multicentros Comercial. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>
