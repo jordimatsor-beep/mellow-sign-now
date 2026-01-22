@@ -9,6 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 
+import { supabase } from "@/lib/supabase";
+
 type SigningStep = "loading" | "error" | "view" | "signing" | "complete";
 
 export default function SignDocument() {
@@ -31,6 +33,8 @@ export default function SignDocument() {
     }
   }, [step]);
 
+
+
   // Fetch Document Data
   useEffect(() => {
     if (!token) {
@@ -39,142 +43,125 @@ export default function SignDocument() {
       return;
     }
 
-    fetch(`/api/sign/${token}`)
-      .then(async (res) => {
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || 'Error al cargar documento');
+    async function loadDocument() {
+      try {
+        const { data, error } = await supabase.rpc('get_document_by_token', { p_token: token });
+
+        if (error) throw error;
+        if (!data || data.length === 0) throw new Error("Documento no encontrado o enlace inválido");
+
+        const doc = data[0]; // RPC returns array
+
+        if (doc.status !== 'sent' && doc.status !== 'viewed') {
+          // If already signed, show complete state (optional, but for now just show error or handle gracefully)
+          if (doc.status === 'signed') {
+            setDocData(doc); // We might need more data for signed view? 
+            // Actually, let's just show it.
+          }
         }
-        return res.json();
-      })
-      .then((data) => {
-        setDocData(data);
-        setName(data.signer_name || ""); // Pre-fill name if available
+
+        setDocData(doc);
+        setName(doc.signer_name || "");
         setStep("view");
-      })
-      .catch((err) => {
+
+        // Log view event
+        await supabase.from('event_logs').insert({
+          event_type: 'document_viewed',
+          event_data: { token, title: doc.title },
+          document_id: doc.id
+          // user_id is null for anonymous
+        });
+
+      } catch (err: any) {
         console.error(err);
         setStep("error");
-        setErrorMsg(err.message);
-      });
-  }, [token]);
-
-  const initCanvas = () => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.strokeStyle = "#000";
-        ctx.lineWidth = 2;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
+        setErrorMsg(err.message || "Error al cargar el documento");
       }
     }
-  };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true);
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      ctx?.beginPath();
-      ctx?.moveTo(x, y);
-    }
-  };
+    loadDocument();
+  }, [token]);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      ctx?.lineTo(x, y);
-      ctx?.stroke();
-      setHasSignature(true);
-    }
-  };
 
-  const handleMouseUp = () => {
-    setIsDrawing(false);
-  };
+  // ... initCanvas, handlers ...
 
-  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault(); // Prevent scrolling
-    setIsDrawing(true);
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      const rect = canvas.getBoundingClientRect();
-      const touch = e.touches[0];
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      ctx?.beginPath();
-      ctx?.moveTo(x, y);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      const rect = canvas.getBoundingClientRect();
-      const touch = e.touches[0];
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      ctx?.lineTo(x, y);
-      ctx?.stroke();
-      setHasSignature(true);
-    }
-  };
-
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      ctx?.clearRect(0, 0, canvas.width, canvas.height);
-      // Re-init context properties appropriately if they get cleared? (clearRect doesn't reset state but good to be safe)
-      ctx?.beginPath();
-      setHasSignature(false);
-    }
-  };
+  // Helper: SHA-256 for client-side
+  async function sha256(message: string): Promise<string> {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
 
   const handleSign = async () => {
     if (!canvasRef.current || !docData) return;
 
     setStep("signing");
+    const toastId = toast.loading("Procesando firma segura...");
+
     try {
       const signatureImage = canvasRef.current.toDataURL("image/png");
 
-      const res = await fetch(`/api/sign/${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          signer_name: name,
-          signature_image: signatureImage
-        })
+      // 1. Generate a cryptographic footprint (Hash) of the "Signed State"
+      // We bind the Document URL, the Signature Image, and the Signer Name.
+      // In a PAdES standard, this would be the hash of the byte range, but checking the requirement,
+      // we ensure we seal "this signature on this document".
+      const hashInput = `${docData.file_url}||${signatureImage}||${name}`;
+      const finalHash = await sha256(hashInput);
+
+      // 2. Request Qualified Timestamp (TSA) - HARD FAIL
+      // We explicitly invoke the Edge Function.
+      // Note: invoke() returns { data, error } where error is network/invocation error.
+      // application level errors might be in data.error if we return 200 OK with error body.
+      toast.loading("Solicitando sello de tiempo (TSA)...", { id: toastId });
+
+      const { data: tsaData, error: tsaError } = await supabase.functions.invoke('request-tsa', {
+        body: { hash: finalHash }
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Error al firmar');
+      if (tsaError) {
+        throw new Error(`Error de conexión TSA: ${tsaError.message}`);
       }
 
-      const result = await res.json();
-      setDocData({ ...docData, signedAt: result.signed_at });
+      if (!tsaData || tsaData.error) {
+        const detailedInfo = tsaData?.error ? ` (${tsaData.error})` : '';
+        throw new Error(`La Autoridad de Sellado de Tiempo rechazó la solicitud${detailedInfo}. No se puede firmar sin sello válido.`);
+      }
+
+      const { tsr, timestamp, request: tsaRequest } = tsaData;
+
+      if (!tsr || !timestamp) {
+        throw new Error("Respuesta TSA incompleta.");
+      }
+
+      // 3. Submit Signature to Database with TSA Evidence
+      toast.loading("Guardando firma y evidencias...", { id: toastId });
+
+      const { data, error } = await supabase.rpc('submit_signature', {
+        p_sign_token: token,
+        p_signer_email: docData.signer_email || "unknown@email.com",
+        p_signer_name: name,
+        p_ip_address: null,
+        p_user_agent: navigator.userAgent,
+        p_signature_image_url: signatureImage,
+        p_hash_sha256: finalHash,
+        // TSA Params
+        p_tsa_request: tsaRequest,
+        p_tsa_response: tsr,
+        p_tsa_timestamp: timestamp
+      });
+
+      if (error) throw error;
+
+      // Make sure we update local state
+      setDocData({ ...docData, signedAt: new Date().toISOString() });
       setStep("complete");
-      toast.success("Documento firmado correctamente");
+      toast.success("Documento firmado y sellado correctamente", { id: toastId });
 
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Ocurrió un error");
-      setStep("view"); // Go back to view
+      toast.error(err.message || "Ocurrió un error crítico al guardar la firma", { id: toastId });
+      setStep("view"); // Allow retry
     }
   };
 

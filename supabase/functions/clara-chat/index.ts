@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.1.3"
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.12.0"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { z } from "https://esm.sh/zod@3.22.4"
 
@@ -100,14 +100,21 @@ serve(async (req) => {
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
         const model = genAI.getGenerativeModel({
             model: "gemini-1.5-flash",
+            systemInstruction: SYSTEM_PROMPT,
         });
 
         const history = messages
             .filter((m) => m.id !== "1")
-            .map((m) => ({
-                role: m.role === "clara" ? "model" : "user",
-                parts: [{ text: m.content }],
-            }));
+            .map((m) => {
+                let role = "user";
+                if (m.role === "clara" || m.role === "model" || m.role === "assistant") {
+                    role = "model";
+                }
+                return {
+                    role: role,
+                    parts: [{ text: m.content }],
+                };
+            });
 
         // Ensure last message is from user
         const lastUserMessage = history[history.length - 1];

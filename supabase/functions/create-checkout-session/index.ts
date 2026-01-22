@@ -1,26 +1,31 @@
+/// <reference lib="deno.ns" />
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import Stripe from 'https://esm.sh/stripe@14.10.0'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { z } from "https://esm.sh/zod@3.22.4"
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+const ALLOWED_ORIGINS = [
+    'https://firmaclara.com',
+    'http://localhost:8080',
+    'http://localhost:3000'
+];
 
-// Validation Schema
-const CheckoutSchema = z.object({
-    priceId: z.enum(['basic', 'pro', 'business']),
-    returnUrl: z.string().url().optional()
-});
-
-const PACK_DETAILS: Record<string, { amount: number, name: string, credits: number }> = {
-    'basic': { amount: 1200, name: 'Pack Básico (10 Créditos)', credits: 10 },
-    'pro': { amount: 2900, name: 'Pack Profesional (30 Créditos)', credits: 30 },
-    'business': { amount: 6900, name: 'Pack Business (100 Créditos)', credits: 100 },
-};
+const ALLOWED_RETURN_URLS = [
+    'https://firmaclara.com',
+    'http://localhost:8080',
+    'http://localhost:3000'
+];
 
 serve(async (req) => {
+    // CORS Hardening
+    const origin = req.headers.get('Origin');
+    const isAllowed = origin && ALLOWED_ORIGINS.includes(origin);
+    const corsHeaders = {
+        'Access-Control-Allow-Origin': isAllowed ? origin : 'null',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        'Vary': 'Origin'
+    };
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -69,6 +74,20 @@ serve(async (req) => {
         }
 
         const { priceId, returnUrl } = parseResult.data;
+
+        // Return URL Security Check
+        let finalReturnUrl = req.headers.get('origin');
+        if (returnUrl) {
+            const isReturnUrlAllowed = ALLOWED_RETURN_URLS.some(url => returnUrl.startsWith(url));
+            if (!isReturnUrlAllowed) {
+                return new Response(
+                    JSON.stringify({ error: 'Invalid returnUrl domain' }),
+                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+            }
+            finalReturnUrl = returnUrl;
+        }
+
         const pack = PACK_DETAILS[priceId];
 
         // 3. Create Session
@@ -88,8 +107,8 @@ serve(async (req) => {
                 },
             ],
             mode: 'payment',
-            success_url: `${returnUrl || req.headers.get('origin')}/credits?success=true&session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${returnUrl || req.headers.get('origin')}/credits?canceled=true`,
+            success_url: `${finalReturnUrl}/credits?success=true&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${finalReturnUrl}/credits?canceled=true`,
             metadata: {
                 user_id: user.id,
                 pack_id: priceId,
