@@ -9,6 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useTranslation } from 'react-i18next';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // --- CONFIGURACIÓN DE SEGURIDAD Y SISTEMA ---
 // Moved to Supabase Edge Function (clara-chat)
@@ -167,7 +169,15 @@ export function ClaraChat() {
                                         : "bg-blue-600 text-white rounded-2xl rounded-tr-none"
                                         }`}
                                 >
-                                    <p className="whitespace-pre-wrap">{message.content}</p>
+                                    {message.role === "clara" ? (
+                                        <div className="prose prose-sm prose-slate max-w-none dark:prose-invert">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {message.content}
+                                            </ReactMarkdown>
+                                        </div>
+                                    ) : (
+                                        <p className="whitespace-pre-wrap">{message.content}</p>
+                                    )}
                                     {message.content.includes("asegúrate de tener el DNI/CIF") && (
                                         <Button
                                             variant="outline"

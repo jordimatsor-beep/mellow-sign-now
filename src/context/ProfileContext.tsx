@@ -1,11 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 export type IssuerType = 'company' | 'person';
 
 export interface IssuerProfile {
     type: IssuerType;
     name: string; // Razón Social / Nombre
-    id: string;   // CIF / NIF
+    id: string;   // CIF / NIF (Fetched from tax_id)
     address: string;
     city: string;
     zip: string;
@@ -16,52 +19,103 @@ export interface IssuerProfile {
 
 interface ProfileContextType {
     profile: IssuerProfile | null;
-    updateProfile: (data: Partial<IssuerProfile>) => void;
+    updateProfile: (data: Partial<IssuerProfile>) => Promise<void>;
     isProfileComplete: boolean;
     clearProfile: () => void;
+    isLoading: boolean;
 }
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'firmaclara_issuer_profile';
-
 export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    const { user } = useAuth();
     const [profile, setProfile] = useState<IssuerProfile | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
+    // Fetch profile from Supabase on mount/auth change
     useEffect(() => {
-        const storedProfile = localStorage.getItem(STORAGE_KEY);
-        if (storedProfile) {
-            try {
-                setProfile(JSON.parse(storedProfile));
-            } catch (e) {
-                console.error("Failed to parse profile from local storage", e);
-            }
+        if (!user) {
+            setProfile(null);
+            return;
         }
-    }, []);
 
-    const updateProfile = (data: Partial<IssuerProfile>) => {
+        const fetchProfile = async () => {
+            setIsLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('tax_id, address, city, zip_code, country, issuer_type, name, email, phone, company_name')
+                    .eq('id', user.id)
+                    .single();
+
+                if (error) {
+                    console.error("Error fetching profile:", error);
+                    return;
+                }
+
+                if (data) {
+                    // Map DB columns to IssuerProfile interface
+                    setProfile({
+                        type: (data.issuer_type as IssuerType) || 'company',
+                        name: data.name || data.company_name || "",
+                        id: data.tax_id || "",
+                        address: data.address || "",
+                        city: data.city || "",
+                        zip: data.zip_code || "",
+                        country: data.country || "España",
+                        phone: data.phone || "",
+                        email: data.email || user.email || "",
+                    });
+                }
+            } catch (err) {
+                console.error("Unexpected error fetching profile:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchProfile();
+    }, [user]);
+
+    const updateProfile = async (data: Partial<IssuerProfile>) => {
+        if (!user) return;
+
+        // Optimistic UI update
         setProfile(prev => {
-            const newProfile = prev ? { ...prev, ...data } : {
-                type: 'company',
-                name: '',
-                id: '',
-                address: '',
-                city: '',
-                zip: '',
-                country: 'España',
-                phone: '',
-                email: '',
-                ...data
-            } as IssuerProfile;
-
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newProfile));
-            return newProfile;
+            if (!prev) return data as IssuerProfile;
+            return { ...prev, ...data };
         });
+
+        const updates = {
+            issuer_type: data.type,
+            name: data.name,
+            company_name: data.type === 'company' ? data.name : undefined, // Keep company_name in sync if it's a company
+            tax_id: data.id,
+            address: data.address,
+            city: data.city,
+            zip_code: data.zip,
+            country: data.country,
+            phone: data.phone,
+            email: data.email,
+            updated_at: new Date().toISOString(),
+        };
+
+        try {
+            const { error } = await supabase
+                .from('users')
+                .update(updates)
+                .eq('id', user.id);
+
+            if (error) throw error;
+            // toast.success("Perfil guardado en la nube"); // Handled by the form usually
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            toast.error("Error al guardar en la nube");
+        }
     };
 
     const clearProfile = () => {
         setProfile(null);
-        localStorage.removeItem(STORAGE_KEY);
     };
 
     const isProfileComplete = React.useMemo(() => {
@@ -78,7 +132,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     }, [profile]);
 
     return (
-        <ProfileContext.Provider value={{ profile, updateProfile, isProfileComplete, clearProfile }}>
+        <ProfileContext.Provider value={{ profile, updateProfile, isProfileComplete, clearProfile, isLoading }}>
             {children}
         </ProfileContext.Provider>
     );

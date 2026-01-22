@@ -14,7 +14,7 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ onComplete, className }: ProfileFormProps) {
-    const { profile, updateProfile } = useProfile();
+    const { profile, updateProfile, isLoading } = useProfile();
 
     const [formData, setFormData] = useState<IssuerProfile>({
         type: "company",
@@ -29,6 +29,7 @@ export function ProfileForm({ onComplete, className }: ProfileFormProps) {
     });
 
     const [errors, setErrors] = useState<Partial<Record<keyof IssuerProfile, string>>>({});
+    const [isSaving, setIsSaving] = useState(false);
 
     // Load existing profile if any
     useEffect(() => {
@@ -76,16 +77,28 @@ export function ProfileForm({ onComplete, className }: ProfileFormProps) {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (validate()) {
-            updateProfile(formData);
-            toast.success("Perfil guardado correctamente");
-            if (onComplete) onComplete();
+            setIsSaving(true);
+            try {
+                await updateProfile(formData);
+                toast.success("Perfil guardado correctamente");
+                if (onComplete) onComplete();
+            } catch (error) {
+                console.error(error);
+                toast.error("Error al guardar el perfil");
+            } finally {
+                setIsSaving(false);
+            }
         } else {
             toast.error("Por favor revisa los errores en el formulario");
         }
     };
+
+    if (isLoading) {
+        return <div className="p-4 text-center">Cargando perfil...</div>;
+    }
 
     return (
         <form onSubmit={handleSubmit} className={`space-y-6 ${className}`}>
@@ -206,8 +219,8 @@ export function ProfileForm({ onComplete, className }: ProfileFormProps) {
                 <p>ℹ️ Estos datos aparecerán automáticamente en el encabezado de los contratos que generes.</p>
             </div>
 
-            <Button type="submit" className="w-full">
-                Guardar perfil de emisor
+            <Button type="submit" className="w-full" disabled={isSaving}>
+                {isSaving ? "Guardando..." : "Guardar perfil de emisor"}
             </Button>
         </form>
     );
