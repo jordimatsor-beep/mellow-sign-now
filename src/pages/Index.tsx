@@ -265,24 +265,17 @@ export default function Index() {
                     El caos de siempre
                   </h3>
                   <div className="space-y-2 text-sm">
-                    {[
-                      { s: "1", t: "Envías email", d: "2 min" },
-                      { s: "2", t: "Cliente imprime", d: "5 min" },
-                      { s: "3", t: "Firma a mano", d: "1 min" },
-                      { s: "4", t: "Escanea (si puede)", d: "10 min" },
-                      { s: "5", t: "Te lo reenvía", d: "5 min" }
-                    ].map((item, i) => (
+                    {["Envías el contrato por email", "El cliente lo imprime", "Lo firma a mano", "Lo escanea (si tiene escáner)", "Te lo reenvía por email"].map((item, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive/20 text-destructive text-xs font-bold shrink-0">
-                          {item.s}
+                          {i + 1}
                         </span>
-                        <span className="flex-1">{item.t}</span>
-                        <span className="text-xs text-muted-foreground">{item.d}</span>
+                        <span>{item}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 pt-3 border-t border-destructive/20 text-center text-sm">
-                    <strong>Total: 23+ minutos</strong> <span className="text-muted-foreground">(si todo va bien)</span>
+                  <div className="mt-4 pt-3 border-t border-destructive/20 text-center text-sm text-muted-foreground">
+                    Sin contar "se me olvidó" o "no tengo escáner"
                   </div>
                 </CardContent>
               </Card>
@@ -298,23 +291,17 @@ export default function Index() {
                     Así de simple
                   </h3>
                   <div className="space-y-2 text-sm">
-                    {[
-                      { s: "1", t: "Subes PDF o creas con IA", d: "30 seg" },
-                      { s: "2", t: "Cliente recibe enlace", d: "Inmediato" },
-                      { s: "3", t: "Firma con el dedo", d: "15 seg" },
-                      { s: "4", t: "Certificado automático", d: "Inmediato" }
-                    ].map((item, i) => (
+                    {["Subes tu PDF o lo creas con IA", "El cliente recibe un enlace en su móvil", "Firma con el dedo en la pantalla", "Ambos recibís el certificado firmado"].map((item, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success/20 text-success text-xs font-bold shrink-0">
-                          {item.s}
+                          {i + 1}
                         </span>
-                        <span className="flex-1">{item.t}</span>
-                        <span className="text-xs text-success font-medium">{item.d}</span>
+                        <span>{item}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 pt-3 border-t border-success/20 text-center text-sm">
-                    <strong className="text-success">Total: Menos de 1 minuto</strong>
+                  <div className="mt-4 pt-3 border-t border-success/20 text-center text-sm text-muted-foreground">
+                    Sin excusas, sin papel, sin complicaciones
                   </div>
                 </CardContent>
               </Card>
