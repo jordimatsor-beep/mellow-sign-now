@@ -18,32 +18,64 @@ import {
   Building2,
   PenTool
 } from "lucide-react";
-import { PoweredByOperia, MulticentrosLogo, OperiaLogo } from "@/components/brand/BrandHeader";
 import { Separator } from "@/components/ui/separator";
 
 export default function Index() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      {/* Navigation Header - Fixed height with proper logo containment */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center h-10 py-1">
-              <MulticentrosLogo className="h-full max-h-8 w-auto object-contain" />
-            </div>
-            <Separator orientation="vertical" className="h-6 hidden sm:block" />
-            <span className="text-base font-semibold text-foreground hidden sm:inline">Firma Digital</span>
+      {/* Top Banner - ZapSign style */}
+      <div className="bg-primary text-primary-foreground py-2 text-center text-sm">
+        <span className="opacity-90">Firma electrónica con validez legal</span>
+        <span className="mx-2">→</span>
+        <Link to="/register" className="font-medium underline underline-offset-2 hover:opacity-80 transition-opacity">
+          Prueba gratis
+        </Link>
+      </div>
+
+      {/* Navigation Header - Professional ZapSign style */}
+      <header className="sticky top-0 z-50 w-full bg-background shadow-sm">
+        <div className="container flex h-16 items-center justify-between px-4 lg:px-8">
+          {/* Logo + Service name */}
+          <div className="flex items-center gap-6">
+            <Link to="/" className="flex items-center gap-3">
+              {/* Multicentros icon simplified */}
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10">
+                <svg viewBox="0 0 24 24" className="h-5 w-5">
+                  <circle cx="7" cy="6" r="2.5" fill="hsl(var(--primary))" />
+                  <circle cx="12" cy="10" r="2.5" fill="hsl(var(--destructive))" />
+                  <circle cx="17" cy="10" r="2.5" fill="hsl(var(--chart-4))" />
+                  <path d="M4 9 L4 18 Q4 21 7 21 L20 21" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeLinecap="round" fill="none"/>
+                </svg>
+              </div>
+              <div className="hidden sm:flex flex-col">
+                <span className="text-sm font-light text-muted-foreground leading-tight">multicentro</span>
+                <span className="text-sm font-bold text-primary leading-tight">Firma Digital</span>
+              </div>
+            </Link>
+
+            {/* Navigation links - ZapSign style */}
+            <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
+              <a href="#legalidad" className="text-muted-foreground hover:text-foreground transition-colors">Legalidad</a>
+              <a href="#como-funciona" className="text-muted-foreground hover:text-foreground transition-colors">Cómo funciona</a>
+              <a href="#precios" className="text-muted-foreground hover:text-foreground transition-colors">Precios</a>
+            </nav>
           </div>
+
+          {/* Right side - Powered by + CTAs */}
           <div className="flex items-center gap-4">
-            <PoweredByOperia className="hidden md:flex" />
+            {/* Powered by Operia - only visible here */}
+            <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground border-r pr-4">
+              <span>Powered by</span>
+              <span className="font-bold">OPERIA</span>
+            </div>
+            
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
-                <Link to="/login">Iniciar sesión</Link>
+                <Link to="/login">Ingresar</Link>
               </Button>
-              <Button size="sm" asChild>
+              <Button size="sm" className="rounded-full px-4" asChild>
                 <Link to="/register">
-                  Acceder
-                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                  Prueba gratis
                 </Link>
               </Button>
             </div>
@@ -130,18 +162,19 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Trust Bar - Compact */}
-      <section className="py-6 bg-muted/50 border-y">
+      {/* Trust Bar - Compact, no Operia */}
+      <section className="py-5 bg-muted/30 border-y">
         <div className="container px-4">
-          <div className="flex items-center justify-center gap-6 flex-wrap">
-            <p className="text-sm text-muted-foreground">
-              <strong className="text-foreground">Operia</strong> + <strong className="text-foreground">Multicentros</strong>
-            </p>
-            <div className="flex items-center gap-4">
-              <MulticentrosLogo className="h-8 opacity-70" />
-              <span className="text-muted-foreground">+</span>
-              <OperiaLogo className="h-5 opacity-50" />
-            </div>
+          <div className="flex items-center justify-center gap-8 flex-wrap text-sm text-muted-foreground">
+            <span className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-success" /> Validez legal eIDAS
+            </span>
+            <span className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-success" /> Certificado de evidencias
+            </span>
+            <span className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-success" /> +10.000 documentos firmados
+            </span>
           </div>
         </div>
       </section>
@@ -463,41 +496,69 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Footer - Compact */}
-      <footer className="py-8 bg-slate-900 text-slate-400">
-        <div className="container px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white">
-                  <span className="text-sm font-bold text-primary">M</span>
+      {/* Footer - Professional ZapSign style */}
+      <footer className="py-10 bg-foreground text-background/70">
+        <div className="container px-4 lg:px-8">
+          <div className="grid md:grid-cols-4 gap-8">
+            {/* Brand */}
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-background/10">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5">
+                    <circle cx="7" cy="6" r="2.5" fill="hsl(var(--primary))" />
+                    <circle cx="12" cy="10" r="2.5" fill="hsl(var(--destructive))" />
+                    <circle cx="17" cy="10" r="2.5" fill="hsl(var(--chart-4))" />
+                    <path d="M4 9 L4 18 Q4 21 7 21 L20 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+                  </svg>
                 </div>
-                <span className="font-semibold text-white">Multicentros</span>
+                <div className="flex flex-col">
+                  <span className="text-xs text-background/50">multicentro comercial</span>
+                  <span className="text-sm font-bold text-background">Firma Digital</span>
+                </div>
               </div>
-              <span className="text-slate-600">|</span>
-              <span className="text-sm">Firma Digital</span>
+              <p className="text-sm text-background/60 max-w-xs">
+                Servicio de firma electrónica con validez legal del ecosistema Multicentros.
+              </p>
             </div>
-            
-            <div className="flex items-center gap-4 text-sm">
-              <LegalModal
-                trigger={<button className="hover:text-white transition-colors">Términos</button>}
-                title="Términos y Condiciones"
-                type="terms"
-              />
-              <LegalModal
-                trigger={<button className="hover:text-white transition-colors">Privacidad</button>}
-                title="Política de Privacidad"
-                type="privacy"
-              />
-              <span className="flex items-center gap-1.5">
-                <Scale className="h-3.5 w-3.5" /> eIDAS
-              </span>
+
+            {/* Links */}
+            <div>
+              <h4 className="font-semibold text-background mb-3 text-sm">Producto</h4>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#legalidad" className="hover:text-background transition-colors">Legalidad</a></li>
+                <li><a href="#como-funciona" className="hover:text-background transition-colors">Cómo funciona</a></li>
+                <li><a href="#precios" className="hover:text-background transition-colors">Precios</a></li>
+              </ul>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <h4 className="font-semibold text-background mb-3 text-sm">Legal</h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <LegalModal
+                    trigger={<button className="hover:text-background transition-colors">Términos de uso</button>}
+                    title="Términos y Condiciones"
+                    type="terms"
+                  />
+                </li>
+                <li>
+                  <LegalModal
+                    trigger={<button className="hover:text-background transition-colors">Privacidad</button>}
+                    title="Política de Privacidad"
+                    type="privacy"
+                  />
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <Scale className="h-3.5 w-3.5" /> Cumple eIDAS
+                </li>
+              </ul>
             </div>
           </div>
           
-          <div className="mt-6 pt-4 border-t border-slate-800 text-center text-xs space-y-1">
-            <p>Ecosistema <strong className="text-white">Multicentros</strong> • Desarrollado por <strong>Operia</strong></p>
+          <div className="mt-8 pt-6 border-t border-background/10 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
             <p>&copy; 2024 Multicentros Comercial. Todos los derechos reservados.</p>
+            <p className="text-background/50">Un servicio del ecosistema Multicentros</p>
           </div>
         </div>
       </footer>
