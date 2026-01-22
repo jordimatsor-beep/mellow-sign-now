@@ -434,10 +434,14 @@ export type Database = {
       }
       users: {
         Row: {
+          address: string | null
+          city: string | null
           company_name: string | null
+          country: string | null
           created_at: string | null
           email: string
           id: string
+          issuer_type: string | null
           legal_accepted: boolean | null
           legal_accepted_at: string | null
           multicentros_id: string | null
@@ -445,22 +449,22 @@ export type Database = {
           onboarding_completed: boolean | null
           phone: string | null
           role: string
-          updated_at: string | null
           tax_id: string | null
-          address: string | null
-          city: string | null
+          updated_at: string | null
           zip_code: string | null
-          country: string | null
-          issuer_type: string | null
           legal_type: "individual" | "company" | null
           legal_address: string | null
           billing_email: string | null
         }
         Insert: {
+          address?: string | null
+          city?: string | null
           company_name?: string | null
+          country?: string | null
           created_at?: string | null
           email: string
           id: string
+          issuer_type?: string | null
           legal_accepted?: boolean | null
           legal_accepted_at?: string | null
           multicentros_id?: string | null
@@ -468,19 +472,19 @@ export type Database = {
           onboarding_completed?: boolean | null
           phone?: string | null
           role?: string
-          updated_at?: string | null
           tax_id?: string | null
-          address?: string | null
-          city?: string | null
+          updated_at?: string | null
           zip_code?: string | null
-          country?: string | null
-          issuer_type?: string | null
         }
         Update: {
+          address?: string | null
+          city?: string | null
           company_name?: string | null
+          country?: string | null
           created_at?: string | null
           email?: string
           id?: string
+          issuer_type?: string | null
           legal_accepted?: boolean | null
           legal_accepted_at?: string | null
           multicentros_id?: string | null
@@ -488,13 +492,9 @@ export type Database = {
           onboarding_completed?: boolean | null
           phone?: string | null
           role?: string
-          updated_at?: string | null
           tax_id?: string | null
-          address?: string | null
-          city?: string | null
+          updated_at?: string | null
           zip_code?: string | null
-          country?: string | null
-          issuer_type?: string | null
         }
         Relationships: []
       }
