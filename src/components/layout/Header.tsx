@@ -1,9 +1,11 @@
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditsBadge } from "@/components/shared/CreditsBadge";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { MobileMenu } from "./MobileMenu";
+import { MulticentrosLogo, PoweredByOperia } from "@/components/brand/BrandHeader";
+import { Separator } from "@/components/ui/separator";
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,16 +13,16 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center justify-between px-4">
-        {/* Logo */}
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <span className="text-lg font-bold text-primary-foreground">F</span>
-          </div>
-          <span className="text-lg font-semibold tracking-tight">FirmaClara</span>
+        {/* Logo - Multicentros + Firma Digital */}
+        <div className="flex items-center gap-3">
+          <MulticentrosLogo className="h-8" />
+          <Separator orientation="vertical" className="h-6 hidden sm:block" />
+          <span className="text-sm font-medium text-foreground hidden sm:inline">Firma Digital</span>
         </div>
 
         {/* Right side */}
         <div className="flex items-center gap-3">
+          <PoweredByOperia className="hidden lg:flex" />
           <CreditsBadge count={8} />
           
           {/* Mobile menu */}

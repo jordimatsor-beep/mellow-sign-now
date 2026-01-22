@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { MulticentrosLogo, PoweredByOperia } from "@/components/brand/BrandHeader";
+import { Separator } from "@/components/ui/separator";
 
 export function Sidebar() {
   const { t } = useTranslation();
@@ -46,14 +48,15 @@ export function Sidebar() {
 
   return (
     <aside className="hidden w-64 flex-col border-r bg-sidebar md:flex h-full">
-      {/* Logo */}
+      {/* Logo - Multicentros Branding */}
       <div className="flex h-14 items-center gap-2 border-b px-4">
-        <img
-          src="https://storage.googleapis.com/msgsndr/tdZAorlZ97ZS4xrRVntK/media/6970195cd4fb900ce1a6403e.png"
-          alt="FirmaClara"
-          className="h-8 w-auto object-contain"
-        />
-        <span className="text-lg font-semibold tracking-tight">{t('app.name')}</span>
+        <MulticentrosLogo className="h-8" />
+      </div>
+      
+      {/* Service name */}
+      <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
+        <span className="text-sm font-medium text-foreground">Firma Digital</span>
+        <PoweredByOperia className="text-[10px]" />
       </div>
 
       {/* CTA */}
@@ -79,14 +82,14 @@ export function Sidebar() {
                     isActive
                       ? "bg-sidebar-accent text-sidebar-primary"
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    item.to === "/clara" && !isActive && "border border-blue-200/50 shadow-[0_0_10px_rgba(59,130,246,0.3)] bg-gradient-to-r from-blue-50/50 to-transparent text-blue-700 hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] hover:border-blue-300"
+                    item.to === "/clara" && !isActive && "border border-primary/20 shadow-[0_0_10px_hsl(var(--primary)/0.2)] bg-gradient-to-r from-primary/5 to-transparent text-primary hover:shadow-[0_0_15px_hsl(var(--primary)/0.3)] hover:border-primary/30"
                   )
                 }
               >
-                <item.icon className={cn("h-5 w-5", item.to === "/clara" && "text-blue-500 animate-pulse")} />
+                <item.icon className={cn("h-5 w-5", item.to === "/clara" && "text-primary animate-pulse")} />
                 {item.label}
                 {item.to === "/clara" && (
-                  <span className="ml-auto inline-flex h-2 w-2 animate-ping rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="ml-auto inline-flex h-2 w-2 animate-ping rounded-full bg-primary/60 opacity-75"></span>
                 )}
               </NavLink>
             </li>

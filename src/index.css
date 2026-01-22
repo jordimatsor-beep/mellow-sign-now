@@ -2,31 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
-/* FirmaClara Design System - All colors in HSL */
+/* Multicentros + Operia Firma Digital - White Label Design System */
+/* Primary Color: Multicentros Purple (#5B3D8A) */
 
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --foreground: 260 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 260 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 260 25% 15%;
 
-    /* Primary: Blue #2563eb */
-    --primary: 217 91% 53%;
+    /* Primary: Multicentros Purple #5B3D8A */
+    --primary: 263 40% 39%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    /* Secondary: Light purple tint */
+    --secondary: 263 30% 95%;
+    --secondary-foreground: 263 40% 25%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 260 20% 96%;
+    --muted-foreground: 260 10% 45%;
 
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 263 30% 93%;
+    --accent-foreground: 263 40% 25%;
 
     /* Success: Green #10b981 */
     --success: 160 84% 39%;
@@ -39,51 +41,57 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 53%;
+    --border: 260 20% 90%;
+    --input: 260 20% 90%;
+    --ring: 263 40% 39%;
 
     --radius: 0.75rem;
 
+    /* Brand colors for reference */
+    --multicentros-purple: 263 40% 39%;
+    --multicentros-red: 0 70% 48%;
+    --multicentros-blue: 207 79% 65%;
+    --operia-gray: 220 9% 46%;
+
     /* Sidebar */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 217 91% 53%;
+    --sidebar-background: 263 25% 98%;
+    --sidebar-foreground: 260 25% 15%;
+    --sidebar-primary: 263 40% 39%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 217 91% 53%;
+    --sidebar-accent: 263 30% 93%;
+    --sidebar-accent-foreground: 263 40% 25%;
+    --sidebar-border: 260 20% 90%;
+    --sidebar-ring: 263 40% 39%;
 
     /* Chart colors */
-    --chart-1: 217 91% 53%;
+    --chart-1: 263 40% 39%;
     --chart-2: 160 84% 39%;
     --chart-3: 38 92% 50%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --chart-4: 207 79% 65%;
+    --chart-5: 0 70% 48%;
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    --background: 260 25% 6%;
+    --foreground: 260 15% 95%;
 
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
+    --card: 260 25% 8%;
+    --card-foreground: 260 15% 95%;
 
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 260 25% 8%;
+    --popover-foreground: 260 15% 95%;
 
-    --primary: 217 91% 60%;
+    --primary: 263 45% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 260 25% 15%;
+    --secondary-foreground: 260 15% 95%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 260 25% 15%;
+    --muted-foreground: 260 15% 65%;
 
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 260 25% 15%;
+    --accent-foreground: 260 15% 95%;
 
     --success: 160 84% 45%;
     --success-foreground: 0 0% 100%;
@@ -92,26 +100,26 @@
     --warning-foreground: 0 0% 100%;
 
     --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 260 15% 95%;
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 217 91% 60%;
+    --border: 260 25% 18%;
+    --input: 260 25% 18%;
+    --ring: 263 45% 55%;
 
-    --sidebar-background: 222 47% 8%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-background: 260 25% 8%;
+    --sidebar-foreground: 260 15% 95%;
+    --sidebar-primary: 263 45% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 260 25% 15%;
+    --sidebar-accent-foreground: 260 15% 95%;
+    --sidebar-border: 260 25% 18%;
+    --sidebar-ring: 263 45% 55%;
 
-    --chart-1: 217 91% 60%;
+    --chart-1: 263 45% 55%;
     --chart-2: 160 84% 45%;
     --chart-3: 38 92% 55%;
-    --chart-4: 280 65% 65%;
-    --chart-5: 340 75% 60%;
+    --chart-4: 207 79% 70%;
+    --chart-5: 0 70% 55%;
   }
 }
 
