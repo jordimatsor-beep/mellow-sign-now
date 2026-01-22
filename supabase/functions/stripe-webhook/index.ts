@@ -9,7 +9,7 @@ const ALLOWED_ORIGINS = [
     'http://localhost:3000'
 ];
 
-serve(async (req) => {
+serve(async (req: Request) => {
     // CORS Hardening
     const origin = req.headers.get('Origin');
     const isAllowed = origin && ALLOWED_ORIGINS.includes(origin);
