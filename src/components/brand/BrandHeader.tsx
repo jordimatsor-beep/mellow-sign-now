@@ -1,7 +1,7 @@
 import { Separator } from "@/components/ui/separator";
 
-// Multicentros logo component - Main brand
-export function MulticentrosLogo({ className = "h-10" }: { className?: string }) {
+// Multicentro logo component - Main brand
+export function MulticentroLogo({ className = "h-10" }: { className?: string }) {
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       {/* Cart icon with dots */}
@@ -40,6 +40,9 @@ export function MulticentrosLogo({ className = "h-10" }: { className?: string })
   );
 }
 
+// Backward compatibility alias
+export const MulticentrosLogo = MulticentroLogo;
+
 // Operia logo component - Tech attribution
 export function OperiaLogo({ className = "h-6" }: { className?: string }) {
   return (
@@ -72,9 +75,9 @@ export function BrandHeader({
 }: BrandHeaderProps) {
   return (
     <div className={`flex items-center gap-4 ${className}`}>
-      {/* Main brand - Multicentros */}
+      {/* Main brand - Multicentro */}
       <div className="flex items-center gap-3">
-        <MulticentrosLogo className="h-10" />
+        <MulticentroLogo className="h-10" />
         {showServiceName && (
           <>
             <Separator orientation="vertical" className="h-8" />

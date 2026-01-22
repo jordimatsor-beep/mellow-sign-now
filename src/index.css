@@ -2,8 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Multicentros + Operia Firma Digital - White Label Design System */
-/* Primary Color: Multicentros Purple (#5B3D8A) */
+/* Multicentro Firma Digital - White Label Design System */
+/* Primary Color: Multicentro Purple (#5B3D8A) */
 
 @layer base {
   :root {
@@ -16,7 +16,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 260 25% 15%;
 
-    /* Primary: Multicentros Purple #5B3D8A */
+    /* Primary: Multicentro Purple #5B3D8A */
     --primary: 263 40% 39%;
     --primary-foreground: 0 0% 100%;
 
@@ -48,10 +48,9 @@
     --radius: 0.75rem;
 
     /* Brand colors for reference */
-    --multicentros-purple: 263 40% 39%;
-    --multicentros-red: 0 70% 48%;
-    --multicentros-blue: 207 79% 65%;
-    --operia-gray: 220 9% 46%;
+    --multicentro-purple: 263 40% 39%;
+    --multicentro-red: 0 70% 48%;
+    --multicentro-blue: 207 79% 65%;
 
     /* Sidebar */
     --sidebar-background: 263 25% 98%;
