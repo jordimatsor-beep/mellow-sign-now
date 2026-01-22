@@ -33,25 +33,48 @@ export default function Index() {
         </Link>
       </div>
 
-      {/* Navigation Header - Professional ZapSign style */}
+      {/* Navigation Header - Professional with wider logo area */}
       <header className="sticky top-0 z-50 w-full bg-background shadow-sm">
-        <div className="container flex h-16 items-center justify-between px-4 lg:px-8">
-          {/* Logo + Service name */}
+        <div className="container flex h-20 items-center justify-between px-4 lg:px-8">
+          {/* Logo + Service name - More space for logo */}
           <div className="flex items-center gap-6">
-            <Link to="/" className="flex items-center gap-3">
-              {/* Multicentro icon simplified */}
-              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10">
-                <svg viewBox="0 0 24 24" className="h-5 w-5">
-                  <circle cx="7" cy="6" r="2.5" fill="hsl(var(--primary))" />
-                  <circle cx="12" cy="10" r="2.5" fill="hsl(var(--destructive))" />
-                  <circle cx="17" cy="10" r="2.5" fill="hsl(var(--chart-4))" />
-                  <path d="M4 9 L4 18 Q4 21 7 21 L20 21" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeLinecap="round" fill="none"/>
-                </svg>
-              </div>
-              <div className="hidden sm:flex flex-col">
-                <span className="text-sm font-light text-muted-foreground leading-tight">multicentro</span>
-                <span className="text-sm font-bold text-primary leading-tight">Firma Digital</span>
-              </div>
+            <Link to="/" className="flex items-center gap-4">
+              {/* Multicentro logo - accurate SVG based on official design */}
+              <svg viewBox="0 0 200 60" className="h-12 w-auto">
+                {/* Cart icon */}
+                <g transform="translate(0, 5)">
+                  {/* Cart body */}
+                  <path 
+                    d="M8 15 L15 15 L15 38 Q15 45 22 45 L42 45" 
+                    stroke="#6B7280" 
+                    strokeWidth="5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                  {/* Cart handle */}
+                  <path 
+                    d="M8 15 L3 5" 
+                    stroke="#6B7280" 
+                    strokeWidth="5" 
+                    strokeLinecap="round" 
+                    fill="none"
+                  />
+                  {/* Wheels */}
+                  <circle cx="25" cy="48" r="4" fill="#6B7280" />
+                  <circle cx="38" cy="48" r="4" fill="#6B7280" />
+                  {/* Colored dots */}
+                  <circle cx="15" cy="6" r="5" fill="#5B3D8A" />
+                  <circle cx="26" cy="14" r="5" fill="#B91C1C" />
+                  <circle cx="37" cy="14" r="5" fill="#60A5FA" />
+                </g>
+                {/* Text */}
+                <text x="52" y="20" fontFamily="system-ui, sans-serif" fontSize="14" fontWeight="300" fill="#6B7280">multi</text>
+                <text x="52" y="36" fontFamily="system-ui, sans-serif" fontSize="14" fontWeight="400" fill="#60A5FA">centro</text>
+                <text x="52" y="52" fontFamily="system-ui, sans-serif" fontSize="14" fontWeight="700" fill="#5B3D8A">comercial</text>
+              </svg>
+              <Separator orientation="vertical" className="h-10 hidden sm:block" />
+              <span className="text-base font-bold text-primary hidden sm:block">Firma Digital</span>
             </Link>
 
             {/* Navigation links - ZapSign style */}
@@ -101,7 +124,7 @@ export default function Index() {
               </h1>
 
               <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-                Envía contratos desde tu panel o <strong className="text-primary">créalos con IA Clara</strong>. 
+                Envía documentos desde tu panel o <strong className="text-primary">créalos con IA Clara</strong>. 
                 Un nuevo servicio exclusivo para clientes Multicentro.
               </p>
 
@@ -291,11 +314,11 @@ export default function Index() {
                   Inteligencia Artificial
                 </div>
                 <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                  Crea contratos con <span className="text-primary">Clara IA</span>
+                  Crea documentos con <span className="text-primary">Clara IA</span>
                 </h2>
                 <p className="mt-3 text-muted-foreground">
                   ¿No tienes un PDF listo? Describe lo que necesitas y Clara, nuestra asistente legal con IA, 
-                  generará un contrato profesional en segundos.
+                  generará un documento profesional en segundos.
                 </p>
                 <ul className="mt-4 space-y-2 text-sm">
                   <li className="flex items-center gap-2">
@@ -327,11 +350,11 @@ export default function Index() {
                       </div>
                     </div>
                     <div className="space-y-2 text-sm bg-muted/50 rounded-lg p-3">
-                      <p className="text-muted-foreground italic">"Necesito un contrato de servicios de diseño web para un cliente..."</p>
+                      <p className="text-muted-foreground italic">"Necesito un presupuesto de servicios de diseño web para un cliente..."</p>
                     </div>
                     <div className="mt-3 flex items-center gap-2 text-xs text-primary">
                       <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                      Clara está generando tu contrato...
+                      Clara está generando tu documento...
                     </div>
                   </CardContent>
                 </Card>
@@ -361,7 +384,7 @@ export default function Index() {
                     El caos de siempre
                   </h3>
                   <div className="space-y-2 text-sm">
-                    {["Envías el contrato por email", "El cliente lo imprime", "Lo firma a mano", "Lo escanea (si tiene escáner)", "Te lo reenvía por email"].map((item, i) => (
+                    {["Envías el documento por email", "El cliente lo imprime", "Lo firma a mano", "Lo escanea (si tiene escáner)", "Te lo reenvía por email"].map((item, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive/20 text-destructive text-xs font-bold shrink-0">
                           {i + 1}
@@ -565,19 +588,32 @@ export default function Index() {
           <div className="grid md:grid-cols-4 gap-8">
             {/* Brand */}
             <div className="md:col-span-2">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-background/10">
-                  <svg viewBox="0 0 24 24" className="h-5 w-5">
-                    <circle cx="7" cy="6" r="2.5" fill="hsl(var(--primary))" />
-                    <circle cx="12" cy="10" r="2.5" fill="hsl(var(--destructive))" />
-                    <circle cx="17" cy="10" r="2.5" fill="hsl(var(--chart-4))" />
-                    <path d="M4 9 L4 18 Q4 21 7 21 L20 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
-                  </svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs text-background/50">multicentro comercial</span>
-                  <span className="text-sm font-bold text-background">Firma Digital</span>
-                </div>
+              <div className="flex items-center gap-4 mb-4">
+                {/* Footer logo - simplified version */}
+                <svg viewBox="0 0 160 50" className="h-10 w-auto">
+                  <g transform="translate(0, 3)">
+                    <path 
+                      d="M6 12 L12 12 L12 32 Q12 38 18 38 L35 38" 
+                      stroke="currentColor" 
+                      strokeWidth="4" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                      fill="none"
+                      opacity="0.6"
+                    />
+                    <path d="M6 12 L2 4" stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.6"/>
+                    <circle cx="20" cy="42" r="3" fill="currentColor" opacity="0.6" />
+                    <circle cx="31" cy="42" r="3" fill="currentColor" opacity="0.6" />
+                    <circle cx="12" cy="5" r="4" fill="#9F7AEA" />
+                    <circle cx="21" cy="11" r="4" fill="#F87171" />
+                    <circle cx="30" cy="11" r="4" fill="#60A5FA" />
+                  </g>
+                  <text x="42" y="16" fontFamily="system-ui, sans-serif" fontSize="11" fontWeight="300" fill="currentColor" opacity="0.6">multi</text>
+                  <text x="42" y="29" fontFamily="system-ui, sans-serif" fontSize="11" fontWeight="400" fill="#60A5FA">centro</text>
+                  <text x="42" y="42" fontFamily="system-ui, sans-serif" fontSize="11" fontWeight="700" fill="#9F7AEA">comercial</text>
+                </svg>
+                <Separator orientation="vertical" className="h-8 bg-background/20" />
+                <span className="text-sm font-bold text-background">Firma Digital</span>
               </div>
               <p className="text-sm text-background/60 max-w-xs">
                 Servicio de firma electrónica con validez legal del ecosistema Multicentro.
