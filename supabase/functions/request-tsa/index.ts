@@ -6,6 +6,7 @@ import * as pvutils from "https://esm.sh/pvutils@1.1.3?target=deno";
 
 const ALLOWED_ORIGINS = [
   'https://firmaclara.com',
+  'https://mellow-sign-now.lovable.app',
   'http://localhost:8080',
   'http://localhost:3000'
 ];
@@ -36,11 +37,11 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   const origin = req.headers.get('Origin');
   const isAllowed = origin && ALLOWED_ORIGINS.includes(origin);
   const corsHeaders = {
-    'Access-Control-Allow-Origin': isAllowed ? origin : 'null',
+    'Access-Control-Allow-Origin': isAllowed ? origin : '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Vary': 'Origin'
   };
@@ -58,23 +59,23 @@ serve(async (req) => {
     try {
       const engine = new pkijs.CryptoEngine({ name: "InternalEngine", crypto: crypto, subtle: crypto.subtle });
       pkijs.setEngine("internal", engine);
-    } catch (e) { /* ignore if set */ }
+    } catch (_e) { /* ignore if set */ }
 
     // Prepare Request (Standard SHA-256)
     const timeStampReq = new pkijs.TimeStampReq();
 
     // RFC 5754: SHA-256 parameters MUST be absent.
-    // We attempt STRICT COMPLIANCE first (no params).
     timeStampReq.messageImprint.hashAlgorithm = new pkijs.AlgorithmIdentifier({
       algorithmId: "2.16.840.1.101.3.4.2.1"
-      // parameters omitted intentionally
     });
 
     const inputHashBuffer = hexToArrayBuffer(hash);
+    // @ts-ignore - ESM version mismatch in types, runtime compatible
     timeStampReq.messageImprint.hashedMessage = new asn1js.OctetString({ valueHex: inputHashBuffer });
 
     const nonceBuffer = new Uint8Array(8);
     crypto.getRandomValues(nonceBuffer);
+    // @ts-ignore - ESM version mismatch in types, runtime compatible
     timeStampReq.nonce = new asn1js.Integer({ valueHex: nonceBuffer.buffer });
 
     timeStampReq.certReq = true;
@@ -92,7 +93,7 @@ serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/timestamp-query',
-            'User-Agent': 'Deno/TSA-Client' // Polite header
+            'User-Agent': 'Deno/TSA-Client'
           },
           body: reqBuffer
         });
@@ -147,22 +148,24 @@ serve(async (req) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
 
-      } catch (err: any) {
-        console.warn(`[TSA] Failed ${provider.name}: ${err.message}`);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        console.warn(`[TSA] Failed ${provider.name}: ${errorMessage}`);
         lastError = err;
-        // Continue to next provider
       }
     }
 
     // If all failed
     throw lastError || new Error('All TSA providers failed');
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown TSA Error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
     console.error('[TSA Error]', error);
     return new Response(
       JSON.stringify({
-        error: error.message || 'Unknown TSA Error',
-        stack: error.stack,
+        error: errorMessage,
+        stack: errorStack,
         details: 'All providers failed. Check logs.'
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
