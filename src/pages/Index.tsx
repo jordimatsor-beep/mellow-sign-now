@@ -16,7 +16,8 @@ import {
   AlertTriangle,
   Scale,
   Building2,
-  PenTool
+  PenTool,
+  Sparkles
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
@@ -38,7 +39,7 @@ export default function Index() {
           {/* Logo + Service name */}
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-3">
-              {/* Multicentros icon simplified */}
+              {/* Multicentro icon simplified */}
               <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10">
                 <svg viewBox="0 0 24 24" className="h-5 w-5">
                   <circle cx="7" cy="6" r="2.5" fill="hsl(var(--primary))" />
@@ -63,7 +64,7 @@ export default function Index() {
 
           {/* Right side - Powered by + CTAs */}
           <div className="flex items-center gap-4">
-            {/* Powered by Operia - only visible here */}
+            {/* Powered by Operia - only visible in header */}
             <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground border-r pr-4">
               <span>Powered by</span>
               <span className="font-bold">OPERIA</span>
@@ -91,17 +92,17 @@ export default function Index() {
             <div>
               <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-4">
                 <Building2 className="mr-2 h-4 w-4" />
-                Servicio exclusivo Multicentros
+                Servicio exclusivo Multicentro
               </div>
 
               <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl leading-tight">
-                Multicentros te trae la{" "}
+                Multicentro te trae la{" "}
                 <span className="text-primary">firma digital</span> que estabas esperando.
               </h1>
 
               <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-                Envía contratos desde tu panel de siempre. Un nuevo servicio exclusivo para clientes Multicentros.{" "}
-                <strong className="text-foreground">Tecnología certificada por Operia.</strong>
+                Envía contratos desde tu panel o <strong className="text-primary">créalos con IA Clara</strong>. 
+                Un nuevo servicio exclusivo para clientes Multicentro.
               </p>
 
               {/* CTA Buttons */}
@@ -278,6 +279,68 @@ export default function Index() {
         </div>
       </section>
 
+      {/* Clara IA Feature - New section */}
+      <section className="py-10 lg:py-14 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5">
+        <div className="container px-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-8 items-center">
+              {/* Content */}
+              <div>
+                <div className="inline-flex items-center rounded-full bg-primary/20 px-3 py-1 text-xs font-medium text-primary mb-3">
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                  Inteligencia Artificial
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                  Crea contratos con <span className="text-primary">Clara IA</span>
+                </h2>
+                <p className="mt-3 text-muted-foreground">
+                  ¿No tienes un PDF listo? Describe lo que necesitas y Clara, nuestra asistente legal con IA, 
+                  generará un contrato profesional en segundos.
+                </p>
+                <ul className="mt-4 space-y-2 text-sm">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-success" />
+                    <span>Contratos de servicios, NDAs, presupuestos...</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-success" />
+                    <span>Personalizado con tus datos y los del cliente</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-success" />
+                    <span>Revisión y edición antes de enviar</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Visual */}
+              <div className="flex justify-center">
+                <Card className="w-full max-w-sm border-primary/30 shadow-lg">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm">Clara IA</p>
+                        <p className="text-xs text-muted-foreground">Asistente legal</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-sm bg-muted/50 rounded-lg p-3">
+                      <p className="text-muted-foreground italic">"Necesito un contrato de servicios de diseño web para un cliente..."</p>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2 text-xs text-primary">
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                      Clara está generando tu contrato...
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Problem vs Solution - Side by side compact */}
       <section className="py-10 lg:py-14 bg-muted/30" id="como-funciona">
         <div className="container px-4">
@@ -316,7 +379,7 @@ export default function Index() {
               {/* After - Compact */}
               <Card className="border-success/30 bg-success/5 relative overflow-hidden">
                 <div className="absolute top-0 left-0 bg-success text-success-foreground text-xs font-bold px-3 py-1 rounded-br-lg">
-                  CON MULTICENTROS
+                  CON MULTICENTRO
                 </div>
                 <CardContent className="p-5 pt-8">
                   <h3 className="font-bold text-success flex items-center gap-2 mb-4">
@@ -355,7 +418,7 @@ export default function Index() {
                   Nueva funcionalidad
                 </div>
                 <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                  Más seguridad que un garabato
+                  Seguridad verificada por WhatsApp
                 </h2>
                 <p className="mt-2 text-muted-foreground">
                   Validamos la identidad con un <strong>código único a su WhatsApp</strong>.
@@ -375,7 +438,7 @@ export default function Index() {
                 <div className="w-44 rounded-2xl border-4 border-slate-800 bg-slate-800 shadow-xl overflow-hidden">
                   <div className="bg-[#075e54] px-3 py-2 flex items-center gap-2">
                     <div className="h-6 w-6 rounded-full bg-white/20" />
-                    <p className="text-white font-medium text-xs">Multicentros</p>
+                    <p className="text-white font-medium text-xs">Multicentro</p>
                   </div>
                   <div className="bg-[#e5ddd5] p-3">
                     <div className="bg-white rounded-lg p-2 shadow-sm text-center">
@@ -437,8 +500,8 @@ export default function Index() {
                   <p className="text-xs text-muted-foreground mt-1">Para autónomos</p>
                   <ul className="mt-4 space-y-1.5 text-sm">
                     <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /><strong>10 envíos</strong> (1,20€/u)</li>
-                    <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" />WhatsApp verification</li>
-                    <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" />Asistente Clara AI</li>
+                    <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" />Verificación WhatsApp</li>
+                    <li className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /><strong>Clara IA</strong> incluida</li>
                   </ul>
                   <Button className="w-full mt-4" size="sm" asChild>
                     <Link to="/register">Comprar ahora</Link>
@@ -517,7 +580,7 @@ export default function Index() {
                 </div>
               </div>
               <p className="text-sm text-background/60 max-w-xs">
-                Servicio de firma electrónica con validez legal del ecosistema Multicentros.
+                Servicio de firma electrónica con validez legal del ecosistema Multicentro.
               </p>
             </div>
 
@@ -557,8 +620,8 @@ export default function Index() {
           </div>
           
           <div className="mt-8 pt-6 border-t border-background/10 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
-            <p>&copy; 2024 Multicentros Comercial. Todos los derechos reservados.</p>
-            <p className="text-background/50">Un servicio del ecosistema Multicentros</p>
+            <p>&copy; 2024 Multicentro Comercial. Todos los derechos reservados.</p>
+            <p className="text-background/50">Un servicio del ecosistema Multicentro</p>
           </div>
         </div>
       </footer>
