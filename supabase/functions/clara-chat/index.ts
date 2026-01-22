@@ -14,10 +14,9 @@ const MessageSchema = z.object({
 });
 
 const RequestSchema = z.object({
-    messages: z.array(MessageSchema).min(1).max(20)
+    messages: z.array(MessageSchema).min(1).max(20),
+    documentId: z.string().optional()
 });
-
-const N8N_WEBHOOK_URL = "https://automatiajordi.app.n8n.cloud/webhook/f6ae1f5f-ee36-4a5b-92e7-e8eb0157b099";
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -25,6 +24,11 @@ serve(async (req) => {
     }
 
     try {
+        const apiKey = Deno.env.get('GEMINI_API_KEY');
+        if (!apiKey) {
+            throw new Error('GEMINI_API_KEY is not set');
+        }
+
         // 1. Auth & Supabase Client
         const authHeader = req.headers.get('Authorization')
         if (!authHeader) {
@@ -40,11 +44,10 @@ serve(async (req) => {
         const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
 
         if (userError || !user) {
-            console.error('Auth Error:', userError);
-            return new Response(JSON.stringify({ error: 'Unauthorized', details: userError }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
-        // 2. Validation
+        // 2. Parse Request
         const body = await req.json();
         const parseResult = RequestSchema.safeParse(body);
 
@@ -55,89 +58,129 @@ serve(async (req) => {
             )
         }
 
-        const { messages } = parseResult.data;
-
-        // Get last user message
+        const { messages, documentId } = parseResult.data;
         const lastUserMessage = messages[messages.length - 1];
-        if (!lastUserMessage || lastUserMessage.role !== 'user') {
-            return new Response(JSON.stringify({ role: 'clara', content: '???' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
+        // 3. Fetch Context (Fiscal Data)
+        // Fetch User Profile
+        const { data: userProfile, error: profileError } = await supabaseClient
+            .from('users')
+            .select('name, company_name, tax_id, legal_address, legal_type')
+            .eq('id', user.id)
+            .single();
+
+        if (profileError) console.error("Error fetching user profile:", profileError);
+
+        // Fallback for address
+        const userAddress = userProfile?.legal_address ||
+            (userProfile?.address ? `${userProfile.address}, ${userProfile.zip_code || ''} ${userProfile.city || ''} ${userProfile.country || ''}` : null);
+
+        let documentData = null;
+        if (documentId) {
+            const { data: doc, error: docError } = await supabaseClient
+                .from('documents')
+                .select('signer_name, signer_tax_id, signer_address, signer_company_name')
+                .eq('id', documentId)
+                .single();
+
+            if (docError) console.error("Error fetching document:", docError);
+            else documentData = doc;
         }
 
-        // 3. Call n8n Webhook
-        console.log("Forwarding to n8n:", lastUserMessage.content);
+        // 4. Guardrails (Strict Contract Mode)
+        const isContractIntent = /contrato|acuerdo|cláusula|reunidos/i.test(lastUserMessage.content);
 
-        // Ensure we handle potential Fetch errors
-        let n8nResponse;
-        try {
-            n8nResponse = await fetch(N8N_WEBHOOK_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chatInput: lastUserMessage.content,
-                    sessionId: user.id
-                })
-            });
-        } catch (fetchError) {
-            console.error("n8n Fetch Error:", fetchError);
-            throw new Error("Failed to connect to AI service (n8n).");
-        }
+        if (isContractIntent) {
+            // Check User Fiscal Data
+            const missingUserFields = [];
+            if (!userProfile?.tax_id) missingUserFields.push("NIF/CIF (Emisor)");
+            if (!userAddress) missingUserFields.push("Domicilio Legal (Emisor)");
 
-        if (!n8nResponse.ok) {
-            throw new Error(`n8n Error: ${n8nResponse.status} ${n8nResponse.statusText}`);
-        }
-
-        const rawText = await n8nResponse.text();
-        console.log("n8n Raw Response:", rawText);
-
-        let responseText = "";
-        let n8nData;
-
-        try {
-            n8nData = JSON.parse(rawText);
-            // Handle various n8n response formats
-            if (Array.isArray(n8nData) && n8nData.length > 0 && n8nData[0].output) {
-                responseText = n8nData[0].output;
-            } else if (n8nData.output) {
-                responseText = n8nData.output;
-            } else if (n8nData.text) {
-                responseText = n8nData.text;
-            } else if (typeof n8nData === 'string') {
-                responseText = n8nData;
-            } else {
-                // Return the raw JSON structure for debugging if we can't find the text
-                responseText = "Debug (JSON structure): " + JSON.stringify(n8nData).substring(0, 500);
+            // Check Document/Signer Data (if document context exists)
+            const missingSignerFields = [];
+            if (documentId && documentData) {
+                if (!documentData.signer_tax_id) missingSignerFields.push("NIF/CIF (Receptor/Firmante)");
+                if (!documentData.signer_address) missingSignerFields.push("Domicilio (Receptor/Firmante)");
             }
-        } catch (e) {
-            // Response is likely plain text
-            responseText = rawText;
+
+            if (missingUserFields.length > 0 || missingSignerFields.length > 0) {
+                const errorMsg = `Para generar un contrato válido, faltan datos fiscales obligatorios:\n` +
+                    (missingUserFields.length ? `• Tu Perfil: ${missingUserFields.join(", ")}\n` : "") +
+                    (missingSignerFields.length ? `• Firmante: ${missingSignerFields.join(", ")}\n` : "") +
+                    `\nPor favor, completa estos datos en tu perfil o en la ficha del documento.`;
+
+                return new Response(JSON.stringify({ role: 'clara', content: errorMsg }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            }
         }
 
-        if (!responseText || !responseText.trim()) {
-            responseText = "Error: Recibida respuesta vacía de n8n.";
+        // 5. Construct System Prompt
+        const currentDate = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        let systemPrompt = `You are Clara, an expert legal AI assistant for 'FirmaClara'.
+Current Date: ${currentDate}.
+Your goal is to draft legally binding contracts under Spanish Law.
+
+STRICT INSTRUCTIONS FOR CONTRACTS:
+1. Always start with a formal header: "REUNIDOS".
+2. You MUST use the provided fiscal data exactly. Do not invent data.
+3. If data is provided, generate the "REUNIDOS" section as follows:
+   "De una parte, [User Name/Company] con NIF [User Tax ID] y domicilio en [User Address]..."
+   "Y de otra, [Signer Name/Company] con NIF [Signer Tax ID] y domicilio en [Signer Address]..."
+
+CONTEXT DATA:
+[ISSUER/USER]
+Name: ${userProfile?.company_name || userProfile?.name || "Usuario"}
+Tax ID: ${userProfile?.tax_id || "PENDING"}
+Address: ${userAddress || "PENDING"}
+
+`
+        if (documentData) {
+            systemPrompt += `[RECEIVER/SIGNER]
+Name: ${documentData.signer_company_name || documentData.signer_name || "Firmante"}
+Tax ID: ${documentData.signer_tax_id || "PENDING"}
+Address: ${documentData.signer_address || "PENDING"}
+`;
         }
 
-        // 4. Audit Logging (Optional)
-        const supabaseAdmin = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        )
+        systemPrompt += `\nMaintain a professional, formal tone. Answer in Markdown.`;
 
-        try {
-            await supabaseAdmin.from('event_logs').insert({
-                user_id: user.id,
-                event_type: 'ai_chat_completion_n8n',
-                event_data: {
-                    prompt_length: lastUserMessage.content.length,
-                    response_length: responseText.length,
-                    n8n_status: n8nResponse.status
+        // 6. Call Gemini API
+        const geminiMessages = [
+            { role: "user", parts: [{ text: systemPrompt }] }, // System instruction as first user message or proper system instruction if supported. Gemini 1.5 supports system_instruction.
+            ...messages.map(m => ({
+                role: m.role === 'clara' ? 'model' : 'user',
+                parts: [{ text: m.content }]
+            }))
+        ];
+
+        // Ensure alternating roles (User starts) - handled by simple mapping above, but robust logic avoids dupes.
+        // Direct API call
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: geminiMessages,
+                generationConfig: {
+                    temperature: 0.3, // Low temperature for legal precision
+                    maxOutputTokens: 2000,
+                },
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
                 }
             })
-        } catch (logErr) {
-            console.error("Logging error:", logErr);
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error("Gemini API Error:", errText);
+            throw new Error(`Gemini API Error: ${response.status}`);
         }
 
+        const data = await response.json();
+        const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta legal válida.";
+
         return new Response(
-            JSON.stringify({ role: 'clara', content: responseText }),
+            JSON.stringify({ role: 'clara', content: generatedText }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
 

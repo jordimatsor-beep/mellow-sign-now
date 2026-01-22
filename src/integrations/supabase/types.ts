@@ -201,7 +201,14 @@ export type Database = {
           signer_email: string | null
           signer_name: string | null
           signer_phone: string | null
+          signer_tax_id: string | null
+          signer_address: string | null
+          signer_company_name: string | null
           status: string | null
+          security_level: "standard" | "whatsapp_otp" | null
+          otp_code_hash: string | null
+          otp_expires_at: string | null
+          whatsapp_verification_status: string | null
           title: string
           updated_at: string | null
           user_id: string
@@ -225,6 +232,10 @@ export type Database = {
           signer_name?: string | null
           signer_phone?: string | null
           status?: string | null
+          security_level?: "standard" | "whatsapp_otp" | null
+          otp_code_hash?: string | null
+          otp_expires_at?: string | null
+          whatsapp_verification_status?: string | null
           title: string
           updated_at?: string | null
           user_id: string
@@ -248,6 +259,10 @@ export type Database = {
           signer_name?: string | null
           signer_phone?: string | null
           status?: string | null
+          security_level?: "standard" | "whatsapp_otp" | null
+          otp_code_hash?: string | null
+          otp_expires_at?: string | null
+          whatsapp_verification_status?: string | null
           title?: string
           updated_at?: string | null
           user_id?: string
@@ -358,6 +373,9 @@ export type Database = {
           tsa_response: string | null
           tsa_timestamp: string | null
           user_agent: string | null
+          otp_channel: "none" | "whatsapp" | null
+          otp_verified_at: string | null
+          otp_code_ref: string | null
         }
         Insert: {
           acceptance_text?: string | null
@@ -374,6 +392,9 @@ export type Database = {
           tsa_response?: string | null
           tsa_timestamp?: string | null
           user_agent?: string | null
+          otp_channel?: "none" | "whatsapp" | null
+          otp_verified_at?: string | null
+          otp_code_ref?: string | null
         }
         Update: {
           acceptance_text?: string | null
@@ -390,6 +411,9 @@ export type Database = {
           tsa_response?: string | null
           tsa_timestamp?: string | null
           user_agent?: string | null
+          otp_channel?: "none" | "whatsapp" | null
+          otp_verified_at?: string | null
+          otp_code_ref?: string | null
         }
         Relationships: [
           {
@@ -428,6 +452,9 @@ export type Database = {
           zip_code: string | null
           country: string | null
           issuer_type: string | null
+          legal_type: "individual" | "company" | null
+          legal_address: string | null
+          billing_email: string | null
         }
         Insert: {
           company_name?: string | null

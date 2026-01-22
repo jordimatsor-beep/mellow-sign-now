@@ -22,7 +22,7 @@ interface Message {
     content: string;
 }
 
-export function ClaraChat() {
+export function ClaraChat({ documentId }: { documentId?: string }) {
     const { t } = useTranslation();
 
     const [messages, setMessages] = useState<Message[]>(() => [
@@ -92,7 +92,10 @@ export function ClaraChat() {
 
         try {
             const { data, error } = await supabase.functions.invoke('clara-chat', {
-                body: { messages: [...messages, userMessage] }
+                body: {
+                    messages: [...messages, userMessage],
+                    documentId
+                }
             });
 
             if (error) throw error;

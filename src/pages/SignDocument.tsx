@@ -33,6 +33,7 @@ interface DocumentData {
   signedAt?: string;
   whatsapp_verification?: boolean;
   signer_phone?: string;
+  security_level?: 'standard' | 'whatsapp_otp';
 }
 
 export default function SignDocument() {
@@ -92,7 +93,7 @@ export default function SignDocument() {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    
+
     if ('touches' in e) {
       return {
         x: e.touches[0].clientX - rect.left,
@@ -161,16 +162,16 @@ export default function SignDocument() {
   const handleScroll = useCallback(() => {
     const container = pdfContainerRef.current;
     if (!container) return;
-    
+
     const iframe = container.querySelector('iframe');
     if (iframe) {
       // For iframes, we can't easily detect scroll, so enable after 5 seconds as fallback
       return;
     }
-    
+
     const { scrollTop, scrollHeight, clientHeight } = container;
     const isAtBottom = scrollTop + clientHeight >= scrollHeight - 50;
-    
+
     if (isAtBottom && !canAccept) {
       setCanAccept(true);
       toast.success("Ahora puedes aceptar el documento");
@@ -228,12 +229,13 @@ export default function SignDocument() {
           signer_name: data.signer_name || '',
           created_at: data.created_at || '',
           signer_phone: data.signer_phone,
-          // Note: whatsapp_verification would need to be added to the documents table
+          security_level: data.security_level || 'standard',
+          whatsapp_verification: data.security_level === 'whatsapp_otp',
         };
 
         setDocData(doc);
         setName(doc.signer_name || "");
-        
+
         if (doc.status === 'signed') {
           setStep("complete");
         } else {
@@ -258,7 +260,7 @@ export default function SignDocument() {
     loadDocument();
   }, [token]);
 
-  // Helper: SHA-256 for client-side
+  // Helper: SHA-256 for client-side (still used for prompt, but backend does verification)
   async function sha256(message: string): Promise<string> {
     const msgBuffer = new TextEncoder().encode(message);
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -269,12 +271,35 @@ export default function SignDocument() {
   const handleSign = async () => {
     if (!canvasRef.current || !docData) return;
 
-    // Check if WhatsApp verification is required
-    if (docData.whatsapp_verification && docData.signer_phone) {
-      // Show OTP dialog
-      setStep("otp");
-      // In a real implementation, this would trigger sending an OTP via WhatsApp
-      toast.info("Se ha enviado un código de verificación a tu WhatsApp");
+    // Check if WhatsApp verification is required (security_level or legacy flag)
+    // Assuming backend returns security_level in docData (we need to fetch it)
+    // If docData was updated to include security_level check:
+    const requiresOtp = docData.whatsapp_verification || (docData as any).security_level === 'whatsapp_otp';
+
+    if (requiresOtp) {
+      if (!docData.signer_phone) {
+        toast.error("Error: Este documento requiere verificación por WhatsApp pero no tiene número de teléfono asociado.");
+        return;
+      }
+
+      const toastId = toast.loading("Enviando código de seguridad...");
+      try {
+        const { error } = await supabase.functions.invoke('send-otp', {
+          body: { token }
+        });
+
+        if (error) {
+          const body = await error.context?.json().catch(() => ({}));
+          throw new Error(body.error || error.message || "Error al enviar OTP");
+        }
+
+        toast.dismiss(toastId);
+        setStep("otp");
+        toast.info("Código enviado a tu WhatsApp");
+      } catch (err: any) {
+        console.error(err);
+        toast.error(err.message, { id: toastId });
+      }
       return;
     }
 
@@ -283,14 +308,10 @@ export default function SignDocument() {
   };
 
   const handleOtpVerify = async () => {
-    // In a real implementation, verify OTP with backend
     if (otpCode.length !== 6) {
       setOtpError("Introduce el código completo de 6 dígitos");
       return;
     }
-
-    // For demo, accept any 6-digit code
-    // In production: await supabase.rpc('verify_whatsapp_otp', { token, code: otpCode })
     setOtpError("");
     await submitSignature();
   };
@@ -299,58 +320,29 @@ export default function SignDocument() {
     if (!canvasRef.current || !docData) return;
 
     setStep("signing");
-    const toastId = toast.loading("Procesando firma segura...");
+    const toastId = toast.loading("Procesando firma segura y evidencias...");
 
     try {
       const signatureImage = canvasRef.current.toDataURL("image/png");
 
-      // Generate cryptographic hash
-      const hashInput = `${docData.file_url}||${signatureImage}||${name}`;
-      const finalHash = await sha256(hashInput);
+      // Grab client metadata
+      // Using generic external service for IP if possible, or letting backend handle it
+      // Edge function will see the request IP.
 
-      // Request TSA timestamp
-      toast.loading("Solicitando sello de tiempo (TSA)...", { id: toastId });
-
-      const { data: tsaData, error: tsaError } = await supabase.functions.invoke('request-tsa', {
-        body: { hash: finalHash }
+      const { data, error } = await supabase.functions.invoke('sign-complete', {
+        body: {
+          token,
+          otp_code: otpCode || undefined,
+          signature_image: signatureImage,
+          user_agent: navigator.userAgent
+          // ip_address: handled by backend
+        }
       });
 
-      if (tsaError) {
-        throw new Error(`Error de conexión TSA: ${tsaError.message}`);
+      if (error) {
+        const body = await error.context?.json().catch(() => ({}));
+        throw new Error(body.error || error.message || "Hubo un error al procesar la firma.");
       }
-
-      if (!tsaData || tsaData.error) {
-        const detailedInfo = tsaData?.error ? ` (${tsaData.error})` : '';
-        throw new Error(`La Autoridad de Sellado de Tiempo rechazó la solicitud${detailedInfo}.`);
-      }
-
-      const { timestamp } = tsaData;
-
-      if (!timestamp) {
-        throw new Error("Respuesta TSA incompleta.");
-      }
-
-      // Save signature to database
-      toast.loading("Guardando firma y evidencias...", { id: toastId });
-
-      const { error } = await supabase.from('signatures').insert({
-        document_id: docData.id,
-        signer_email: docData.signer_email || "unknown@email.com",
-        signer_name: name,
-        user_agent: navigator.userAgent,
-        signature_image_url: signatureImage,
-        hash_sha256: finalHash,
-        tsa_timestamp: timestamp,
-        signed_at: new Date().toISOString()
-      });
-
-      if (error) throw error;
-
-      // Update document status
-      await supabase
-        .from('documents')
-        .update({ status: 'signed', signed_at: new Date().toISOString() })
-        .eq('id', docData.id);
 
       setDocData({ ...docData, signedAt: new Date().toISOString() });
       setStep("complete");
@@ -359,7 +351,7 @@ export default function SignDocument() {
     } catch (err: unknown) {
       console.error(err);
       toast.error(err instanceof Error ? err.message : "Error al guardar la firma", { id: toastId });
-      setStep("view");
+      setStep("view"); // Go back to view so they can try again
     }
   };
 
@@ -467,7 +459,7 @@ export default function SignDocument() {
                 </span>
               )}
             </div>
-            <Card 
+            <Card
               ref={pdfContainerRef}
               className="h-[500px] w-full overflow-auto bg-muted/20"
               onScroll={handleScroll}
@@ -487,12 +479,11 @@ export default function SignDocument() {
 
               <div className="space-y-4">
                 {/* Acceptance checkbox - disabled until scroll */}
-                <label 
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
-                    canAccept 
-                      ? 'hover:bg-accent [&:has(:checked)]:ring-2 [&:has(:checked)]:ring-primary' 
-                      : 'opacity-50 cursor-not-allowed'
-                  }`}
+                <label
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${canAccept
+                    ? 'hover:bg-accent [&:has(:checked)]:ring-2 [&:has(:checked)]:ring-primary'
+                    : 'opacity-50 cursor-not-allowed'
+                    }`}
                 >
                   <Checkbox
                     checked={accepted}
