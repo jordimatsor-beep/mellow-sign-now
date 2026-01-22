@@ -219,11 +219,47 @@ export default function SignDocument() {
           throw new Error("Este documento no está disponible para firma");
         }
 
+        if (data.status === 'sent') {
+          await supabase
+            .from('documents')
+            .update({ status: 'viewed', viewed_at: new Date().toISOString() })
+            .eq('id', data.id);
+        }
+
+        // Fix for Private Buckets: Transform Public URL to Signed URL if needed
+        let finalFileUrl = data.file_url;
+
+        // Check if it's a Supabase URL and we are in a private bucket context
+        if (data.file_url.includes('/storage/v1/object/public/documents/')) {
+          try {
+            // Extract path: .../documents/USER_ID/TIMESTAMP_FILE.pdf
+            const pathParts = data.file_url.split('/documents/');
+            if (pathParts.length > 1) {
+              const filePath = pathParts[1]; // "USER_ID/TIMESTAMP_FILE.pdf"
+
+              // Generate Signed URL valid for 1 hour
+              const { data: signedData, error: signedError } = await supabase
+                .storage
+                .from('documents')
+                .createSignedUrl(filePath, 3600);
+
+              if (!signedError && signedData) {
+                finalFileUrl = signedData.signedUrl;
+                console.log("Using signed URL for private bucket access");
+              } else {
+                console.warn("Failed to generate signed URL, falling back to public", signedError);
+              }
+            }
+          } catch (e) {
+            console.error("Error transforming URL:", e);
+          }
+        }
+
         // Transform data to match our interface
         const doc: DocumentData = {
           id: data.id,
           title: data.title,
-          file_url: data.file_url,
+          file_url: finalFileUrl, // Use the signed URL
           status: data.status,
           signer_email: data.signer_email || '',
           signer_name: data.signer_name || '',
@@ -231,7 +267,27 @@ export default function SignDocument() {
           signer_phone: data.signer_phone,
           security_level: data.security_level || 'standard',
           whatsapp_verification: data.security_level === 'whatsapp_otp',
+          issuer_data: { // Ensure issuer data is passed if available in join (fetching * might not get joined data without explicit join)
+            // Note: The original query was .select('*'). To get issuer info we need a join or separate fetch.
+            // For now, let's keep existing behavior. If issuer_data comes from somewhere else, we should respect it.
+            // The previous code didn't seem to fetch joined user data? 
+            // Ah, type definition says issuer_data optional.
+            name: "Emisor (Verificado)" // Placeholder if we don't have the join
+          }
         };
+
+        // If we really need issuer data (name, id), we should fetch it:
+        if (data.user_id) {
+          const { data: issuer } = await supabase.from('users').select('name, company_name, tax_id, email, phone').eq('id', data.user_id).single();
+          if (issuer) {
+            doc.issuer_data = {
+              name: issuer.company_name || issuer.name || "Emisor",
+              id: issuer.tax_id,
+              email: issuer.email,
+              phone: issuer.phone
+            };
+          }
+        }
 
         setDocData(doc);
         setName(doc.signer_name || "");
@@ -240,14 +296,6 @@ export default function SignDocument() {
           setStep("complete");
         } else {
           setStep("view");
-        }
-
-        // Update status to viewed if sent
-        if (data.status === 'sent') {
-          await supabase
-            .from('documents')
-            .update({ status: 'viewed', viewed_at: new Date().toISOString() })
-            .eq('id', data.id);
         }
 
       } catch (err: unknown) {

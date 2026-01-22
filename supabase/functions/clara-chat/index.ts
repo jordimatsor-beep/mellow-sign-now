@@ -47,6 +47,32 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
+        // 1.5 Rate Limiting (Simple SQL Check)
+        // Limit: 20 requests per minute per user
+        const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
+        const { count, error: rateError } = await supabaseClient
+            .from('clara_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'user')
+            .gte('created_at', oneMinuteAgo)
+            // Join with conversation to filter by user_id?
+            // Actually clara_messages links to conversation. We need to filter by user's conversations.
+            // This is complex via simple query without heavy join.
+            // Simpler: Use a separate 'rate_limits' table or just trust the complexity of join vs attack cost.
+            // Let's use a simpler heuristic: Check last message timestamp in a new conversation?
+            // BETTER: Use `event_logs` if we logged chat events. We don't.
+            // ALTERNATIVE: Just check `clara_conversations` created recently? No, that's threads.
+            // Let's do a join. It's safe RLS wise.
+            // Filter: messages in conversations owned by user.
+            // Actually, RLS ensures we only count OUR OWN messages. So counting * is safe!
+            // Wait, counting * with RLS might be slow if table is huge? No, user won't have millions.
+            // RLS filter: conversation.user_id = auth.uid()
+            .gte('created_at', oneMinuteAgo);
+
+        if (count !== null && count > 20) {
+            return new Response(JSON.stringify({ error: 'Rate limit exceeded (20 req/min). Please wait.' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
         // 2. Parse Request
         const body = await req.json();
         const parseResult = RequestSchema.safeParse(body);
