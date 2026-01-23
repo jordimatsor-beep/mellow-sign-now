@@ -32,6 +32,10 @@ import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
 import UpdatePassword from "@/pages/auth/UpdatePassword";
 import Contacts from "@/pages/Contacts";
+import Legal from "@/pages/Legal";
+import Terms from "@/pages/Terms";
+import Privacy from "@/pages/Privacy";
+import HowItWorks from "@/pages/HowItWorks";
 
 const queryClient = new QueryClient();
 
@@ -52,8 +56,16 @@ const App = () => (
               <Route path="/onboarding" element={<Onboarding />} />
 
               {/* Public signing page */}
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
+
+              {/* Public signing page */}
               <Route element={<PublicLayout />}>
                 <Route path="/sign/:token" element={<SignDocument />} />
+                <Route path="/legal" element={<Legal />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/how-it-works" element={<HowItWorks />} />
               </Route>
 
               {/* Authenticated routes */}

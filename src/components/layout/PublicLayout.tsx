@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import { Footer } from "./Footer";
 
 export function PublicLayout() {
   return (
@@ -20,14 +21,7 @@ export function PublicLayout() {
         <Outlet />
       </main>
 
-      {/* Footer */}
-      <footer className="border-t bg-muted/50 py-4">
-        <div className="container flex items-center justify-center px-4">
-          <p className="text-sm text-muted-foreground">
-            Powered by <span className="font-medium text-foreground">FirmaClara</span>
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
