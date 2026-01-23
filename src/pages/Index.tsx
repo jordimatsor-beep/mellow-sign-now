@@ -34,10 +34,11 @@ export default function Index() {
     <div className="min-h-screen bg-background">
       {/* Professional Header - Sticky White */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          {/* Logo - Left */}
-          <div className="flex items-center">
-            <MulticentroLogo className="h-10" />
+        <div className="container mx-auto flex h-20 items-center justify-between px-4">
+          {/* Logo - Left - Larger and properly spaced */}
+          <div className="flex items-center gap-3">
+            <MulticentroLogo className="h-9" />
+            <span className="text-sm font-medium text-foreground border-l border-border pl-3 hidden sm:inline">Firma Digital</span>
           </div>
 
           {/* Navigation - Center (hidden on mobile) */}
@@ -105,10 +106,10 @@ export default function Index() {
               </p>
             </div>
 
-            {/* Right - Abstract UI Card (Document Preview) */}
+            {/* Right - Abstract UI Card (Document Preview) - Animated */}
             <div className="relative hidden lg:block">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent rounded-2xl" />
-              <Card className="relative bg-background border border-border shadow-lg rounded-xl overflow-hidden">
+              <Card className="relative bg-background border border-border shadow-lg rounded-xl overflow-hidden animate-fade-in">
                 <CardContent className="p-0">
                   {/* Document Header */}
                   <div className="bg-secondary/50 px-6 py-4 border-b border-border">
@@ -122,29 +123,66 @@ export default function Index() {
                           <p className="text-sm text-muted-foreground">Enviado hace 2 min</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 rounded-full bg-success/10 px-3 py-1">
+                      <div className="flex items-center gap-2 rounded-full bg-success/10 px-3 py-1.5 animate-pulse">
                         <CheckCircle2 className="h-4 w-4 text-success" />
                         <span className="text-sm font-medium text-success">Firmado</span>
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Live Activity Notification */}
+                  <div className="px-6 py-3 bg-success/5 border-b border-success/10 flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+                    </span>
+                    <p className="text-xs text-success font-medium">Documento firmado correctamente</p>
+                  </div>
+
                   {/* Document Body */}
                   <div className="p-6 space-y-4">
+                    {/* Document preview lines with shimmer */}
                     <div className="space-y-2">
-                      <div className="h-3 bg-muted rounded w-full" />
-                      <div className="h-3 bg-muted rounded w-4/5" />
-                      <div className="h-3 bg-muted rounded w-3/5" />
+                      <div className="h-3 bg-gradient-to-r from-muted via-muted-foreground/10 to-muted rounded w-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                      <div className="h-3 bg-gradient-to-r from-muted via-muted-foreground/10 to-muted rounded w-4/5 animate-pulse" style={{ animationDelay: '100ms' }} />
+                      <div className="h-3 bg-gradient-to-r from-muted via-muted-foreground/10 to-muted rounded w-3/5 animate-pulse" style={{ animationDelay: '200ms' }} />
                     </div>
+                    
+                    {/* Signature Area - Enhanced */}
                     <div className="pt-4 border-t border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="h-12 w-24 bg-muted rounded flex items-center justify-center">
-                          <span className="text-xs text-muted-foreground italic">Firma</span>
+                      <div className="flex items-center gap-4">
+                        {/* Signature Box with handwriting effect */}
+                        <div className="h-14 w-28 bg-gradient-to-br from-primary/5 to-muted rounded-lg border-2 border-dashed border-primary/30 flex items-center justify-center relative overflow-hidden">
+                          <svg viewBox="0 0 100 40" className="w-20 h-8 text-primary/60">
+                            <path 
+                              d="M5 30 Q20 10, 35 25 T65 20 Q80 15, 95 25" 
+                              fill="none" 
+                              stroke="currentColor" 
+                              strokeWidth="2" 
+                              strokeLinecap="round"
+                              className="animate-[draw_2s_ease-out_forwards]"
+                              style={{ 
+                                strokeDasharray: 150,
+                                strokeDashoffset: 0
+                              }}
+                            />
+                          </svg>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">María García</p>
-                          <p className="text-xs text-muted-foreground">Firmado: 23/01/2026, 14:32</p>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-foreground">María García</p>
+                          <p className="text-xs text-muted-foreground">Cliente · DNI: ***4821G</p>
+                          <p className="text-xs text-success mt-1 flex items-center gap-1">
+                            <Shield className="h-3 w-3" />
+                            Verificado por email
+                          </p>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Timestamp Footer */}
+                    <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+                      <span>ID: DOC-2026-00847</span>
+                      <span>23/01/2026, 14:32 CET</span>
                     </div>
                   </div>
                 </CardContent>
