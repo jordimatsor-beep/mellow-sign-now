@@ -1,50 +1,67 @@
 import { Link } from "react-router-dom";
-import { MulticentrosLogo } from "@/components/brand/BrandHeader";
+import { MulticentroLogo } from "@/components/brand/BrandHeader";
 
 export function Footer() {
-    return (
-        <footer className="bg-slate-950 py-12 text-slate-200">
-            <div className="container mx-auto px-4">
-                <div className="grid gap-8 md:grid-cols-4">
-
-                    {/* Brand */}
-                    <div className="col-span-1 md:col-span-1">
-                        <div className="flex items-center gap-2 mb-4">
-                            {/* Using text logo for footer legibility if needed, or component */}
-                            <span className="text-2xl font-bold text-white">FirmaClara</span>
-                        </div>
-                        <p className="text-sm text-slate-400">
-                            La solución de firma digital simple, legal y segura para tu negocio.
-                        </p>
-                        <p className="mt-4 text-xs text-slate-500">
-                            &copy; {new Date().getFullYear()} FirmaClara.
-                        </p>
-                    </div>
-
-                    <div className="md:col-span-1"></div>
-
-                    {/* Producto */}
-                    <div className="col-span-1">
-                        <h4 className="mb-4 font-bold text-white">Producto</h4>
-                        <ul className="space-y-2 text-sm">
-                            <li><Link to="/how-it-works" className="hover:text-blue-400">Cómo funciona</Link></li>
-                            <li><Link to="/credits/purchase" className="hover:text-blue-400">Precios</Link></li>
-                            <li><Link to="/legal" className="hover:text-blue-400">Legalidad</Link></li>
-                            <li><Link to="/help" className="hover:text-blue-400">Ayuda</Link></li>
-                        </ul>
-                    </div>
-
-                    {/* Legal */}
-                    <div className="col-span-1">
-                        <h4 className="mb-4 font-bold text-white">Legal</h4>
-                        <ul className="space-y-2 text-sm">
-                            <li><Link to="/terms" className="hover:text-blue-400">Términos de uso</Link></li>
-                            <li><Link to="/privacy" className="hover:text-blue-400">Privacidad</Link></li>
-                            <li><Link to="/legal" className="hover:text-blue-400">⚖️ Cumple eIDAS</Link></li>
-                        </ul>
-                    </div>
-                </div>
+  return (
+    <footer className="bg-[hsl(222,47%,11%)] py-12 text-slate-300">
+      <div className="container mx-auto px-4">
+        <div className="grid gap-8 md:grid-cols-5">
+          {/* Brand */}
+          <div className="md:col-span-2">
+            <div className="mb-4">
+              <MulticentroLogo className="h-10 [&_*]:!text-slate-300 [&_path]:!stroke-slate-400 [&_circle]:!fill-slate-400" />
             </div>
-        </footer>
-    );
+            <p className="text-sm text-slate-400 max-w-xs">
+              La solución de firma digital simple, legal y segura 
+              para profesionales y empresas.
+            </p>
+          </div>
+
+          {/* Product */}
+          <div>
+            <h4 className="mb-4 font-semibold text-white">Producto</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/how-it-works" className="text-slate-400 hover:text-white transition-colors">Cómo funciona</Link></li>
+              <li><Link to="/credits/purchase" className="text-slate-400 hover:text-white transition-colors">Precios</Link></li>
+              <li><Link to="/clara" className="text-slate-400 hover:text-white transition-colors">Clara IA</Link></li>
+            </ul>
+          </div>
+
+          {/* Solutions */}
+          <div>
+            <h4 className="mb-4 font-semibold text-white">Soluciones</h4>
+            <ul className="space-y-2 text-sm">
+              <li><span className="text-slate-400">Autónomos</span></li>
+              <li><span className="text-slate-400">Pymes</span></li>
+              <li><span className="text-slate-400">Comercios</span></li>
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h4 className="mb-4 font-semibold text-white">Legal</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/terms" className="text-slate-400 hover:text-white transition-colors">Términos de uso</Link></li>
+              <li><Link to="/privacy" className="text-slate-400 hover:text-white transition-colors">Privacidad</Link></li>
+              <li><Link to="/legal" className="text-slate-400 hover:text-white transition-colors">Cumplimiento eIDAS</Link></li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Bottom */}
+        <div className="mt-12 pt-8 border-t border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-xs text-slate-500">
+            &copy; {new Date().getFullYear()} Un servicio del ecosistema Multicentro. Tecnología operada por Operia.
+          </p>
+          <div className="flex items-center gap-4 text-xs text-slate-500">
+            <span>SSL/TLS</span>
+            <span>·</span>
+            <span>RGPD</span>
+            <span>·</span>
+            <span>eIDAS</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
 }
