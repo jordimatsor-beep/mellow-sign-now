@@ -304,10 +304,12 @@ export default function SignDocument() {
           setStep("view");
         }
 
-      } catch (err: unknown) {
-        console.error(err);
+      } catch (err: any) {
+        console.error("Error loading document:", err);
         setStep("error");
-        setErrorMsg(err instanceof Error ? err.message : "Error al cargar el documento");
+        // Handle Supabase errors (which are not always Error instances)
+        const message = err?.message || err?.error_description || (typeof err === 'string' ? err : "Error al cargar el documento");
+        setErrorMsg(message);
       }
     }
 
@@ -448,37 +450,69 @@ export default function SignDocument() {
 
   if (step === "complete") {
     return (
-      <div className="container flex flex-col items-center px-4 py-12 text-center">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
-          <Check className="h-8 w-8" />
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center pt-20 px-4">
+        <div className="mb-8 scale-110">
+          <MulticentroLogo />
         </div>
 
-        <h1 className="text-2xl font-bold">Documento firmado correctamente</h1>
-        <p className="mt-2 text-muted-foreground">
-          Fecha: {docData?.signedAt ? new Date(docData.signedAt).toLocaleString() : 'Ahora'}
-        </p>
+        <Card className="max-w-lg w-full shadow-xl border-green-100 overflow-hidden">
+          <div className="bg-green-50/50 p-8 flex flex-col items-center text-center border-b border-green-100/50">
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 shadow-sm ring-4 ring-white">
+              <Check className="h-10 w-10 text-green-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Documento Firmado</h1>
+            <p className="mt-2 text-muted-foreground">
+              El proceso de firma se ha completado correctamente.
+            </p>
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-green-200 bg-white px-4 py-1 text-sm text-green-700 shadow-sm">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+              Certificado generado a las {new Date().toLocaleTimeString()}
+            </div>
+          </div>
 
-        {/* Security badges */}
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <div className="flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-sm text-blue-700">
-            <Hash className="h-4 w-4" />
-            Integridad verificada
-          </div>
-          <div className="flex items-center gap-2 rounded-full bg-green-50 px-3 py-1.5 text-sm text-green-700">
-            <Clock className="h-4 w-4" />
-            Sellado temporal
-          </div>
-          <div className="flex items-center gap-2 rounded-full bg-purple-50 px-3 py-1.5 text-sm text-purple-700">
-            <Shield className="h-4 w-4" />
-            Evidencia legal
-          </div>
-        </div>
+          <CardContent className="p-8 space-y-6">
+            <div className="rounded-lg bg-slate-50 border p-4">
+              <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" />
+                Garantías de Seguridad Aplicadas
+              </h3>
+              <div className="grid gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 text-green-600" />
+                  <span>Integridad de contenido (SHA-256)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 text-green-600" />
+                  <span>Sello de tiempo cualificado</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 text-green-600" />
+                  <span>Custodia legal de evidencias</span>
+                </div>
+              </div>
+            </div>
 
-        <p className="mt-8 text-sm text-muted-foreground">
-          Recibirás una copia del documento firmado en tu email.
-        </p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Ya puedes cerrar esta ventana.
+            <div className="text-center space-y-4">
+              <p className="text-sm text-gray-600">
+                Hemos enviado una copia del documento firmado a tu correo electrónico <strong>{docData?.signer_email}</strong>.
+              </p>
+              <Button
+                onClick={() => window.location.href = docData?.file_url || '#'}
+                variant="outline"
+                className="w-full gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary"
+              >
+                <Download className="h-4 w-4" />
+                Descargar copia ahora
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <p className="mt-8 text-sm text-muted-foreground opacity-60">
+          Power by FirmaClara · Seguridad y Confianza
         </p>
       </div>
     );
@@ -493,7 +527,13 @@ export default function SignDocument() {
             <p className="text-sm text-muted-foreground">
               Documento enviado para tu firma
             </p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight">{docData?.title}</h1>
+            {/* Only show title if it's not the generic App Name, or style it differently */}
+            {docData?.title && docData.title !== 'FirmaClara' && (
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">{docData.title}</h1>
+            )}
+            {docData?.title === 'FirmaClara' && (
+              <h1 className="mt-1 text-xl font-medium tracking-tight text-muted-foreground">Documento adjunto</h1>
+            )}
           </div>
 
           {/* Issuer Trust Card */}

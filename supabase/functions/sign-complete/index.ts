@@ -209,11 +209,22 @@ serve(async (req: Request) => {
                 },
                 body: JSON.stringify({ document_id: doc.id })
             });
+
+            // 10. Send Signed Notification Email (New)
+            await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-signed-notification`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ document_id: doc.id })
+            });
+
         } catch (e) {
-            console.error("Failed to trigger audit trail generation", e);
+            console.error("Failed to trigger background tasks (audit/email)", e);
         }
 
-        // 10. Log event for notifications
+        // 11. Log event for notifications
         await supabase.from('event_logs').insert({
             user_id: doc.user_id,
             document_id: doc.id,
