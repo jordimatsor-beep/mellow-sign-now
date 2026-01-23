@@ -5,18 +5,18 @@
     "nav": {
         "home": "Inicio",
         "documents": "Documentos",
-        "clara": "Clara",
+        "contacts": "Contactos",
+        "clara": "Asistente",
         "credits": "Créditos",
         "settings": "Configuración",
-        "help": "Ayuda",
-        "contacts": "Agenda"
+        "help": "Ayuda"
     },
     "dashboard": {
-        "greeting": "Buenos días",
-        "credits_available": "créditos",
-        "available": "disponibles",
-        "create_document": "Crear documento",
-        "new_document": "Nuevo documento",
+        "greeting": "Hola",
+        "credits_available": "Saldo de envíos",
+        "available": "",
+        "create_document": "Nuevo Envío",
+        "new_document": "Nuevo Envío",
         "stats": {
             "pending": "Pendientes",
             "signed": "Firmados",
@@ -24,24 +24,24 @@
         },
         "recent_documents": "Documentos recientes",
         "view_all": "Ver todos",
-        "no_documents": "No hay documentos",
-        "no_documents_desc": "Empieza creando tu primer contrato",
-        "create_first": "Crear mi primer documento",
+        "no_documents": "Sin documentos",
+        "no_documents_desc": "Envía tu primer documento ahora",
+        "create_first": "Crear mi primer envío",
         "quick_actions": "Acciones rápidas",
         "new": "Nuevo",
-        "clara_ai": "Clara AI",
+        "clara_ai": "Asistente de Redacción",
         "need_help": "¿Necesitas ayuda?",
-        "help_desc": "Aprende cómo firmar documentos legalmente vinculantes en minutos.",
+        "help_desc": "Aprende a gestionar firmas digitales de forma profesional.",
         "view_tutorials": "Ver tutoriales"
     },
     "auth": {
-        "login": "Iniciar sesión",
+        "login": "Acceder al Panel",
         "register": "Registrarse",
-        "welcome_back": "Bienvenido de nuevo a FirmaClara",
+        "welcome_back": "Accede a tu panel de gestión",
         "email": "Email",
         "password": "Contraseña",
         "forgot_password": "¿Olvidaste tu contraseña?",
-        "sign_in": "Entrar",
+        "sign_in": "Acceder al Panel",
         "or_continue_with": "O continuar con",
         "google": "Google",
         "apple": "Apple",
@@ -79,16 +79,16 @@
         "logout": "Cerrar sesión"
     },
     "clara": {
-        "title": "Asistente Inteligente Clara",
-        "greeting": "¡Hola! Soy Clara, tu asistente inteligente. Ayudo a redactar presupuestos, correos formales y contratos. ¿En qué puedo ayudarte hoy?",
-        "placeholder": "Pregunta sobre presupuestos, documentos...",
-        "analyzing": "Clara está pensando...",
+        "title": "Asistente Inteligente",
+        "greeting": "Soy Clara. Puedo ayudarte a redactar presupuestos, contratos o comunicaciones formales en segundos.",
+        "placeholder": "Describe lo que necesitas redactar...",
+        "analyzing": "Clara está redactando...",
         "error_config": "Error de configuración: VITE_GEMINI_API_KEY no encontrada.",
         "error_processing": "Lo siento, ha ocurrido un error al procesar tu solicitud.",
         "error_safety": "⚠️ La solicitud ha sido bloqueada por motivos de seguridad.",
         "error_auth": "Error de autenticación con el servicio de IA.",
-        "manipulation_detected": "⚠️ Intento de manipulación de sistema detectado.",
-        "error_rate_limit": "⏳ Estás yendo muy rápido. Por favor, espera un momento."
+        "manipulation_detected": "⚠️ Intento de manipulación del sistema detectado.",
+        "error_rate_limit": "⏳ Vas demasiado rápido. Espera un momento."
     },
     "common": {
         "loading": "Cargando...",
@@ -106,7 +106,7 @@
         "error_fetch": "No se pudo cargar tu saldo. Inténtalo de nuevo."
     },
     "contacts": {
-        "title": "Agenda de Contactos",
+        "title": "Libreta de Direcciones",
         "new_contact": "Nuevo Contacto",
         "name": "Nombre",
         "email": "Email",
