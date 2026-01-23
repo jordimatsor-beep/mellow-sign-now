@@ -69,7 +69,7 @@ export default function SignDocument() {
     if (resendCooldown > 0) return;
 
     setResendCooldown(60); // Start 60s cooldown
-    const toastId = toast.loading(`Reenviando cÃ³digo por ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}...`);
+    const toastId = toast.loading(`Reenviando código por ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}...`);
 
     try {
       const { error } = await supabase.functions.invoke('send-otp', {
@@ -77,13 +77,13 @@ export default function SignDocument() {
       });
 
       if (error) {
-        throw new Error("Error al reenviar cÃ³digo");
+        throw new Error("Error al reenviar código");
       }
 
-      toast.success(`CÃ³digo reenviado por ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}`, { id: toastId });
+      toast.success(`Código reenviado por ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}`, { id: toastId });
     } catch (err) {
       console.error(err);
-      toast.error("Error al reenviar el cÃ³digo", { id: toastId });
+      toast.error("Error al reenviar el código", { id: toastId });
       setResendCooldown(0); // Reset cooldwon on error so they can try again
     }
   };
@@ -235,7 +235,7 @@ export default function SignDocument() {
   useEffect(() => {
     if (!token) {
       setStep("error");
-      setErrorMsg("Token no vÃ¡lido");
+      setErrorMsg("Token no válido");
       return;
     }
 
@@ -250,10 +250,10 @@ export default function SignDocument() {
         // RPC returns an array (setof record)
         const docRecord = (data as any[])?.[0];
 
-        if (!docRecord) throw new Error("Documento no encontrado o enlace invÃ¡lido");
+        if (!docRecord) throw new Error("Documento no encontrado o enlace inválido");
 
         if (docRecord.status !== 'sent' && docRecord.status !== 'viewed' && docRecord.status !== 'signed') {
-          throw new Error("Este documento no estÃ¡ disponible para firma");
+          throw new Error("Este documento no está disponible para firma");
         }
 
         // Check Expiration
@@ -369,11 +369,11 @@ export default function SignDocument() {
 
     if (requiresOtp) {
       if (!docData.signer_phone) {
-        toast.error("Error: Este documento requiere verificaciÃ³n por WhatsApp pero no tiene nÃºmero de telÃ©fono asociado.");
+        toast.error("Error: Este documento requiere verificación por WhatsApp pero no tiene número de teléfono asociado.");
         return;
       }
 
-      const toastId = toast.loading("Enviando cÃ³digo de seguridad...");
+      const toastId = toast.loading("Enviando código de seguridad...");
       try {
         const { error } = await supabase.functions.invoke('send-otp', {
           body: { token }
@@ -386,7 +386,7 @@ export default function SignDocument() {
 
         toast.dismiss(toastId);
         setStep("otp");
-        toast.info("CÃ³digo enviado a tu WhatsApp");
+        toast.info("Código enviado a tu WhatsApp");
       } catch (err: any) {
         console.error(err);
         toast.error(err.message, { id: toastId });
@@ -400,7 +400,7 @@ export default function SignDocument() {
 
   const handleOtpVerify = async () => {
     if (otpCode.length !== 6) {
-      setOtpError("Introduce el cÃ³digo completo de 6 dÃ­gitos");
+      setOtpError("Introduce el código completo de 6 dígitos");
       return;
     }
     setOtpError("");
@@ -512,7 +512,7 @@ export default function SignDocument() {
             <div className="rounded-lg bg-slate-50 border p-4">
               <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
                 <Shield className="h-4 w-4 text-primary" />
-                GarantÃ­as de Seguridad Aplicadas
+                Garantías de Seguridad Aplicadas
               </h3>
               <div className="grid gap-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
@@ -532,7 +532,7 @@ export default function SignDocument() {
 
             <div className="text-center space-y-4">
               <p className="text-sm text-gray-600">
-                Hemos enviado una copia del documento firmado a tu correo electrÃ³nico <strong>{docData?.signer_email}</strong>.
+                Hemos enviado una copia del documento firmado a tu correo electrónico <strong>{docData?.signer_email}</strong>.
               </p>
               <Button
                 onClick={() => window.location.href = docData?.file_url || '#'}
@@ -579,7 +579,7 @@ export default function SignDocument() {
               </p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                 <div>
-                  <span className="text-muted-foreground text-xs">RazÃ³n Social:</span>
+                  <span className="text-muted-foreground text-xs">Razón Social:</span>
                   <p className="font-medium">{docData.issuer_data.name}</p>
                 </div>
                 {docData.issuer_data.id && (
@@ -602,7 +602,7 @@ export default function SignDocument() {
                 <div className="flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 border border-amber-200">
                   <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                   <span className="text-xs font-medium text-amber-700">
-                    DesplÃ¡zate hasta el final para continuar
+                    Desplázate hasta el final para continuar
                   </span>
                 </div>
               ) : (
@@ -654,7 +654,7 @@ export default function SignDocument() {
                     checked={accepted}
                     onCheckedChange={(checked) => {
                       if (!canAccept) {
-                        toast.error("Por favor, desplÃ¡zate hasta el final del documento para poder aceptar.");
+                        toast.error("Por favor, desplázate hasta el final del documento para poder aceptar.");
                         return;
                       }
                       setAccepted(checked === true);
@@ -667,7 +667,7 @@ export default function SignDocument() {
                       Acepto el contenido de este documento
                     </span>
                     <span className="text-xs text-muted-foreground leading-tight block">
-                      Consiento el uso de la firma electrÃ³nica simple conforme al Reglamento eIDAS (UE) 910/2014.
+                      Consiento el uso de la firma electrónica simple conforme al Reglamento eIDAS (UE) 910/2014.
                     </span>
                   </div>
                 </label>
@@ -702,7 +702,7 @@ export default function SignDocument() {
                     />
                     {!hasSignature && (
                       <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/50 pointer-events-none">
-                        Firma aquÃ­
+                        Firma aquí
                       </div>
                     )}
                   </div>
@@ -759,10 +759,10 @@ export default function SignDocument() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Smartphone className="h-5 w-5 text-green-600" />
-              VerificaciÃ³n de Seguridad
+              Verificación de Seguridad
             </DialogTitle>
             <DialogDescription>
-              Por seguridad, introduce el cÃ³digo de 6 dÃ­gitos que hemos enviado a tu WhatsApp.
+              Por seguridad, introduce el código de 6 dígitos que hemos enviado a tu WhatsApp.
             </DialogDescription>
           </DialogHeader>
 
