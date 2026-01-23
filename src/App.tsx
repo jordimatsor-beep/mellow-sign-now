@@ -53,13 +53,8 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/update-password" element={<UpdatePassword />} />
-              <Route path="/onboarding" element={<Onboarding />} />
 
-              {/* Public signing page */}
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/how-it-works" element={<HowItWorks />} />
-
-              {/* Public signing page */}
+              {/* Public signing page & Content pages */}
               <Route element={<PublicLayout />}>
                 <Route path="/sign/:token" element={<SignDocument />} />
                 <Route path="/legal" element={<Legal />} />

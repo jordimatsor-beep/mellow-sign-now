@@ -90,9 +90,9 @@ export default function Index() {
 
             {/* Navigation links - ZapSign style */}
             <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
-              <a href="#legalidad" className="text-muted-foreground hover:text-foreground transition-colors">Legalidad</a>
-              <a href="#como-funciona" className="text-muted-foreground hover:text-foreground transition-colors">Cómo funciona</a>
-              <a href="#precios" className="text-muted-foreground hover:text-foreground transition-colors">Precios</a>
+              <Link to="/legal" className="text-muted-foreground hover:text-foreground transition-colors">Legalidad</Link>
+              <Link to="/how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">Cómo funciona</Link>
+              <Link to="/credits/purchase" className="text-muted-foreground hover:text-foreground transition-colors">Precios</Link>
             </nav>
           </div>
 
@@ -148,7 +148,7 @@ export default function Index() {
                   </Link>
                 </Button>
                 <Button size="lg" variant="outline" className="h-11 px-6" asChild>
-                  <a href="#como-funciona">Ver cómo funciona</a>
+                  <Link to="/how-it-works">Ver cómo funciona</Link>
                 </Button>
               </div>
 
@@ -635,9 +635,9 @@ export default function Index() {
             <div>
               <h4 className="font-semibold text-background mb-3 text-sm">Producto</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#legalidad" className="hover:text-background transition-colors">Legalidad</a></li>
-                <li><a href="#como-funciona" className="hover:text-background transition-colors">Cómo funciona</a></li>
-                <li><a href="#precios" className="hover:text-background transition-colors">Precios</a></li>
+                <li><Link to="/legal" className="hover:text-background transition-colors">Legalidad</Link></li>
+                <li><Link to="/how-it-works" className="hover:text-background transition-colors">Cómo funciona</Link></li>
+                <li><Link to="/credits/purchase" className="hover:text-background transition-colors">Precios</Link></li>
               </ul>
             </div>
 
