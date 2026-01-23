@@ -100,26 +100,32 @@ export type Database = {
       }
       contacts: {
         Row: {
+          address: string | null
           created_at: string
           email: string
           id: string
           name: string | null
+          nif: string | null
           phone: string | null
           user_id: string
         }
         Insert: {
+          address?: string | null
           created_at?: string
           email: string
           id?: string
           name?: string | null
+          nif?: string | null
           phone?: string | null
           user_id: string
         }
         Update: {
+          address?: string | null
           created_at?: string
           email?: string
           id?: string
           name?: string | null
+          nif?: string | null
           phone?: string | null
           user_id?: string
         }
@@ -193,26 +199,27 @@ export type Database = {
           file_hash: string | null
           file_url: string
           id: string
+          otp_code_hash: string | null
+          otp_expires_at: string | null
+          security_level:
+            | Database["public"]["Enums"]["security_level_enum"]
+            | null
           sent_at: string | null
           sign_token: string | null
           signature_type: string | null
           signed_at: string | null
           signed_file_url: string | null
+          signer_address: string | null
           signer_email: string | null
           signer_name: string | null
           signer_phone: string | null
           signer_tax_id: string | null
-          signer_address: string | null
-          signer_company_name: string | null
           status: string | null
-          security_level: "standard" | "whatsapp_otp" | null
-          otp_code_hash: string | null
-          otp_expires_at: string | null
-          whatsapp_verification_status: string | null
           title: string
           updated_at: string | null
           user_id: string
           viewed_at: string | null
+          whatsapp_verification_status: string | null
         }
         Insert: {
           cancelled_at?: string | null
@@ -223,23 +230,27 @@ export type Database = {
           file_hash?: string | null
           file_url: string
           id?: string
+          otp_code_hash?: string | null
+          otp_expires_at?: string | null
+          security_level?:
+            | Database["public"]["Enums"]["security_level_enum"]
+            | null
           sent_at?: string | null
           sign_token?: string | null
           signature_type?: string | null
           signed_at?: string | null
           signed_file_url?: string | null
+          signer_address?: string | null
           signer_email?: string | null
           signer_name?: string | null
           signer_phone?: string | null
+          signer_tax_id?: string | null
           status?: string | null
-          security_level?: "standard" | "whatsapp_otp" | null
-          otp_code_hash?: string | null
-          otp_expires_at?: string | null
-          whatsapp_verification_status?: string | null
           title: string
           updated_at?: string | null
           user_id: string
           viewed_at?: string | null
+          whatsapp_verification_status?: string | null
         }
         Update: {
           cancelled_at?: string | null
@@ -250,23 +261,27 @@ export type Database = {
           file_hash?: string | null
           file_url?: string
           id?: string
+          otp_code_hash?: string | null
+          otp_expires_at?: string | null
+          security_level?:
+            | Database["public"]["Enums"]["security_level_enum"]
+            | null
           sent_at?: string | null
           sign_token?: string | null
           signature_type?: string | null
           signed_at?: string | null
           signed_file_url?: string | null
+          signer_address?: string | null
           signer_email?: string | null
           signer_name?: string | null
           signer_phone?: string | null
+          signer_tax_id?: string | null
           status?: string | null
-          security_level?: "standard" | "whatsapp_otp" | null
-          otp_code_hash?: string | null
-          otp_expires_at?: string | null
-          whatsapp_verification_status?: string | null
           title?: string
           updated_at?: string | null
           user_id?: string
           viewed_at?: string | null
+          whatsapp_verification_status?: string | null
         }
         Relationships: [
           {
@@ -339,6 +354,7 @@ export type Database = {
           name: string
           price: number
           price_per_credit: number | null
+          stripe_price_id: string | null
           type: string
         }
         Insert: {
@@ -346,6 +362,7 @@ export type Database = {
           name: string
           price: number
           price_per_credit?: number | null
+          stripe_price_id?: string | null
           type: string
         }
         Update: {
@@ -353,6 +370,7 @@ export type Database = {
           name?: string
           price?: number
           price_per_credit?: number | null
+          stripe_price_id?: string | null
           type?: string
         }
         Relationships: []
@@ -365,6 +383,9 @@ export type Database = {
           hash_sha256: string
           id: string
           ip_address: unknown
+          otp_channel: string | null
+          otp_code_ref: string | null
+          otp_verified_at: string | null
           signature_image_url: string | null
           signed_at: string | null
           signer_email: string
@@ -373,9 +394,6 @@ export type Database = {
           tsa_response: string | null
           tsa_timestamp: string | null
           user_agent: string | null
-          otp_channel: "none" | "whatsapp" | null
-          otp_verified_at: string | null
-          otp_code_ref: string | null
         }
         Insert: {
           acceptance_text?: string | null
@@ -384,6 +402,9 @@ export type Database = {
           hash_sha256: string
           id?: string
           ip_address?: unknown
+          otp_channel?: string | null
+          otp_code_ref?: string | null
+          otp_verified_at?: string | null
           signature_image_url?: string | null
           signed_at?: string | null
           signer_email: string
@@ -392,9 +413,6 @@ export type Database = {
           tsa_response?: string | null
           tsa_timestamp?: string | null
           user_agent?: string | null
-          otp_channel?: "none" | "whatsapp" | null
-          otp_verified_at?: string | null
-          otp_code_ref?: string | null
         }
         Update: {
           acceptance_text?: string | null
@@ -403,6 +421,9 @@ export type Database = {
           hash_sha256?: string
           id?: string
           ip_address?: unknown
+          otp_channel?: string | null
+          otp_code_ref?: string | null
+          otp_verified_at?: string | null
           signature_image_url?: string | null
           signed_at?: string | null
           signer_email?: string
@@ -411,9 +432,6 @@ export type Database = {
           tsa_response?: string | null
           tsa_timestamp?: string | null
           user_agent?: string | null
-          otp_channel?: "none" | "whatsapp" | null
-          otp_verified_at?: string | null
-          otp_code_ref?: string | null
         }
         Relationships: [
           {
@@ -435,6 +453,7 @@ export type Database = {
       users: {
         Row: {
           address: string | null
+          billing_email: string | null
           city: string | null
           company_name: string | null
           country: string | null
@@ -444,6 +463,8 @@ export type Database = {
           issuer_type: string | null
           legal_accepted: boolean | null
           legal_accepted_at: string | null
+          legal_address: string | null
+          legal_type: string | null
           multicentros_id: string | null
           name: string | null
           onboarding_completed: boolean | null
@@ -452,12 +473,10 @@ export type Database = {
           tax_id: string | null
           updated_at: string | null
           zip_code: string | null
-          legal_type: "individual" | "company" | null
-          legal_address: string | null
-          billing_email: string | null
         }
         Insert: {
           address?: string | null
+          billing_email?: string | null
           city?: string | null
           company_name?: string | null
           country?: string | null
@@ -467,6 +486,8 @@ export type Database = {
           issuer_type?: string | null
           legal_accepted?: boolean | null
           legal_accepted_at?: string | null
+          legal_address?: string | null
+          legal_type?: string | null
           multicentros_id?: string | null
           name?: string | null
           onboarding_completed?: boolean | null
@@ -478,6 +499,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          billing_email?: string | null
           city?: string | null
           company_name?: string | null
           country?: string | null
@@ -487,6 +509,8 @@ export type Database = {
           issuer_type?: string | null
           legal_accepted?: boolean | null
           legal_accepted_at?: string | null
+          legal_address?: string | null
+          legal_type?: string | null
           multicentros_id?: string | null
           name?: string | null
           onboarding_completed?: boolean | null
@@ -578,21 +602,37 @@ export type Database = {
         }[]
       }
       mark_expired_documents: { Args: never; Returns: number }
-      submit_signature: {
-        Args: {
-          p_hash_sha256: string
-          p_ip_address: unknown
-          p_sign_token: string
-          p_signature_image_url: string
-          p_signer_email: string
-          p_signer_name: string
-          p_user_agent: string
-        }
-        Returns: Json
-      }
+      submit_signature:
+        | {
+            Args: {
+              p_hash_sha256: string
+              p_ip_address: unknown
+              p_sign_token: string
+              p_signature_image_url: string
+              p_signer_email: string
+              p_signer_name: string
+              p_user_agent: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_hash_sha256: string
+              p_ip_address: unknown
+              p_sign_token: string
+              p_signature_image_url: string
+              p_signer_email: string
+              p_signer_name: string
+              p_tsa_request?: string
+              p_tsa_response?: string
+              p_tsa_timestamp?: string
+              p_user_agent: string
+            }
+            Returns: Json
+          }
     }
     Enums: {
-      [_ in never]: never
+      security_level_enum: "standard" | "whatsapp_otp"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -606,119 +646,121 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      security_level_enum: ["standard", "whatsapp_otp"],
+    },
   },
 } as const
