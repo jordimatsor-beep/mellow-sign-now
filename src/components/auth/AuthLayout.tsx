@@ -18,10 +18,11 @@ export function AuthLayout({ children, title, subtitle, mode = 'login' }: AuthLa
             <div className="flex w-full flex-col justify-center px-4 sm:px-6 lg:w-1/2 lg:px-20 xl:px-24 relative z-10">
                 <div className="mx-auto w-full max-w-sm lg:w-96">
                     <div className="mb-10">
+                        {/* Logo Multicentro - El usuario debe sentir que está en su entorno de confianza */}
                         <img
-                            src="https://storage.googleapis.com/msgsndr/tdZAorlZ97ZS4xrRVntK/media/6970195cd4fb900ce1a6403e.png"
-                            alt="FirmaClara"
-                            className="h-24 w-auto mb-6"
+                            src="/multicentro-logo.jpg"
+                            alt="Multicentro"
+                            className="h-20 w-auto mb-6"
                         />
                         <h2 className="text-3xl font-bold tracking-tight text-slate-900">{title}</h2>
                         {subtitle && (
@@ -32,7 +33,7 @@ export function AuthLayout({ children, title, subtitle, mode = 'login' }: AuthLa
 
                         {/* Visual reinforcement for Register */}
                         {mode === 'register' && (
-                            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-primary/20">
                                 <Sparkles className="h-3 w-3" />
                                 Regalo de bienvenida incluido
                             </div>
@@ -45,8 +46,8 @@ export function AuthLayout({ children, title, subtitle, mode = 'login' }: AuthLa
                 </div>
             </div>
 
-            {/* Right Panel - Info & Visuals */}
-            <div className="hidden lg:relative lg:flex lg:w-1/2 lg:flex-col lg:justify-center lg:items-center lg:bg-blue-600 text-white overflow-hidden">
+            {/* Right Panel - Info & Visuals - Usando el color primario Multicentro */}
+            <div className="hidden lg:relative lg:flex lg:w-1/2 lg:flex-col lg:justify-center lg:items-center lg:bg-primary text-white overflow-hidden">
 
                 {/* Background Texture: Dot Pattern */}
                 <div className="absolute inset-0 opacity-10"
@@ -55,13 +56,13 @@ export function AuthLayout({ children, title, subtitle, mode = 'login' }: AuthLa
 
                 {/* Big Typography as Texture */}
                 <div className="absolute top-10 right-10 text-9xl font-black text-white opacity-5 select-none pointer-events-none transform rotate-12">
-                    LEGAL
-                </div>
-                <div className="absolute bottom-10 left-10 text-9xl font-black text-white opacity-5 select-none pointer-events-none transform -rotate-6">
                     FIRMA
                 </div>
+                <div className="absolute bottom-10 left-10 text-9xl font-black text-white opacity-5 select-none pointer-events-none transform -rotate-6">
+                    DIGITAL
+                </div>
 
-                {/* Separator - Custom Shape (More organic/textured edge) */}
+                {/* Separator - Custom Shape */}
                 <div
                     className="absolute top-0 bottom-0 left-0 w-24 bg-white z-20"
                     style={{
@@ -70,7 +71,7 @@ export function AuthLayout({ children, title, subtitle, mode = 'login' }: AuthLa
                 />
                 {/* Layered wave for depth */}
                 <div
-                    className="absolute top-0 bottom-0 left-0 w-32 bg-blue-500/30 z-10"
+                    className="absolute top-0 bottom-0 left-0 w-32 bg-primary-foreground/10 z-10"
                     style={{
                         clipPath: "polygon(0 0, 100% 0, 90% 20%, 100% 40%, 85% 60%, 100% 80%, 90% 100%, 0 100%)"
                     }}
@@ -83,30 +84,30 @@ export function AuthLayout({ children, title, subtitle, mode = 'login' }: AuthLa
                         // REGISTER CONTENT
                         <>
                             <div>
-                                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-green-400 text-white shadow-lg ring-4 ring-green-400/30">
+                                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 text-white shadow-lg ring-4 ring-white/10">
                                     <Sparkles className="h-6 w-6" />
                                 </div>
                                 <h3 className="text-4xl font-bold leading-tight">
                                     Empieza con <br />
-                                    <span className="text-green-300">2 Créditos Gratis</span>
+                                    <span className="text-white/80">2 Envíos Gratis</span>
                                 </h3>
-                                <p className="mt-4 text-lg text-blue-100/90 font-light leading-relaxed">
-                                    Únete a miles de autónomos que ya firman digitalmente. Sin tarjetas de crédito para probar.
+                                <p className="mt-4 text-lg text-white/80 font-light leading-relaxed">
+                                    Únete a miles de profesionales que ya gestionan documentos digitalmente. Sin tarjeta de crédito.
                                 </p>
                             </div>
 
                             <div className="space-y-4">
-                                <div className="flex items-center gap-3 text-blue-50">
-                                    <CheckCircle2 className="h-5 w-5 text-green-300" />
-                                    <span>Firma desde el móvil o PC</span>
+                                <div className="flex items-center gap-3 text-white/90">
+                                    <CheckCircle2 className="h-5 w-5 text-white/80" />
+                                    <span>Presupuestos, partes y contratos</span>
                                 </div>
-                                <div className="flex items-center gap-3 text-blue-50">
-                                    <CheckCircle2 className="h-5 w-5 text-green-300" />
-                                    <span>Contratos blindados legalmente</span>
+                                <div className="flex items-center gap-3 text-white/90">
+                                    <CheckCircle2 className="h-5 w-5 text-white/80" />
+                                    <span>Firma desde móvil o PC</span>
                                 </div>
-                                <div className="flex items-center gap-3 text-blue-50">
-                                    <CheckCircle2 className="h-5 w-5 text-green-300" />
-                                    <span>Historial de auditoría completo</span>
+                                <div className="flex items-center gap-3 text-white/90">
+                                    <CheckCircle2 className="h-5 w-5 text-white/80" />
+                                    <span>Validez legal eIDAS</span>
                                 </div>
                             </div>
                         </>
@@ -115,24 +116,24 @@ export function AuthLayout({ children, title, subtitle, mode = 'login' }: AuthLa
                         <>
                             <div>
                                 <h3 className="text-3xl font-bold leading-tight">
-                                    Tu oficina legal, <br />
-                                    <span className="text-blue-200">simplificada.</span>
+                                    Tu gestión documental, <br />
+                                    <span className="text-white/80">simplificada.</span>
                                 </h3>
-                                <p className="mt-6 text-lg text-blue-100 font-light">
-                                    "La tecnología no debería ser una barrera, sino un puente hacia la tranquilidad legal."
+                                <p className="mt-6 text-lg text-white/80 font-light">
+                                    Cierra presupuestos, firma partes de trabajo y gestiona contratos desde un solo lugar.
                                 </p>
                             </div>
 
                             <div className="grid grid-cols-1 gap-4 pt-4">
                                 <FeatureRow
-                                    icon={<ShieldCheck className="h-6 w-6 text-blue-200" />}
-                                    title="Seguridad Bancaria"
+                                    icon={<ShieldCheck className="h-6 w-6 text-white/80" />}
+                                    title="Seguridad Garantizada"
                                     desc="Tus documentos están cifrados y protegidos."
                                 />
                                 <FeatureRow
-                                    icon={<Sparkles className="h-6 w-6 text-blue-200" />}
-                                    title="Asistencia Inteligente"
-                                    desc="Clara está lista para revisar tus borradores."
+                                    icon={<Sparkles className="h-6 w-6 text-white/80" />}
+                                    title="Clara, tu Asistente"
+                                    desc="Ayuda a redactar presupuestos y documentos."
                                 />
                             </div>
                         </>
@@ -152,7 +153,7 @@ function FeatureRow({ icon, title, desc }: { icon: ReactNode, title: string, des
             </div>
             <div>
                 <h4 className="font-semibold text-white">{title}</h4>
-                <p className="text-sm text-blue-100 leading-relaxed opacity-80">{desc}</p>
+                <p className="text-sm text-white/70 leading-relaxed">{desc}</p>
             </div>
         </div>
     )

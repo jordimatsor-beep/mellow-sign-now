@@ -6,8 +6,6 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { MulticentrosLogo, PoweredByOperia } from "@/components/brand/BrandHeader";
-import { Separator } from "@/components/ui/separator";
 
 export function Sidebar() {
   const { t } = useTranslation();
@@ -26,7 +24,6 @@ export function Sidebar() {
         if (data && data.name) {
           setUserName(data.name);
         } else {
-          // Fallback to metadata if DB is empty or fetching fails, or email
           setUserName(user.user_metadata?.full_name || user.email?.split('@')[0] || "Usuario");
         }
       };
@@ -37,7 +34,7 @@ export function Sidebar() {
   const navItems = [
     { to: "/dashboard", icon: Home, label: t('nav.home') },
     { to: "/documents", icon: FileText, label: t('nav.documents') },
-    { to: "/contacts", icon: User, label: "Agenda" },
+    { to: "/contacts", icon: User, label: t('nav.contacts') },
     { to: "/clara", icon: Sparkles, label: t('nav.clara') },
     { to: "/credits", icon: CreditCard, label: t('nav.credits') },
   ];
@@ -49,15 +46,18 @@ export function Sidebar() {
 
   return (
     <aside className="hidden w-64 flex-col border-r bg-sidebar md:flex h-full">
-      {/* Logo - Multicentros Branding */}
-      <div className="flex h-14 items-center gap-2 border-b px-4">
-        <MulticentrosLogo className="h-8" />
+      {/* Logo - Multicentro Branding - GRANDE y con espacio */}
+      <div className="flex h-24 items-center justify-center border-b px-6 bg-white">
+        <img 
+          src="/multicentro-logo.jpg" 
+          alt="Multicentro" 
+          className="h-16 w-auto object-contain"
+        />
       </div>
 
-      {/* Service name */}
-      <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
-        <span className="text-sm font-medium text-foreground">Firma Digital</span>
-        <PoweredByOperia className="text-[10px]" />
+      {/* Service name - Sin "Powered by" */}
+      <div className="flex items-center justify-center px-4 py-3 border-b bg-primary/5">
+        <span className="text-sm font-bold text-primary">Firma Digital</span>
       </div>
 
       {/* CTA */}
@@ -65,7 +65,7 @@ export function Sidebar() {
         <Button asChild className="w-full gap-2">
           <NavLink to="/documents/new">
             <Plus className="h-4 w-4" />
-            {t('dashboard.new_document')}
+            Nuevo Documento
           </NavLink>
         </Button>
       </div>
@@ -126,13 +126,20 @@ export function Sidebar() {
       <div className="border-t p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            U
+            {userName?.charAt(0)?.toUpperCase() || 'U'}
           </div>
           <div className="flex-1 overflow-hidden">
             <p className="truncate text-sm font-medium">{userName}</p>
             <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
           </div>
         </div>
+      </div>
+
+      {/* Footer - Powered by Operia (subtle) */}
+      <div className="border-t px-4 py-3 bg-muted/30">
+        <p className="text-[10px] text-muted-foreground/60 text-center">
+          Tecnología <span className="font-medium">OPERIA</span>
+        </p>
       </div>
     </aside>
   );

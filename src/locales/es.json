@@ -79,15 +79,15 @@
         "logout": "Cerrar sesión"
     },
     "clara": {
-        "title": "Asistente Legal Clara",
-        "greeting": "¡Hola! Soy Clara, tu asistente legal experta en FirmaClara. ¿En qué puedo ayudarte con tus contratos o documentos hoy?",
-        "placeholder": "Pregunta sobre contratos, cláusulas...",
-        "analyzing": "Clara está analizando...",
+        "title": "Asistente Inteligente Clara",
+        "greeting": "¡Hola! Soy Clara, tu asistente inteligente. Ayudo a redactar presupuestos, correos formales y contratos. ¿En qué puedo ayudarte hoy?",
+        "placeholder": "Pregunta sobre presupuestos, documentos...",
+        "analyzing": "Clara está pensando...",
         "error_config": "Error de configuración: VITE_GEMINI_API_KEY no encontrada.",
         "error_processing": "Lo siento, ha ocurrido un error al procesar tu solicitud.",
         "error_safety": "⚠️ La solicitud ha sido bloqueada por motivos de seguridad.",
         "error_auth": "Error de autenticación con el servicio de IA.",
-        "manipulation_detected": "⚠️ Intento de manipulación de sistema detectado. Mi función es exclusivamente legal y contractual.",
+        "manipulation_detected": "⚠️ Intento de manipulación de sistema detectado.",
         "error_rate_limit": "⏳ Estás yendo muy rápido. Por favor, espera un momento."
     },
     "common": {
