@@ -1,13 +1,15 @@
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { LegalModal } from "@/components/LegalModals";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { 
-  ArrowRight, 
-  Check, 
-  FileText, 
-  Clock, 
-  Hash, 
+import {
+  ArrowRight,
+  Check,
+  FileText,
+  Clock,
+  Hash,
   MapPin,
   X,
   MessageCircle,
@@ -22,6 +24,15 @@ import {
 import { Separator } from "@/components/ui/separator";
 
 export default function Index() {
+  const { session } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (session) {
+      navigate("/dashboard");
+    }
+  }, [session, navigate]);
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Top Banner - ZapSign style */}
@@ -44,20 +55,20 @@ export default function Index() {
                 {/* Cart icon */}
                 <g transform="translate(0, 5)">
                   {/* Cart body */}
-                  <path 
-                    d="M8 15 L15 15 L15 38 Q15 45 22 45 L42 45" 
-                    stroke="#6B7280" 
-                    strokeWidth="5" 
-                    strokeLinecap="round" 
+                  <path
+                    d="M8 15 L15 15 L15 38 Q15 45 22 45 L42 45"
+                    stroke="#6B7280"
+                    strokeWidth="5"
+                    strokeLinecap="round"
                     strokeLinejoin="round"
                     fill="none"
                   />
                   {/* Cart handle */}
-                  <path 
-                    d="M8 15 L3 5" 
-                    stroke="#6B7280" 
-                    strokeWidth="5" 
-                    strokeLinecap="round" 
+                  <path
+                    d="M8 15 L3 5"
+                    stroke="#6B7280"
+                    strokeWidth="5"
+                    strokeLinecap="round"
                     fill="none"
                   />
                   {/* Wheels */}
@@ -92,7 +103,7 @@ export default function Index() {
               <span>Powered by</span>
               <span className="font-bold">OPERIA</span>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
                 <Link to="/login">Ingresar</Link>
@@ -124,7 +135,7 @@ export default function Index() {
               </h1>
 
               <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-                Envía documentos desde tu panel o <strong className="text-primary">créalos con IA Clara</strong>. 
+                Envía documentos desde tu panel o <strong className="text-primary">créalos con IA Clara</strong>.
                 Un nuevo servicio exclusivo para clientes Multicentro.
               </p>
 
@@ -317,7 +328,7 @@ export default function Index() {
                   Crea documentos con <span className="text-primary">Clara IA</span>
                 </h2>
                 <p className="mt-3 text-muted-foreground">
-                  ¿No tienes un PDF listo? Describe lo que necesitas y Clara, nuestra asistente legal con IA, 
+                  ¿No tienes un PDF listo? Describe lo que necesitas y Clara, nuestra asistente legal con IA,
                   generará un documento profesional en segundos.
                 </p>
                 <ul className="mt-4 space-y-2 text-sm">
@@ -568,10 +579,10 @@ export default function Index() {
           <p className="mt-2 text-primary-foreground/80 max-w-lg mx-auto">
             Cierra acuerdos en 1 minuto con la garantía de tu partner de confianza.
           </p>
-          <Button 
-            size="lg" 
-            variant="secondary" 
-            className="mt-6 h-11 px-6" 
+          <Button
+            size="lg"
+            variant="secondary"
+            className="mt-6 h-11 px-6"
             asChild
           >
             <Link to="/register">
@@ -592,16 +603,16 @@ export default function Index() {
                 {/* Footer logo - simplified version */}
                 <svg viewBox="0 0 160 50" className="h-10 w-auto">
                   <g transform="translate(0, 3)">
-                    <path 
-                      d="M6 12 L12 12 L12 32 Q12 38 18 38 L35 38" 
-                      stroke="currentColor" 
-                      strokeWidth="4" 
-                      strokeLinecap="round" 
+                    <path
+                      d="M6 12 L12 12 L12 32 Q12 38 18 38 L35 38"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      strokeLinecap="round"
                       strokeLinejoin="round"
                       fill="none"
                       opacity="0.6"
                     />
-                    <path d="M6 12 L2 4" stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.6"/>
+                    <path d="M6 12 L2 4" stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.6" />
                     <circle cx="20" cy="42" r="3" fill="currentColor" opacity="0.6" />
                     <circle cx="31" cy="42" r="3" fill="currentColor" opacity="0.6" />
                     <circle cx="12" cy="5" r="4" fill="#9F7AEA" />
@@ -654,7 +665,7 @@ export default function Index() {
               </ul>
             </div>
           </div>
-          
+
           <div className="mt-8 pt-6 border-t border-background/10 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
             <p>&copy; 2024 Multicentro Comercial. Todos los derechos reservados.</p>
             <p className="text-background/50">Un servicio del ecosistema Multicentro</p>

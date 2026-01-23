@@ -1,4 +1,4 @@
-import { Home, FileText, Sparkles, CreditCard, Settings, HelpCircle, Plus } from "lucide-react";
+import { Home, FileText, Sparkles, CreditCard, Settings, HelpCircle, Plus, User } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ export function Sidebar() {
   const navItems = [
     { to: "/dashboard", icon: Home, label: t('nav.home') },
     { to: "/documents", icon: FileText, label: t('nav.documents') },
+    { to: "/contacts", icon: User, label: "Agenda" },
     { to: "/clara", icon: Sparkles, label: t('nav.clara') },
     { to: "/credits", icon: CreditCard, label: t('nav.credits') },
   ];
@@ -52,7 +53,7 @@ export function Sidebar() {
       <div className="flex h-14 items-center gap-2 border-b px-4">
         <MulticentrosLogo className="h-8" />
       </div>
-      
+
       {/* Service name */}
       <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
         <span className="text-sm font-medium text-foreground">Firma Digital</span>

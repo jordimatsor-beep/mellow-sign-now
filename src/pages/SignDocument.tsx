@@ -219,6 +219,11 @@ export default function SignDocument() {
           throw new Error("Este documento no está disponible para firma");
         }
 
+        // Check Expiration
+        if (data.expires_at && new Date(data.expires_at) < new Date()) {
+          throw new Error("Este enlace de firma ha caducado (expiró el " + new Date(data.expires_at).toLocaleDateString() + ")");
+        }
+
         if (data.status === 'sent') {
           await supabase
             .from('documents')
@@ -664,6 +669,41 @@ export default function SignDocument() {
             {otpError && (
               <p className="text-sm text-destructive">{otpError}</p>
             )}
+
+            <div className="flex gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => {
+                  const toastId = toast.loading("Reenviando por WhatsApp...");
+                  supabase.functions.invoke('send-otp', { body: { token, channel: 'whatsapp' } })
+                    .then(({ error }) => {
+                      if (error) throw error;
+                      toast.success("Código reenviado por WhatsApp", { id: toastId });
+                    })
+                    .catch(e => toast.error("Error al reenviar", { id: toastId }));
+                }}
+              >
+                Reenviar (WhatsApp)
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => {
+                  const toastId = toast.loading("Enviando SMS...");
+                  supabase.functions.invoke('send-otp', { body: { token, channel: 'sms' } })
+                    .then(({ error }) => {
+                      if (error) throw error;
+                      toast.success("Código enviado por SMS", { id: toastId });
+                    })
+                    .catch(e => toast.error("Error al enviar SMS", { id: toastId }));
+                }}
+              >
+                Enviar por SMS
+              </Button>
+            </div>
           </div>
 
           <DialogFooter>

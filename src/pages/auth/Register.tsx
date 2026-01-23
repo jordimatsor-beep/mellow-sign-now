@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, MailCheck, ArrowLeft } from "lucide-react";
 import { AuthLayout } from "@/components/auth/AuthLayout";
+import { useAuth } from "@/context/AuthContext";
+import { useEffect } from "react";
 
 export default function Register() {
     const navigate = useNavigate();
@@ -14,6 +16,15 @@ export default function Register() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+
+    // Auto-redirect if already logged in
+    const { session } = useAuth();
+
+    useEffect(() => {
+        if (session) {
+            navigate("/dashboard");
+        }
+    }, [session, navigate]);
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -115,7 +126,7 @@ export default function Register() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 gap-4 mb-6">
                 <Button variant="outline" className="h-11 hover:bg-slate-50 transition-colors" onClick={() => {
                     supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/dashboard` } });
                 }}>
@@ -126,14 +137,6 @@ export default function Register() {
                         <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                     </svg>
                     Google
-                </Button>
-                <Button variant="outline" className="h-11 hover:bg-slate-50 transition-colors" onClick={() => {
-                    supabase.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: `${window.location.origin}/dashboard` } });
-                }}>
-                    <svg className="mr-2 h-4 w-4 fill-current" viewBox="0 0 24 24">
-                        <path d="M17.05 20.28c-.98.95-2.05.88-3.08.35-1.09-.56-2.07-.49-3.17.06-1.5.75-2.19.45-3.03-.45-3.15-3.26-4.05-8.15-1.92-10.74 1.15-1.4 3.08-1.55 4.19-.38.8.84 2 .87 2.76.04 1.29-1.39 3.45-1.12 4.41.04.7.9 2.5 3.35 1.74 3.37-.11.02-.27.09-.4.18-2.03 1.4-1.9 4.35 1.05 5.56-.63 1.25-1.41 2.37-2.55 3.97zm-4.75-14.18c.03-.13.06-.27.07-.4.21-1.8 1.57-3.16 3.19-3.19.12 1.62-.87 3.23-3.26 3.59z" />
-                    </svg>
-                    Apple
                 </Button>
             </div>
 

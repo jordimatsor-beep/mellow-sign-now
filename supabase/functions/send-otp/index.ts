@@ -20,7 +20,7 @@ serve(async (req) => {
 
         // Parse body
         const body = await req.json()
-        const { token } = body
+        const { token, channel = 'whatsapp' } = body
 
         if (!token) throw new Error('Token is required')
 
@@ -32,16 +32,13 @@ serve(async (req) => {
             .single()
 
         if (docError || !doc) throw new Error('Documento no encontrado')
-        if (doc.security_level === 'standard') throw new Error('Este documento no requiere verificación por WhatsApp')
+        // Allow SMS fallback even if security level says whatsapp_otp? Yes, it's just the channel.
+        if (doc.security_level === 'standard') throw new Error('Este documento no requiere verificación por OTP')
 
         // Clean phone number (remove spaces, ensure + prefix if needed)
-        // Assuming signer_phone might come in various formats, rigorous cleaning needed for Twilio
-        // For now, strip non-digits and ensure + if missing? 
-        // Just minimal cleanup: remove spaces/dashes.
         if (!doc.signer_phone) throw new Error('El teléfono del firmante no está registrado')
 
         const phone = doc.signer_phone.replace(/[\s\-\(\)]/g, '')
-        // Assuming intl format is provided or defaulting to +34? Let's leave as is for now but prepend whatsapp:
 
         // 2. Generate OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString()
@@ -61,24 +58,47 @@ serve(async (req) => {
             .update({
                 otp_code_hash: otpHash,
                 otp_expires_at: expiresAt.toISOString(),
-                whatsapp_verification_status: 'sent'
+                whatsapp_verification_status: 'sent' // We keep this name for legacy compatibility
             })
             .eq('id', doc.id)
 
         if (updateError) throw updateError
 
-        // 5. Send WhatsApp
+        // 5. Send Message (Twilio)
         const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
         const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
-        const fromNumber = Deno.env.get('TWILIO_FROM_NUMBER') || 'whatsapp:+14155238886'
+        let fromNumber = Deno.env.get('TWILIO_FROM_NUMBER')
+        // Fallbacks if env var behaves differently for SMS/WhatsApp
+        if (channel === 'whatsapp' && !fromNumber?.startsWith('whatsapp:')) {
+            fromNumber = 'whatsapp:+14155238886'; // Default sandbox
+        }
+
+        // Construct To/From based on channel
+        let to = phone;
+        let from = fromNumber;
+
+        if (channel === 'whatsapp') {
+            if (!to.startsWith('whatsapp:')) to = `whatsapp:${to}`;
+            if (from && !from.startsWith('whatsapp:')) from = `whatsapp:${from}`;
+        } else {
+            // SMS
+            // Remove whatsapp: prefix if present in env var to reuse same number
+            if (from && from.startsWith('whatsapp:')) from = from.replace('whatsapp:', '');
+        }
 
         if (accountSid && authToken) {
             const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
 
             const params = new URLSearchParams()
-            params.append('To', `whatsapp:${phone}`)
-            params.append('From', fromNumber)
-            params.append('Body', `Tu código de verificación para la firma digital de Multicentros es: ${otp}. No lo compartas.`)
+            params.append('To', to)
+            if (from) params.append('From', from)
+
+            // Customize body slightly
+            const bodyText = channel === 'whatsapp'
+                ? `Tu código de verificación para la firma digital de Multicentros es: ${otp}. No lo compartas.`
+                : `FirmaClara: Tu código de seguridad es ${otp}.`;
+
+            params.append('Body', bodyText)
 
             const res = await fetch(twilioUrl, {
                 method: 'POST',

@@ -80,18 +80,36 @@ CREATE UNIQUE INDEX idx_credit_packs_trial_unique
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
+  -- Log de entrada para depuración (ver en Dashboard > Database > Postgres Logs)
+  RAISE LOG 'handle_new_user called for ID: %, Email: %, Meta: %', NEW.id, NEW.email, NEW.raw_user_meta_data;
+
   -- 1. Insertar en public.users
   INSERT INTO public.users (id, email, name)
   VALUES (
     NEW.id, 
     NEW.email,
-    NEW.raw_user_meta_data->>'full_name'
+    -- Google suele mandar 'full_name' o 'name'. Fallback a 'user_name' o email.
+    COALESCE(
+        NEW.raw_user_meta_data->>'full_name', 
+        NEW.raw_user_meta_data->>'name', 
+        NEW.raw_user_meta_data->>'user_name',
+        SPLIT_PART(NEW.email, '@', 1), 
+        'Usuario'
+    )
   );
 
-  -- 2. Asignar pack de bienvenida (2 créditos gratis)
+  -- 2. Asignar pack de bienvenida
   INSERT INTO public.credit_packs (user_id, pack_type, credits_total, price_paid)
-  VALUES (NEW.id, 'trial', 2, 0);
+  VALUES (NEW.id, 'trial', 2, 0)
+  ON CONFLICT DO NOTHING;
 
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Log detallado del error
+  RAISE WARNING 'CRITICAL ERROR in handle_new_user: % (SQLSTATE: %)', SQLERRM, SQLSTATE;
+  -- IMPORTANTE: No retornamos NULL, retornamos NEW para que el usuario Auth se cree 
+  -- aunque la DB falle (luego podemos arreglarlo manual o reintentar).
+  -- OJO: Si falla public.users, la app fallará. Pero al menos el usuario podrá logearse.
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

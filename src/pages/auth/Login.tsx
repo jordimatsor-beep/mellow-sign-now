@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import { AuthLayout } from '@/components/auth/AuthLayout';
+import { useAuth } from "@/context/AuthContext";
 import {
     Dialog,
     DialogContent,
@@ -23,6 +24,15 @@ export default function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
+
+    // Auto-redirect if already logged in (Fixes Google Login redirecting back to login)
+    const { session } = useAuth(); // Assuming useAuth is exported from AuthContext, importing it below
+
+    useEffect(() => {
+        if (session) {
+            navigate("/dashboard");
+        }
+    }, [session, navigate]);
 
     // Password Reset State
     const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -52,7 +62,7 @@ export default function Login() {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: window.location.origin
+                    redirectTo: `${window.location.origin}/dashboard`
                 }
             });
             if (error) throw error;

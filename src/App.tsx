@@ -31,6 +31,7 @@ import NotFound from "@/pages/NotFound";
 import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
 import UpdatePassword from "@/pages/auth/UpdatePassword";
+import Contacts from "@/pages/Contacts";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
                 <Route element={<AuthenticatedLayout />}>
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/documents" element={<Documents />} />
+                  <Route path="/contacts" element={<Contacts />} />
                   <Route path="/documents/new" element={<NewDocument />} />
                   <Route path="/documents/:id" element={<DocumentDetail />} />
                   <Route path="/clara" element={<Clara />} />

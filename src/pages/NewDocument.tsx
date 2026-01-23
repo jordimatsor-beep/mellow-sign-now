@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, Sparkles, FileText, ArrowRight, Loader2 } from "lucide-react";
+import { ArrowLeft, Upload, Sparkles, FileText, ArrowRight, Loader2, User } from "lucide-react";
+import { ContactSelector } from "@/components/contacts/ContactSelector";
 import { useProfile } from "@/context/ProfileContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +38,16 @@ export default function NewDocument() {
 
   const [customMessage, setCustomMessage] = useState("");
   const [expiresInDays, setExpiresInDays] = useState("7");
+  const [isContactSelectorOpen, setIsContactSelectorOpen] = useState(false);
+
+  const handleContactSelect = (contact: any) => {
+    setSignerName(contact.name);
+    setSignerEmail(contact.email);
+    if (contact.phone) setSignerPhone(contact.phone);
+    if (contact.nif) setSignerNif(contact.nif);
+    if (contact.address) setSignerAddress(contact.address);
+    toast.success("Datos importados de la agenda");
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -120,7 +131,7 @@ export default function NewDocument() {
       if (insertError) throw insertError;
 
       if (doc?.id) {
-        await handleSendDocument(doc.id, user.id);
+        await handleSendDocument(doc.id, user.id, doc.sign_token);
       }
 
     } catch (error: any) {
@@ -130,7 +141,7 @@ export default function NewDocument() {
     }
   };
 
-  const handleSendDocument = async (docId: string, userId: string) => {
+  const handleSendDocument = async (docId: string, userId: string, signToken: string) => {
     try {
       // 1. Check & Consume Credit
       const { data: creditResult, error: creditError } = await supabase.rpc('consume_credit', { p_user_id: userId });
@@ -162,7 +173,24 @@ export default function NewDocument() {
 
       if (updateError) throw updateError;
 
-      // 3. Log Event (Trigger for Webhooks/n8n)
+      // 3. Send Email Invitation via Edge Function
+      const { error: fnError } = await supabase.functions.invoke('send-document-invitation', {
+        body: {
+          document_id: docId,
+          signer_email: signerEmail,
+          signer_name: signerName,
+          sign_token: signToken,
+          sender_name: profile?.name || profile?.email || 'Usuario de FirmaClara',
+          title: title
+        }
+      });
+
+      if (fnError) {
+        console.error("Error sending email:", fnError);
+        toast.warning("Documento creado pero hubo un error al enviar el email.");
+      }
+
+      // 4. Log Event (Trigger for Webhooks/n8n)
       await supabase.from('event_logs').insert({
         user_id: userId,
         document_id: docId,
@@ -295,7 +323,13 @@ export default function NewDocument() {
       case "signer":
         return (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">¿Quién debe firmar?</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">¿Quién debe firmar?</h2>
+              <Button variant="outline" size="sm" onClick={() => setIsContactSelectorOpen(true)}>
+                <User className="mr-2 h-4 w-4" />
+                Importar de Agenda
+              </Button>
+            </div>
 
             <div className="space-y-4">
               <div className="space-y-4">
@@ -554,6 +588,12 @@ export default function NewDocument() {
       <Card className="border-muted/40 shadow-lg">
         <CardContent className="p-6">{renderStep()}</CardContent>
       </Card>
+
+      <ContactSelector
+        isOpen={isContactSelectorOpen}
+        onClose={() => setIsContactSelectorOpen(false)}
+        onSelect={handleContactSelect}
+      />
     </div>
   );
 }

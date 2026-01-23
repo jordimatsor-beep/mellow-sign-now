@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1"
-import { PDFDocument, rgb, StandardFonts } from 'https://cdn.skypack.dev/pdf-lib'
+import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib'
 import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
 
 const corsHeaders = {
@@ -98,68 +98,61 @@ serve(async (req) => {
             height,
         })
 
-        // 4. Create Audit Page
-        const auditPage = pdfDoc.addPage()
-        const { width: aw, height: ah } = auditPage.getSize()
-        const fontSize = 12
-        const lineHeight = 20
-        let y = ah - 50
+        // 5. Finalize PDF (Just the stamped document)
+        const validPdfBytes = await pdfDoc.save()
 
-        // Header
-        auditPage.drawText('AUDITORÍA DE FIRMA ELECTRÓNICA - MULTICENTROS', {
-            x: 50,
-            y,
-            size: 18,
-            font: helveticaBold,
-            color: rgb(0.12, 0.23, 0.37), // Brand color
+        // 6. Upload Final Signed PDF
+        const finalPath = `${doc.user_id}/${doc.id}_signed.pdf`
+        const { error: uploadError } = await supabase.storage
+            .from('documents')
+            .upload(finalPath, validPdfBytes, { contentType: 'application/pdf', upsert: true })
+
+        if (uploadError) throw new Error('Error al guardar el documento firmado')
+
+        const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(finalPath)
+
+        // 7. Insert Signature Record
+        const { error: sigError } = await supabase.from('signatures').insert({
+            document_id: doc.id,
+            signer_name: doc.signer_name,
+            signer_email: doc.signer_email,
+            ip_address: ip_address,
+            user_agent: user_agent,
+            signature_image_url: doc.file_url,
+            hash_sha256: 'pending',
+            otp_channel: otpChannel,
+            otp_verified_at: otpVerified ? new Date().toISOString() : null,
+            otp_code_ref: otp_code ? 'xxxxx' + otp_code.slice(-2) : null,
+            signed_at: new Date().toISOString()
         })
-        y -= 40
 
-        const drawLine = (text: string, bold = false) => {
-            auditPage.drawText(text, {
-                x: 50,
-                y,
-                size: fontSize,
-                font: bold ? helveticaBold : timesRoman,
+        if (sigError) throw sigError
+
+        // 8. Update Document Status
+        await supabase.from('documents').update({
+            status: 'signed',
+            signed_at: new Date().toISOString(),
+            signed_file_url: publicUrlData.publicUrl,
+            // evidence_url will be updated by the async function
+        }).eq('id', doc.id)
+
+        // 9. Generate Audit Trail (Certificate)
+        // Call the separate function asynchronously
+        try {
+            await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-audit-trail`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ document_id: doc.id })
             })
-            y -= lineHeight
+        } catch (e) {
+            console.error("Failed to trigger audit trail generation", e)
         }
 
-        drawLine(`Documento: ${doc.title}`, true)
-        drawLine(`ID Documento: ${doc.id}`)
-        drawLine(`Hash Original (SHA-256): ${doc.file_hash || 'N/A'}`)
-        y -= lineHeight
+        // 10. Log for Email Trigger
 
-        drawLine('INFORMACIÓN DEL FIRMANTE', true)
-        drawLine(`Nombre: ${doc.signer_name}`)
-        drawLine(`Email: ${doc.signer_email}`)
-        if (doc.signer_phone) drawLine(`Teléfono: ${doc.signer_phone}`)
-        if (otpVerified) drawLine(`Verificación: OTP WhatsApp (Canal Seguro) - Completado`)
-        y -= lineHeight
-
-        drawLine('EVIDENCIA TÉCNICA', true)
-        drawLine(`Dirección IP: ${ip_address || 'No registrada'}`)
-        drawLine(`User Agent: ${user_agent || 'No registrado'}`)
-        drawLine(`Fecha de Firma (UTC): ${new Date().toISOString()}`)
-        y -= lineHeight
-
-        drawLine('HISTORIAL DE EVENTOS', true)
-        drawLine(`- Enviado: ${doc.sent_at || doc.created_at}`)
-        if (doc.viewed_at) drawLine(`- Visto: ${doc.viewed_at}`)
-        if (doc.whatsapp_verification_status === 'sent') drawLine(`- OTP Solicitado: ${doc.otp_expires_at} (approx)`)
-        drawLine(`- Firmado: ${new Date().toISOString()}`)
-
-        // Footer
-        auditPage.drawText('Certificado generado por Operia para el ecosistema Multicentros.', {
-            x: 50,
-            y: 30,
-            size: 10,
-            font: timesRoman,
-            color: rgb(0.5, 0.5, 0.5)
-        })
-
-        // 5. Finalize PDF
-        const validPdfBytes = await pdfDoc.save()
 
         // Calculate final hash
         const finalHashBuffer = await crypto.subtle.digest('SHA-256', validPdfBytes);
