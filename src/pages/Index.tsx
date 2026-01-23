@@ -58,7 +58,11 @@ export default function Index() {
           </nav>
 
           {/* Actions - Right */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            {/* Powered by OPERIA - subtle attribution */}
+            <span className="hidden lg:inline-flex text-[10px] text-muted-foreground/60 uppercase tracking-wider">
+              Powered by <span className="font-semibold ml-1">OPERIA</span>
+            </span>
             <Button variant="outline" asChild className="border-border text-muted-foreground hover:text-foreground">
               <Link to="/auth/login">Acceso</Link>
             </Button>
