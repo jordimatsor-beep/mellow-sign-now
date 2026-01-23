@@ -55,6 +55,41 @@ export default function SignDocument() {
   const [otpCode, setOtpCode] = useState("");
   const [otpError, setOtpError] = useState("");
 
+  // OTP Cooldown Logic
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  const handleResendOtp = async (channel: 'whatsapp' | 'sms') => {
+    if (resendCooldown > 0) return;
+
+    setResendCooldown(60); // Start 60s cooldown
+    const toastId = toast.loading(`Reenviando código por ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}...`);
+
+    try {
+      const { error } = await supabase.functions.invoke('send-otp', {
+        body: { token, channel }
+      });
+
+      if (error) {
+        throw new Error("Error al reenviar código");
+      }
+
+      toast.success(`Código reenviado por ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}`, { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al reenviar el código", { id: toastId });
+      setResendCooldown(0); // Reset cooldwon on error so they can try again
+    }
+  };
+
+
+
   // Initialize canvas
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -719,7 +754,40 @@ export default function SignDocument() {
         </div>
       </div>
 
-      {/* WhatsApp OTP Verification Modal */}
+  // OTP Cooldown Logic
+      const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  const handleResendOtp = async (channel: 'whatsapp' | 'sms') => {
+    if (resendCooldown > 0) return;
+
+      setResendCooldown(60); // Start 60s cooldown
+      const toastId = toast.loading(`Reenviando código por ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}...`);
+
+      try {
+      const {error} = await supabase.functions.invoke('send-otp', {
+        body: {token, channel}
+      });
+
+      if (error) {
+        throw new Error("Error al reenviar código");
+      }
+
+      toast.success(`Código reenviado por ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}`, {id: toastId });
+    } catch (err) {
+        console.error(err);
+      toast.error("Error al reenviar el código", {id: toastId });
+      setResendCooldown(0); // Reset cooldown on error so they can try again
+    }
+  };
+
+      return (
       <Dialog open={step === "otp"} onOpenChange={(open) => !open && setStep("view")}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -732,11 +800,14 @@ export default function SignDocument() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col items-center gap-4 py-4">
+          <div className="flex flex-col items-center justify-center space-y-6 py-4">
             <InputOTP
               maxLength={6}
               value={otpCode}
-              onChange={(value) => setOtpCode(value)}
+              onChange={(val) => {
+                setOtpCode(val);
+                setOtpError("");
+              }}
             >
               <InputOTPGroup>
                 <InputOTPSlot index={0} />
@@ -749,46 +820,32 @@ export default function SignDocument() {
             </InputOTP>
 
             {otpError && (
-              <p className="text-sm text-destructive">{otpError}</p>
+              <p className="text-sm text-red-500 font-medium animate-pulse">{otpError}</p>
             )}
 
-            <div className="flex gap-4">
+            <div className="flex flex-col gap-2 w-full sm:flex-row sm:justify-center">
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs text-muted-foreground"
-                onClick={() => {
-                  const toastId = toast.loading("Reenviando por WhatsApp...");
-                  supabase.functions.invoke('send-otp', { body: { token, channel: 'whatsapp' } })
-                    .then(({ error }) => {
-                      if (error) throw error;
-                      toast.success("Código reenviado por WhatsApp", { id: toastId });
-                    })
-                    .catch(e => toast.error("Error al reenviar", { id: toastId }));
-                }}
+                onClick={() => handleResendOtp('whatsapp')}
+                disabled={resendCooldown > 0}
+                className={resendCooldown > 0 ? "opacity-50" : ""}
               >
-                Reenviar (WhatsApp)
+                {resendCooldown > 0 ? `Reenviar en ${resendCooldown}s` : "Reenviar (WhatsApp)"}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs text-muted-foreground"
-                onClick={() => {
-                  const toastId = toast.loading("Enviando SMS...");
-                  supabase.functions.invoke('send-otp', { body: { token, channel: 'sms' } })
-                    .then(({ error }) => {
-                      if (error) throw error;
-                      toast.success("Código enviado por SMS", { id: toastId });
-                    })
-                    .catch(e => toast.error("Error al enviar SMS", { id: toastId }));
-                }}
+                onClick={() => handleResendOtp('sms')}
+                disabled={resendCooldown > 0}
+                className={resendCooldown > 0 ? "opacity-50" : ""}
               >
-                Enviar por SMS
+                {resendCooldown > 0 ? `SMS en ${resendCooldown}s` : "Enviar por SMS"}
               </Button>
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="sm:justify-between gap-4">
             <Button variant="outline" onClick={() => setStep("view")}>
               Cancelar
             </Button>
