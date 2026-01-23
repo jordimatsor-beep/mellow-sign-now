@@ -1,40 +1,39 @@
 import { Separator } from "@/components/ui/separator";
 
-// Multicentro logo component - Main brand
-export function MulticentroLogo({ className = "h-10" }: { className?: string }) {
+// Multicentro logo component - Horizontal compact version for headers
+export function MulticentroLogo({ className = "h-8" }: { className?: string }) {
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
-      {/* Cart icon with dots */}
-      <svg viewBox="0 0 60 60" className="h-full w-auto">
-        {/* Cart base - using muted-foreground equivalent */}
+    <div className={`flex items-center gap-2 ${className}`}>
+      {/* Cart icon with dots - simplified */}
+      <svg viewBox="0 0 48 48" className="h-full w-auto flex-shrink-0">
+        {/* Cart base */}
         <path 
-          d="M8 20 L20 20 L20 48 Q20 55 27 55 L50 55" 
+          d="M6 14 L14 14 L14 34 Q14 40 20 40 L38 40" 
           stroke="hsl(var(--muted-foreground))" 
-          strokeWidth="6" 
+          strokeWidth="4" 
           strokeLinecap="round" 
           fill="none"
         />
         {/* Cart handle */}
         <path 
-          d="M8 20 L2 8" 
+          d="M6 14 L2 6" 
           stroke="hsl(var(--muted-foreground))" 
-          strokeWidth="6" 
+          strokeWidth="4" 
           strokeLinecap="round" 
           fill="none"
         />
         {/* Wheels */}
-        <circle cx="30" cy="55" r="5" fill="hsl(var(--muted-foreground))" />
-        <circle cx="46" cy="55" r="5" fill="hsl(var(--muted-foreground))" />
-        {/* Colored dots - Primary (purple), Destructive (red), Chart-4 (blue) */}
-        <circle cx="18" cy="8" r="6" fill="hsl(var(--primary))" />
-        <circle cx="30" cy="16" r="6" fill="hsl(var(--destructive))" />
-        <circle cx="42" cy="16" r="6" fill="hsl(var(--chart-4))" />
+        <circle cx="22" cy="42" r="3" fill="hsl(var(--muted-foreground))" />
+        <circle cx="34" cy="42" r="3" fill="hsl(var(--muted-foreground))" />
+        {/* Colored dots */}
+        <circle cx="14" cy="6" r="4" fill="hsl(var(--primary))" />
+        <circle cx="24" cy="10" r="4" fill="hsl(var(--destructive))" />
+        <circle cx="34" cy="10" r="4" fill="hsl(var(--chart-4))" />
       </svg>
-      {/* Text */}
-      <div className="flex flex-col leading-tight">
-        <span className="text-lg font-light tracking-tight text-muted-foreground">multi</span>
-        <span className="text-lg font-normal text-primary">centro</span>
-        <span className="text-lg font-bold text-primary">comercial</span>
+      {/* Horizontal text layout */}
+      <div className="flex items-baseline gap-0.5 leading-none">
+        <span className="text-sm font-light text-muted-foreground">multi</span>
+        <span className="text-sm font-semibold text-primary">centro</span>
       </div>
     </div>
   );
