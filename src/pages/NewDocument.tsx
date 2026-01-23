@@ -34,6 +34,7 @@ export default function NewDocument() {
   const [signerEmail, setSignerEmail] = useState("");
   const [signerNif, setSignerNif] = useState("");
   const [signerPhone, setSignerPhone] = useState("");
+  const [signerPhonePrefix, setSignerPhonePrefix] = useState("+34");
   const [signerAddress, setSignerAddress] = useState("");
 
   const [signatureType, setSignatureType] = useState("full");
@@ -450,8 +451,18 @@ export default function NewDocument() {
                       Teléfono Móvil del Firmante *
                     </Label>
                     <div className="flex gap-2 mt-1.5">
-                      <Select defaultValue="+34">
-                        <SelectTrigger className="w-[100px]">
+                      <Select 
+                        value={signerPhonePrefix} 
+                        onValueChange={(value) => {
+                          setSignerPhonePrefix(value);
+                          // Update full phone with new prefix
+                          const phoneNumber = signerPhone.replace(/^\+\d+\s*/, '');
+                          if (phoneNumber) {
+                            setSignerPhone(`${value} ${phoneNumber}`);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-[110px]">
                           <SelectValue placeholder="Prefijo" />
                         </SelectTrigger>
                         <SelectContent>
@@ -474,14 +485,13 @@ export default function NewDocument() {
                         placeholder="600 123 456"
                         value={signerPhone.replace(/^\+\d+\s*/, '')}
                         onChange={(e) => {
-                          // Combine with prefix
-                          const prefix = "+34"; // TODO: get from select
-                          setSignerPhone(`${prefix} ${e.target.value}`);
+                          const phoneNumber = e.target.value.replace(/[^\d\s]/g, '');
+                          setSignerPhone(`${signerPhonePrefix} ${phoneNumber}`);
                         }}
                         className="flex-1"
                       />
                     </div>
-                    {!signerPhone && (
+                    {!signerPhone.replace(/^\+\d+\s*/, '').trim() && (
                       <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
                         ⚠️ El número de WhatsApp es obligatorio para la verificación
                       </p>
@@ -496,7 +506,7 @@ export default function NewDocument() {
                   !signerName || 
                   !signerEmail || 
                   (!isPresupuesto && (!signerNif || !signerAddress)) ||
-                  (whatsappVerification && !signerPhone)
+                  (whatsappVerification && !signerPhone.replace(/^\+\d+\s*/, '').trim())
                 }
                 onClick={() => setStep("options")}
               >
