@@ -2,35 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Multicentro Firma Digital - White Label Design System */
-/* Primary Color: Multicentro Purple (#5B3D8A) */
+/* Multicentro Firma Digital - Enterprise B2B Design System */
+/* Aesthetic: Big Tech / Corporate (Signaturit, Yousign inspired) */
+/* Primary Color: Multicentro Purple - used ONLY for CTAs */
 
 @layer base {
   :root {
+    /* Pure White - 90% of the site */
     --background: 0 0% 100%;
-    --foreground: 260 25% 15%;
+    
+    /* Deep Navy Blue - Headings (not pure black) #0F172A */
+    --foreground: 222 47% 11%;
 
+    /* Card backgrounds - Pure white */
     --card: 0 0% 100%;
-    --card-foreground: 260 25% 15%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 260 25% 15%;
+    --popover-foreground: 222 47% 11%;
 
-    /* Primary: Multicentro Purple #5B3D8A */
+    /* Primary: Multicentro Purple - ONLY for main CTAs */
     --primary: 263 40% 39%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Light purple tint */
-    --secondary: 263 30% 95%;
-    --secondary-foreground: 263 40% 25%;
+    /* Secondary: Very light gray for section backgrounds #F9FAFB */
+    --secondary: 210 40% 98%;
+    --secondary-foreground: 215 25% 27%;
 
-    --muted: 260 20% 96%;
-    --muted-foreground: 260 10% 45%;
+    /* Muted: Light gray for subtle backgrounds */
+    --muted: 210 40% 96%;
+    /* Slate gray for body text #475569 */
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 263 30% 93%;
-    --accent-foreground: 263 40% 25%;
+    /* Accent: Subtle highlight */
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
 
-    /* Success: Green #10b981 */
+    /* Success: Green for "Signed" indicators */
     --success: 160 84% 39%;
     --success-foreground: 0 0% 100%;
 
@@ -41,25 +49,33 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 260 20% 90%;
-    --input: 260 20% 90%;
+    /* Borders: Very subtle gray-200 equivalent */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
     --ring: 263 40% 39%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* Brand colors for reference */
     --multicentro-purple: 263 40% 39%;
     --multicentro-red: 0 70% 48%;
     --multicentro-blue: 207 79% 65%;
 
-    /* Sidebar */
-    --sidebar-background: 263 25% 98%;
-    --sidebar-foreground: 260 25% 15%;
+    /* Enterprise grays */
+    --slate-900: 222 47% 11%;
+    --slate-700: 215 25% 27%;
+    --slate-600: 215 16% 47%;
+    --slate-100: 210 40% 98%;
+    --slate-50: 210 40% 96%;
+
+    /* Sidebar - Professional style */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
     --sidebar-primary: 263 40% 39%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 263 30% 93%;
-    --sidebar-accent-foreground: 263 40% 25%;
-    --sidebar-border: 260 20% 90%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
     --sidebar-ring: 263 40% 39%;
 
     /* Chart colors */
@@ -71,26 +87,26 @@
   }
 
   .dark {
-    --background: 260 25% 6%;
-    --foreground: 260 15% 95%;
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
 
-    --card: 260 25% 8%;
-    --card-foreground: 260 15% 95%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 260 25% 8%;
-    --popover-foreground: 260 15% 95%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
 
     --primary: 263 45% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 260 25% 15%;
-    --secondary-foreground: 260 15% 95%;
+    --secondary: 222 47% 12%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 260 25% 15%;
-    --muted-foreground: 260 15% 65%;
+    --muted: 222 47% 15%;
+    --muted-foreground: 215 16% 65%;
 
-    --accent: 260 25% 15%;
-    --accent-foreground: 260 15% 95%;
+    --accent: 222 47% 15%;
+    --accent-foreground: 210 40% 98%;
 
     --success: 160 84% 45%;
     --success-foreground: 0 0% 100%;
@@ -99,19 +115,19 @@
     --warning-foreground: 0 0% 100%;
 
     --destructive: 0 63% 31%;
-    --destructive-foreground: 260 15% 95%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 260 25% 18%;
-    --input: 260 25% 18%;
+    --border: 222 47% 18%;
+    --input: 222 47% 18%;
     --ring: 263 45% 55%;
 
-    --sidebar-background: 260 25% 8%;
-    --sidebar-foreground: 260 15% 95%;
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 263 45% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 260 25% 15%;
-    --sidebar-accent-foreground: 260 15% 95%;
-    --sidebar-border: 260 25% 18%;
+    --sidebar-accent: 222 47% 15%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 47% 18%;
     --sidebar-ring: 263 45% 55%;
 
     --chart-1: 263 45% 55%;
