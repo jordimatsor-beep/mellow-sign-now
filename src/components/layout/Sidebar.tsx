@@ -65,7 +65,7 @@ export function Sidebar() {
         <Button asChild className="w-full gap-2">
           <NavLink to="/documents/new">
             <Plus className="h-4 w-4" />
-            Nuevo Documento
+            Nuevo Envío
           </NavLink>
         </Button>
       </div>

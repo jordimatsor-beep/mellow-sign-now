@@ -116,11 +116,11 @@ export function AuthLayout({ children, title, subtitle, mode = 'login' }: AuthLa
                         <>
                             <div>
                                 <h3 className="text-3xl font-bold leading-tight">
-                                    Tu gestión documental, <br />
-                                    <span className="text-white/80">simplificada.</span>
+                                    Gestión integral de <br />
+                                    <span className="text-white/80">acuerdos digitales.</span>
                                 </h3>
                                 <p className="mt-6 text-lg text-white/80 font-light">
-                                    Cierra presupuestos, firma partes de trabajo y gestiona contratos desde un solo lugar.
+                                    Centraliza tus firmas y documentos con la garantía del ecosistema Multicentros.
                                 </p>
                             </div>
 

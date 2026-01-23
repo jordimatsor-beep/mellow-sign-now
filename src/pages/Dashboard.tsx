@@ -90,11 +90,11 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             {t('dashboard.greeting')}, {userName}
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            {t('dashboard.available')} <span className="font-semibold text-slate-700">{stats.credits} {t('dashboard.credits_available')}</span> {t('dashboard.available')}
+          <p className="text-muted-foreground text-sm mt-1">
+            <span className="font-semibold text-foreground">{stats.credits}</span> {t('dashboard.credits_available')}
           </p>
         </div>
         <Button size="sm" asChild>

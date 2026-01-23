@@ -80,13 +80,12 @@ export default function Index() {
               </div>
               
               <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight">
-                Aprueba presupuestos y cierra acuerdos en{" "}
-                <span className="text-primary">1 minuto</span>
+                Acelera tus ventas y <span className="text-primary">formaliza acuerdos</span>
               </h1>
               
               <p className="text-lg text-muted-foreground max-w-lg">
-                Envía documentos para firma digital con validez legal. 
-                Desde presupuestos hasta contratos, todo desde una única plataforma.
+                La solución de firma electrónica simple (eIDAS) y gestión documental 
+                diseñada para empresas ágiles. Sin instalación. Sin cuotas fijas.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -158,6 +157,7 @@ export default function Index() {
       {/* Trust Bar - Technical Infrastructure */}
       <section className="bg-secondary py-8 border-y border-border">
         <div className="container mx-auto px-4">
+          <p className="text-center text-sm font-medium text-muted-foreground mb-6">Cumplimiento normativo y seguridad técnica: <span className="text-foreground">eIDAS • RGPD • SSL/TLS • Auditoría de Evidencias</span></p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-background flex items-center justify-center border border-border">
