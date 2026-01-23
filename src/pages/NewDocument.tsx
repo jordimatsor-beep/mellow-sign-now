@@ -397,53 +397,96 @@ export default function NewDocument() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone">
-                    Teléfono {whatsappVerification && "*"}
-                    {!whatsappVerification && <span className="text-muted-foreground text-xs ml-1">(opcional)</span>}
+                  <Label htmlFor="address">
+                    Dirección {!isPresupuesto && "*"}
+                    {isPresupuesto && <span className="text-muted-foreground text-xs ml-1">(opcional)</span>}
                   </Label>
                   <Input
-                    id="phone"
-                    placeholder="+34 600..."
-                    value={signerPhone}
-                    onChange={(e) => setSignerPhone(e.target.value)}
+                    id="address"
+                    placeholder="Calle, Ciudad..."
+                    value={signerAddress}
+                    onChange={(e) => setSignerAddress(e.target.value)}
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="address">
-                  Dirección {!isPresupuesto && "*"}
-                  {isPresupuesto && <span className="text-muted-foreground text-xs ml-1">(opcional)</span>}
-                </Label>
-                <Input
-                  id="address"
-                  placeholder="Calle, Ciudad..."
-                  value={signerAddress}
-                  onChange={(e) => setSignerAddress(e.target.value)}
-                />
-              </div>
-
-              {/* WhatsApp Verification Toggle */}
-              <div className="rounded-lg border p-4 bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {whatsappVerification ? (
-                      <Lock className="h-5 w-5 text-primary" />
-                    ) : (
-                      <Unlock className="h-5 w-5 text-muted-foreground" />
-                    )}
+              {/* WhatsApp Security Toggle - Prominent Card */}
+              <div className={`rounded-xl border-2 p-4 transition-all ${
+                whatsappVerification 
+                  ? 'border-green-500 bg-green-50/50 shadow-sm' 
+                  : 'border-dashed border-muted-foreground/30 bg-muted/20'
+              }`}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                      whatsappVerification ? 'bg-green-100' : 'bg-muted'
+                    }`}>
+                      {whatsappVerification ? (
+                        <Lock className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <Unlock className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
                     <div>
-                      <p className="font-medium text-sm">🔒 Verificación por WhatsApp</p>
-                      <p className="text-xs text-muted-foreground">Código OTP para mayor seguridad</p>
+                      <p className="font-semibold text-sm flex items-center gap-2">
+                        🔒 Activar Seguridad Extra (Código por WhatsApp)
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        El firmante recibirá el enlace por Email, pero necesitará un código enviado a su WhatsApp para poder firmar.
+                      </p>
                     </div>
                   </div>
                   <Switch
                     checked={whatsappVerification}
                     onCheckedChange={handleWhatsappToggle}
+                    className="shrink-0"
                   />
                 </div>
-                {whatsappVerification && !signerPhone && (
-                  <p className="mt-2 text-xs text-destructive">⚠️ El teléfono es obligatorio con verificación WhatsApp</p>
+
+                {/* Conditional Phone Field */}
+                {whatsappVerification && (
+                  <div className="mt-4 pt-4 border-t border-green-200">
+                    <Label htmlFor="phone" className="text-sm font-medium">
+                      Teléfono Móvil del Firmante *
+                    </Label>
+                    <div className="flex gap-2 mt-1.5">
+                      <Select defaultValue="+34">
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue placeholder="Prefijo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="+34">🇪🇸 +34</SelectItem>
+                          <SelectItem value="+33">🇫🇷 +33</SelectItem>
+                          <SelectItem value="+351">🇵🇹 +351</SelectItem>
+                          <SelectItem value="+44">🇬🇧 +44</SelectItem>
+                          <SelectItem value="+49">🇩🇪 +49</SelectItem>
+                          <SelectItem value="+39">🇮🇹 +39</SelectItem>
+                          <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                          <SelectItem value="+52">🇲🇽 +52</SelectItem>
+                          <SelectItem value="+54">🇦🇷 +54</SelectItem>
+                          <SelectItem value="+56">🇨🇱 +56</SelectItem>
+                          <SelectItem value="+57">🇨🇴 +57</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="600 123 456"
+                        value={signerPhone.replace(/^\+\d+\s*/, '')}
+                        onChange={(e) => {
+                          // Combine with prefix
+                          const prefix = "+34"; // TODO: get from select
+                          setSignerPhone(`${prefix} ${e.target.value}`);
+                        }}
+                        className="flex-1"
+                      />
+                    </div>
+                    {!signerPhone && (
+                      <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+                        ⚠️ El número de WhatsApp es obligatorio para la verificación
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
 

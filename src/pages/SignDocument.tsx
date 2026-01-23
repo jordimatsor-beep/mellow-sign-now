@@ -506,15 +506,27 @@ export default function SignDocument() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-lg">Revisar Documento</h2>
-              {!canAccept && (
-                <span className="text-xs text-amber-600 animate-pulse">
-                  Lee el documento completo para continuar...
-                </span>
+              {!canAccept ? (
+                <div className="flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 border border-amber-200">
+                  <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="text-xs font-medium text-amber-700">
+                    Desplázate hasta el final para continuar
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 border border-green-200">
+                  <Check className="h-3 w-3 text-green-600" />
+                  <span className="text-xs font-medium text-green-700">
+                    Documento revisado
+                  </span>
+                </div>
               )}
             </div>
             <Card
               ref={pdfContainerRef}
-              className="h-[500px] w-full overflow-auto bg-muted/20"
+              className={`h-[500px] w-full overflow-auto transition-all ${
+                canAccept ? 'bg-muted/10 ring-2 ring-green-200' : 'bg-muted/20'
+              }`}
               onScroll={handleScroll}
             >
               <iframe
@@ -523,6 +535,15 @@ export default function SignDocument() {
                 title="PDF Viewer"
               />
             </Card>
+            {/* Scroll progress hint */}
+            {!canAccept && (
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <svg className="h-4 w-4 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+                <span>Desplaza hacia abajo para leer todo el documento</span>
+              </div>
+            )}
           </div>
 
           {/* Signing form */}
@@ -533,16 +554,17 @@ export default function SignDocument() {
               <div className="space-y-4">
                 {/* Acceptance checkbox - disabled until scroll */}
                 <label
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${canAccept
-                    ? 'hover:bg-accent [&:has(:checked)]:ring-2 [&:has(:checked)]:ring-primary'
-                    : 'opacity-50 cursor-not-allowed'
-                    }`}
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border-2 p-4 transition-all ${
+                    canAccept
+                      ? 'border-primary/20 hover:border-primary/50 hover:bg-primary/5 [&:has(:checked)]:ring-2 [&:has(:checked)]:ring-primary [&:has(:checked)]:border-primary [&:has(:checked)]:bg-primary/5'
+                      : 'opacity-40 cursor-not-allowed border-dashed border-muted-foreground/30 bg-muted/30'
+                  }`}
                 >
                   <Checkbox
                     checked={accepted}
                     onCheckedChange={(checked) => {
                       if (!canAccept) {
-                        toast.error("Por favor, lee el documento hasta el final para aceptar.");
+                        toast.error("Por favor, desplázate hasta el final del documento para poder aceptar.");
                         return;
                       }
                       setAccepted(checked === true);
@@ -550,9 +572,14 @@ export default function SignDocument() {
                     disabled={!canAccept}
                     className="mt-0.5"
                   />
-                  <span className="text-sm leading-tight">
-                    He leído y acepto el contenido de este documento y consiento el uso de la firma electrónica simple conforme al Reglamento eIDAS.
-                  </span>
+                  <div className="space-y-1">
+                    <span className="text-sm font-medium leading-tight block">
+                      Acepto el contenido de este documento
+                    </span>
+                    <span className="text-xs text-muted-foreground leading-tight block">
+                      Consiento el uso de la firma electrónica simple conforme al Reglamento eIDAS (UE) 910/2014.
+                    </span>
+                  </div>
                 </label>
 
                 {/* Name input */}
