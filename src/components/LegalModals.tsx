@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface LegalModalProps {
     trigger: React.ReactNode;
     title: string;
-    type: "terms" | "privacy" | "contact";
+    type: "terms" | "privacy" | "contact" | "legal";
 }
 
 export function LegalModal({ trigger, title, type }: LegalModalProps) {
@@ -62,6 +62,23 @@ export function LegalModal({ trigger, title, type }: LegalModalProps) {
                         </div>
                         <p className="text-muted-foreground italic">
                             Más adelante incluiremos la información completa de contacto.
+                        </p>
+                    </div>
+                );
+            case "legal":
+                return (
+                    <div className="space-y-4">
+                        <p>
+                            FirmaClara cumple rigurosamente con el Reglamento (UE) Nº 910/2014 (eIDAS) relativo a la identificación electrónica y los servicios de confianza.
+                        </p>
+                        <p>
+                            <strong>Validez Jurídica:</strong> Nuestras firmas electrónicas avanzadas garantizan la autenticidad del firmante y la integridad del documento firmado.
+                        </p>
+                        <p>
+                            <strong>Seguridad y Evidencia:</strong> Generamos un documento de evidencia (Audit Trail) que registra todas las acciones del proceso de firma, asegurando la trazabilidad y la validez legal ante terceros.
+                        </p>
+                        <p className="text-muted-foreground italic">
+                            Más adelante incluiremos la información completa de cumplimiento legal y eIDAS.
                         </p>
                     </div>
                 );

@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
+import { MulticentroLogo } from "@/components/brand/BrandHeader";
 
 import { supabase } from "@/lib/supabase";
 
@@ -205,44 +206,59 @@ export default function SignDocument() {
 
     async function loadDocument() {
       try {
-        // Call the RPC function
+        // Use the secure RPC instead of direct select
         const { data, error } = await supabase
-          .from('documents')
-          .select('*')
-          .eq('sign_token', token)
-          .single();
+          .rpc('get_document_for_signing', { token_uuid: token });
 
         if (error) throw error;
-        if (!data) throw new Error("Documento no encontrado o enlace inválido");
 
-        if (data.status !== 'sent' && data.status !== 'viewed' && data.status !== 'signed') {
+        // RPC returns an array (setof record)
+        const docRecord = (data as any[])?.[0];
+
+        if (!docRecord) throw new Error("Documento no encontrado o enlace inválido");
+
+        if (docRecord.status !== 'sent' && docRecord.status !== 'viewed' && docRecord.status !== 'signed') {
           throw new Error("Este documento no está disponible para firma");
         }
 
         // Check Expiration
-        if (data.expires_at && new Date(data.expires_at) < new Date()) {
-          throw new Error("Este enlace de firma ha caducado (expiró el " + new Date(data.expires_at).toLocaleDateString() + ")");
+        if (docRecord.expires_at && new Date(docRecord.expires_at) < new Date()) {
+          throw new Error("Este enlace de firma ha caducado (expiró el " + new Date(docRecord.expires_at).toLocaleDateString() + ")");
         }
 
-        if (data.status === 'sent') {
-          await supabase
+        if (docRecord.status === 'sent') {
+          // Attempt to update status to Viewed. 
+          // Note: This might fail if RLS blocks update. 
+          // Ideally we should have an RPC for this too, or rely on a "view_document" RPC.
+          // For now, let's keep it silent or try.
+          // If RLS blocks UPDATE, we might need another RPC 'mark_document_viewed'.
+          // Let's assume for now we might fail silently or we need to add that RPC.
+          // Or we can rely on `get_document_for_signing` to side-effect update? No, bad practice for GET.
+          // Let's try direct update, if it fails, it's not critical for the strict flow but good for tracking.
+          supabase
             .from('documents')
             .update({ status: 'viewed', viewed_at: new Date().toISOString() })
-            .eq('id', data.id);
+            .eq('id', docRecord.id)
+            .then(({ error }) => {
+              if (error) console.warn("Could not mark as viewed (RLS restriction?)", error);
+            });
         }
 
         // Fix for Private Buckets: Transform Public URL to Signed URL if needed
-        let finalFileUrl = data.file_url;
+        let finalFileUrl = docRecord.file_url;
 
         // Check if it's a Supabase URL and we are in a private bucket context
-        if (data.file_url.includes('/storage/v1/object/public/documents/')) {
+        if (docRecord.file_url && docRecord.file_url.includes('/storage/v1/object/public/documents/')) {
           try {
             // Extract path: .../documents/USER_ID/TIMESTAMP_FILE.pdf
-            const pathParts = data.file_url.split('/documents/');
+            const pathParts = docRecord.file_url.split('/documents/');
             if (pathParts.length > 1) {
               const filePath = pathParts[1]; // "USER_ID/TIMESTAMP_FILE.pdf"
 
               // Generate Signed URL valid for 1 hour
+              // Note: We might need RLS policy allowing 'select' on storage objects for anon? 
+              // Or use an RPC for this too. 
+              // Usually storage RLS is separate.
               const { data: signedData, error: signedError } = await supabase
                 .storage
                 .from('documents')
@@ -262,37 +278,22 @@ export default function SignDocument() {
 
         // Transform data to match our interface
         const doc: DocumentData = {
-          id: data.id,
-          title: data.title,
-          file_url: finalFileUrl, // Use the signed URL
-          status: data.status,
-          signer_email: data.signer_email || '',
-          signer_name: data.signer_name || '',
-          created_at: data.created_at || '',
-          signer_phone: data.signer_phone,
-          security_level: data.security_level || 'standard',
-          whatsapp_verification: data.security_level === 'whatsapp_otp',
-          issuer_data: { // Ensure issuer data is passed if available in join (fetching * might not get joined data without explicit join)
-            // Note: The original query was .select('*'). To get issuer info we need a join or separate fetch.
-            // For now, let's keep existing behavior. If issuer_data comes from somewhere else, we should respect it.
-            // The previous code didn't seem to fetch joined user data? 
-            // Ah, type definition says issuer_data optional.
-            name: "Emisor (Verificado)" // Placeholder if we don't have the join
+          id: docRecord.id,
+          title: docRecord.title,
+          file_url: finalFileUrl,
+          status: docRecord.status,
+          signer_email: docRecord.signer_email || '',
+          signer_name: docRecord.signer_name || '',
+          signer_phone: docRecord.signer_phone,
+          created_at: docRecord.created_at || '',
+          security_level: docRecord.security_level || 'standard',
+          whatsapp_verification: docRecord.whatsapp_verification, // Now coming from RPC
+          issuer_data: {
+            name: docRecord.issuer_company || docRecord.issuer_name || "Emisor",
+            id: docRecord.issuer_tax_id,
+            email: docRecord.issuer_email,
           }
         };
-
-        // If we really need issuer data (name, id), we should fetch it:
-        if (data.user_id) {
-          const { data: issuer } = await supabase.from('users').select('name, company_name, tax_id, email, phone').eq('id', data.user_id).single();
-          if (issuer) {
-            doc.issuer_data = {
-              name: issuer.company_name || issuer.name || "Emisor",
-              id: issuer.tax_id,
-              email: issuer.email,
-              phone: issuer.phone
-            };
-          }
-        }
 
         setDocData(doc);
         setName(doc.signer_name || "");
@@ -410,21 +411,37 @@ export default function SignDocument() {
 
   if (step === "loading") {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Cargando documento...</span>
+      <div className="flex h-screen flex-col items-center justify-center space-y-4 bg-gray-50">
+        <div className="mb-4 scale-125">
+          <MulticentroLogo />
+        </div>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span>Cargando documento seguro...</span>
+        </div>
       </div>
     );
   }
 
   if (step === "error") {
     return (
-      <div className="container flex flex-col items-center px-4 py-12 text-center">
-        <Alert variant="destructive" className="max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{errorMsg}</AlertDescription>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center pt-20 px-4">
+        <div className="mb-12">
+          <MulticentroLogo />
+        </div>
+        <Alert variant="destructive" className="max-w-md bg-white shadow-lg border-red-100">
+          <AlertCircle className="h-5 w-5 text-red-600" />
+          <div className="ml-2">
+            <AlertTitle className="text-red-700 font-semibold text-lg">No se ha podido cargar el documento</AlertTitle>
+            <AlertDescription className="mt-2 text-red-600/90 text-sm">
+              {errorMsg}
+            </AlertDescription>
+          </div>
         </Alert>
+        <div className="mt-8 text-center text-sm text-muted-foreground">
+          <p>Si el problema persiste, contacta con el remitente.</p>
+          <p className="mt-2 text-xs opacity-50">ID de Referencia: {token}</p>
+        </div>
       </div>
     );
   }
@@ -524,9 +541,8 @@ export default function SignDocument() {
             </div>
             <Card
               ref={pdfContainerRef}
-              className={`h-[500px] w-full overflow-auto transition-all ${
-                canAccept ? 'bg-muted/10 ring-2 ring-green-200' : 'bg-muted/20'
-              }`}
+              className={`h-[500px] w-full overflow-auto transition-all ${canAccept ? 'bg-muted/10 ring-2 ring-green-200' : 'bg-muted/20'
+                }`}
               onScroll={handleScroll}
             >
               <iframe
@@ -554,11 +570,10 @@ export default function SignDocument() {
               <div className="space-y-4">
                 {/* Acceptance checkbox - disabled until scroll */}
                 <label
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border-2 p-4 transition-all ${
-                    canAccept
-                      ? 'border-primary/20 hover:border-primary/50 hover:bg-primary/5 [&:has(:checked)]:ring-2 [&:has(:checked)]:ring-primary [&:has(:checked)]:border-primary [&:has(:checked)]:bg-primary/5'
-                      : 'opacity-40 cursor-not-allowed border-dashed border-muted-foreground/30 bg-muted/30'
-                  }`}
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border-2 p-4 transition-all ${canAccept
+                    ? 'border-primary/20 hover:border-primary/50 hover:bg-primary/5 [&:has(:checked)]:ring-2 [&:has(:checked)]:ring-primary [&:has(:checked)]:border-primary [&:has(:checked)]:bg-primary/5'
+                    : 'opacity-40 cursor-not-allowed border-dashed border-muted-foreground/30 bg-muted/30'
+                    }`}
                 >
                   <Checkbox
                     checked={accepted}

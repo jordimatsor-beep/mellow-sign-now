@@ -4,11 +4,11 @@ import { useAuth } from "@/context/AuthContext";
 import { LegalModal } from "@/components/LegalModals";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { 
-  FileText, 
-  Shield, 
-  CheckCircle2, 
-  ArrowRight, 
+import {
+  FileText,
+  Shield,
+  CheckCircle2,
+  ArrowRight,
   Lock,
   Scale,
   Globe,
@@ -19,6 +19,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { MulticentroLogo } from "@/components/brand/BrandHeader";
+import { SolutionsModal } from "@/components/SolutionsModal";
 
 export default function Index() {
   const { session } = useAuth();
@@ -31,7 +32,7 @@ export default function Index() {
   }, [session, navigate]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background selection:bg-primary/20">
       {/* Professional Header - Sticky White */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
         <div className="container mx-auto flex h-20 items-center justify-between px-4">
@@ -63,19 +64,25 @@ export default function Index() {
             <span className="hidden lg:inline-flex text-[10px] text-muted-foreground/60 uppercase tracking-wider">
               Powered by <span className="font-semibold ml-1">OPERIA</span>
             </span>
-            <Button variant="outline" asChild className="border-border text-muted-foreground hover:text-foreground">
-              <Link to="/auth/login">Acceso</Link>
+            <Button variant="outline" asChild className="border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all duration-300">
+              <Link to="/login">Acceso</Link>
             </Button>
-            <Button asChild className="bg-primary hover:bg-primary/90">
-              <Link to="/auth/register">Empezar Gratis</Link>
+            <Button asChild className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-300 hover:scale-105 active:scale-95">
+              <Link to="/register">Empezar Gratis</Link>
             </Button>
           </div>
         </div>
       </header>
 
       {/* Hero Section - Compact, 2 columns */}
-      <section className="py-16 lg:py-20">
-        <div className="container mx-auto px-4">
+      <section className="relative py-16 lg:py-24 overflow-hidden">
+        {/* Background Gradients */}
+        <div className="absolute inset-0 pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-primary/5 blur-[100px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-blue-500/5 blur-[100px]" />
+        </div>
+
+        <div className="container relative z-10 mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left - Content */}
             <div className="space-y-6">
@@ -83,24 +90,24 @@ export default function Index() {
                 <Sparkles className="h-4 w-4 text-primary" />
                 Asistente IA incluido
               </div>
-              
-              <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight">
-                Acelera tus ventas y <span className="text-primary">formaliza acuerdos</span>
+
+              <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight animate-fade-in [animation-delay:200ms]">
+                Acelera tus ventas y <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80">formaliza acuerdos</span>
               </h1>
-              
+
               <p className="text-lg text-muted-foreground max-w-lg">
-                La solución de firma electrónica simple (eIDAS) y gestión documental 
+                La solución de firma electrónica simple (eIDAS) y gestión documental
                 diseñada para empresas ágiles. Sin instalación. Sin cuotas fijas.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-base px-8">
-                  <Link to="/auth/register">
+                <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-base px-8 shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-all duration-300 hover:scale-105 active:scale-95 animate-fade-in [animation-delay:400ms]">
+                  <Link to="/register">
                     Empezar Gratis
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" asChild className="text-base border-border">
+                <Button size="lg" variant="outline" asChild className="text-base border-border hover:bg-secondary/50 transition-all duration-300 hover:scale-105 active:scale-95 animate-fade-in [animation-delay:500ms]">
                   <Link to="/how-it-works">Ver Demostración</Link>
                 </Button>
               </div>
@@ -111,9 +118,12 @@ export default function Index() {
             </div>
 
             {/* Right - Abstract UI Card (Document Preview) - Animated */}
-            <div className="relative hidden lg:block">
+            <div className="relative hidden lg:block group perspective-1000">
+              {/* Animated Border Gradient */}
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-blue-500 rounded-xl blur opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
+
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent rounded-2xl" />
-              <Card className="relative bg-background border border-border shadow-lg rounded-xl overflow-hidden animate-fade-in">
+              <Card className="relative bg-background border border-border shadow-lg rounded-xl overflow-hidden animate-fade-in hover:shadow-2xl transition-all duration-500 ring-1 ring-black/5">
                 <CardContent className="p-0">
                   {/* Document Header */}
                   <div className="bg-secondary/50 px-6 py-4 border-b border-border">
@@ -133,12 +143,12 @@ export default function Index() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Live Activity Notification */}
                   <div className="px-6 py-3 bg-success/5 border-b border-success/10 flex items-center gap-2">
                     <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                     </span>
                     <p className="text-xs text-success font-medium">Documento firmado correctamente</p>
                   </div>
@@ -151,21 +161,21 @@ export default function Index() {
                       <div className="h-3 bg-gradient-to-r from-muted via-muted-foreground/10 to-muted rounded w-4/5 animate-pulse" style={{ animationDelay: '100ms' }} />
                       <div className="h-3 bg-gradient-to-r from-muted via-muted-foreground/10 to-muted rounded w-3/5 animate-pulse" style={{ animationDelay: '200ms' }} />
                     </div>
-                    
+
                     {/* Signature Area - Enhanced */}
                     <div className="pt-4 border-t border-border">
                       <div className="flex items-center gap-4">
                         {/* Signature Box with handwriting effect */}
                         <div className="h-14 w-28 bg-gradient-to-br from-primary/5 to-muted rounded-lg border-2 border-dashed border-primary/30 flex items-center justify-center relative overflow-hidden">
                           <svg viewBox="0 0 100 40" className="w-20 h-8 text-primary/60">
-                            <path 
-                              d="M5 30 Q20 10, 35 25 T65 20 Q80 15, 95 25" 
-                              fill="none" 
-                              stroke="currentColor" 
-                              strokeWidth="2" 
+                            <path
+                              d="M5 30 Q20 10, 35 25 T65 20 Q80 15, 95 25"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
                               strokeLinecap="round"
                               className="animate-[draw_2s_ease-out_forwards]"
-                              style={{ 
+                              style={{
                                 strokeDasharray: 150,
                                 strokeDashoffset: 0
                               }}
@@ -249,49 +259,49 @@ export default function Index() {
               Una herramienta para todo tu negocio
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Desde el equipo comercial hasta el departamento legal, 
+              Desde el equipo comercial hasta el departamento legal,
               todos tus documentos firmados en un solo lugar.
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {/* Commercial */}
-            <Card className="bg-background border border-border hover:shadow-lg transition-shadow">
+            <Card className="bg-background border border-border hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-500 group">
               <CardContent className="p-6">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500">
                   <Briefcase className="h-6 w-6 text-primary" strokeWidth={1.5} />
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">Comercial</h3>
                 <p className="text-muted-foreground">
-                  Cierra presupuestos y propuestas en el acto. 
+                  Cierra presupuestos y propuestas en el acto.
                   Envía, firma y cobra sin perder tiempo.
                 </p>
               </CardContent>
             </Card>
 
             {/* Operations */}
-            <Card className="bg-background border border-border hover:shadow-lg transition-shadow">
+            <Card className="bg-background border border-border hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-500 group">
               <CardContent className="p-6">
-                <div className="h-12 w-12 rounded-lg bg-success/10 flex items-center justify-center mb-4">
+                <div className="h-12 w-12 rounded-lg bg-success/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500">
                   <Wrench className="h-6 w-6 text-success" strokeWidth={1.5} />
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">Operaciones</h3>
                 <p className="text-muted-foreground">
-                  Partes de trabajo y albaranes firmados in situ. 
+                  Partes de trabajo y albaranes firmados in situ.
                   Documenta entregas al instante.
                 </p>
               </CardContent>
             </Card>
 
             {/* Legal */}
-            <Card className="bg-background border border-border hover:shadow-lg transition-shadow">
+            <Card className="bg-background border border-border hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-500 group">
               <CardContent className="p-6">
-                <div className="h-12 w-12 rounded-lg bg-chart-4/10 flex items-center justify-center mb-4">
+                <div className="h-12 w-12 rounded-lg bg-chart-4/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500">
                   <FileSignature className="h-6 w-6 text-chart-4" strokeWidth={1.5} />
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">Legal</h3>
                 <p className="text-muted-foreground">
-                  Contratos laborales y acuerdos con plena validez. 
+                  Contratos laborales y acuerdos con plena validez.
                   Cumplimiento eIDAS garantizado.
                 </p>
               </CardContent>
@@ -310,13 +320,13 @@ export default function Index() {
                 <Sparkles className="h-4 w-4" />
                 Inteligencia Artificial
               </div>
-              
+
               <h2 className="text-3xl font-bold text-foreground">
                 Crea documentos con Clara IA
               </h2>
-              
+
               <p className="text-muted-foreground">
-                Describe lo que necesitas y Clara redactará presupuestos, NDAs, 
+                Describe lo que necesitas y Clara redactará presupuestos, NDAs,
                 contratos de servicio y más. Solo revisa, ajusta y envía a firmar.
               </p>
 
@@ -358,13 +368,13 @@ export default function Index() {
                 <div className="space-y-3">
                   <div className="bg-secondary rounded-lg p-3">
                     <p className="text-sm text-muted-foreground">
-                      "Necesito un presupuesto para una reforma de baño, 
+                      "Necesito un presupuesto para una reforma de baño,
                       materiales incluidos, plazo 2 semanas..."
                     </p>
                   </div>
                   <div className="bg-primary/5 rounded-lg p-3 border-l-2 border-primary">
                     <p className="text-sm text-foreground">
-                      He creado tu presupuesto con todos los detalles. 
+                      He creado tu presupuesto con todos los detalles.
                       ¿Quieres que añada condiciones de pago?
                     </p>
                   </div>
@@ -425,7 +435,7 @@ export default function Index() {
           <p className="text-background/70 mb-8 max-w-xl mx-auto">
             Sin compromisos. Sin tarjeta de crédito. 3 documentos gratis para probar.
           </p>
-          <Button size="lg" asChild className="bg-background text-foreground hover:bg-background/90">
+          <Button size="lg" asChild className="bg-background text-foreground hover:bg-background/90 shadow-xl shadow-black/10 hover:shadow-black/20 transition-all duration-300 hover:scale-105 active:scale-95">
             <Link to="/auth/register">
               Crear Cuenta Gratis
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -448,7 +458,7 @@ export default function Index() {
                 </div>
               </div>
               <p className="text-sm text-background/50 max-w-xs">
-                La solución de firma digital simple, legal y segura 
+                La solución de firma digital simple, legal y segura
                 para profesionales y empresas.
               </p>
             </div>
@@ -467,9 +477,24 @@ export default function Index() {
             <div>
               <h4 className="mb-4 font-semibold text-background">Soluciones</h4>
               <ul className="space-y-2 text-sm">
-                <li><span className="text-background/50">Autónomos</span></li>
-                <li><span className="text-background/50">Pymes</span></li>
-                <li><span className="text-background/50">Comercios</span></li>
+                <li>
+                  <SolutionsModal
+                    type="freelance"
+                    trigger={<button className="text-background/50 hover:text-background transition-colors text-left hover:underline">Autónomos</button>}
+                  />
+                </li>
+                <li>
+                  <SolutionsModal
+                    type="sme"
+                    trigger={<button className="text-background/50 hover:text-background transition-colors text-left hover:underline">Pymes</button>}
+                  />
+                </li>
+                <li>
+                  <SolutionsModal
+                    type="retail"
+                    trigger={<button className="text-background/50 hover:text-background transition-colors text-left hover:underline">Comercios</button>}
+                  />
+                </li>
               </ul>
             </div>
 
@@ -479,19 +504,25 @@ export default function Index() {
               <ul className="space-y-2 text-sm">
                 <li>
                   <LegalModal
-                    trigger={<button className="text-background/50 hover:text-background transition-colors">Términos de uso</button>}
+                    trigger={<button className="text-background/50 hover:text-background transition-colors text-left">Términos de uso</button>}
                     title="Términos y Condiciones"
                     type="terms"
                   />
                 </li>
                 <li>
                   <LegalModal
-                    trigger={<button className="text-background/50 hover:text-background transition-colors">Privacidad</button>}
+                    trigger={<button className="text-background/50 hover:text-background transition-colors text-left">Privacidad</button>}
                     title="Política de Privacidad"
                     type="privacy"
                   />
                 </li>
-                <li><Link to="/legal" className="text-background/50 hover:text-background transition-colors">Cumplimiento eIDAS</Link></li>
+                <li>
+                  <LegalModal
+                    trigger={<button className="text-background/50 hover:text-background transition-colors text-left">Cumplimiento eIDAS</button>}
+                    title="Cumplimiento eIDAS"
+                    type="legal"
+                  />
+                </li>
               </ul>
             </div>
           </div>

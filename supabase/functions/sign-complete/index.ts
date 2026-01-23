@@ -2,28 +2,29 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1"
 import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib'
 import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
+import { Database } from '../_shared/types.ts'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
 
     try {
-        const supabase = createClient(
+        const supabase = createClient<Database>(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
         const { token, otp_code, signature_image, user_agent } = await req.json()
-        
+
         // Get client IP from request headers
-        const ip_address = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
-            || req.headers.get('x-real-ip') 
+        const ip_address = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+            || req.headers.get('x-real-ip')
             || 'unknown'
 
         if (!token || !signature_image) throw new Error('Faltan datos requeridos (token o firma)')
@@ -76,7 +77,7 @@ serve(async (req) => {
 
         // 3. Download original PDF
         let pdfBytes: ArrayBuffer;
-        
+
         // Try to extract path from URL
         if (doc.file_url.includes('/documents/')) {
             const pathParts = doc.file_url.split('/documents/');
@@ -85,7 +86,7 @@ serve(async (req) => {
                 const { data: fileData, error: fileError } = await supabase.storage
                     .from('documents')
                     .download(filePath);
-                
+
                 if (!fileError && fileData) {
                     pdfBytes = await fileData.arrayBuffer();
                 } else {
@@ -131,7 +132,7 @@ serve(async (req) => {
         const signedAt = new Date();
         const signatureText = `Firmado digitalmente por: ${doc.signer_name}`;
         const dateText = `Fecha: ${signedAt.toLocaleString('es-ES')}`;
-        
+
         lastPage.drawText(signatureText, {
             x: pageWidth / 2 - 100,
             y: 35,
@@ -139,7 +140,7 @@ serve(async (req) => {
             font: timesRoman,
             color: rgb(0.3, 0.3, 0.3),
         });
-        
+
         lastPage.drawText(dateText, {
             x: pageWidth / 2 - 60,
             y: 25,
@@ -231,8 +232,8 @@ serve(async (req) => {
         });
 
         return new Response(
-            JSON.stringify({ 
-                success: true, 
+            JSON.stringify({
+                success: true,
                 message: 'Documento firmado y sellado correctamente',
                 document_id: doc.id,
                 signed_at: signedAt.toISOString()

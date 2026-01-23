@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { z } from "https://esm.sh/zod@3.22.4"
+import { Database } from '../_shared/types.ts'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -18,7 +19,7 @@ const RequestSchema = z.object({
     documentId: z.string().optional()
 });
 
-serve(async (req) => {
+serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -35,7 +36,7 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Missing Authorization header' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
-        const supabaseClient = createClient(
+        const supabaseClient = createClient<Database>(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
             { global: { headers: { Authorization: authHeader } } }
@@ -173,7 +174,7 @@ Address: ${documentData.signer_address || "PENDING"}
         // 6. Call Gemini API
         const geminiMessages = [
             { role: "user", parts: [{ text: systemPrompt }] }, // System instruction as first user message or proper system instruction if supported. Gemini 1.5 supports system_instruction.
-            ...messages.map(m => ({
+            ...messages.map((m: { role: string; content: string }) => ({
                 role: m.role === 'clara' ? 'model' : 'user',
                 parts: [{ text: m.content }]
             }))
