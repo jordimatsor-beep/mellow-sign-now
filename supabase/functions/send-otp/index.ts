@@ -69,13 +69,14 @@ serve(async (req) => {
         const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
         let fromNumber = Deno.env.get('TWILIO_FROM_NUMBER')
         // Fallbacks if env var behaves differently for SMS/WhatsApp
-        if (channel === 'whatsapp' && !fromNumber?.startsWith('whatsapp:')) {
-            fromNumber = 'whatsapp:+14155238886'; // Default sandbox
+        if (channel === 'whatsapp' && !fromNumber) {
+            fromNumber = 'whatsapp:+14155238886'; // Default sandbox only if missing
         }
 
         // Construct To/From based on channel
         let to = phone;
         let from = fromNumber;
+        console.log(`[OTP Request] Channel: ${channel} | To: ${to} | FromEnv: ${fromNumber}`);
 
         if (channel === 'whatsapp') {
             if (!to.startsWith('whatsapp:')) to = `whatsapp:${to}`;
