@@ -20,7 +20,7 @@ serve(async (req) => {
 
         // Parse body
         const body = await req.json()
-        const { token, channel = 'whatsapp' } = body
+        const { token } = body
 
         if (!token) throw new Error('Token is required')
 
@@ -68,24 +68,17 @@ serve(async (req) => {
         const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
         const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
         let fromNumber = Deno.env.get('TWILIO_FROM_NUMBER')
-        // Fallbacks if env var behaves differently for SMS/WhatsApp
-        if (channel === 'whatsapp' && !fromNumber) {
-            fromNumber = 'whatsapp:+14155238886'; // Default sandbox only if missing
-        }
+        // FORCE SMS channel regardless of request
+        const channel = 'sms';
 
-        // Construct To/From based on channel
+        // Construct To/From based on SMS
         let to = phone;
         let from = fromNumber;
-        console.log(`[OTP Request] Channel: ${channel} | To: ${to} | FromEnv: ${fromNumber}`);
 
-        if (channel === 'whatsapp') {
-            if (!to.startsWith('whatsapp:')) to = `whatsapp:${to}`;
-            if (from && !from.startsWith('whatsapp:')) from = `whatsapp:${from}`;
-        } else {
-            // SMS
-            // Remove whatsapp: prefix if present in env var to reuse same number
-            if (from && from.startsWith('whatsapp:')) from = from.replace('whatsapp:', '');
-        }
+        // Remove whatsapp: prefix if present in env var to reuse same number for SMS
+        if (from && from.startsWith('whatsapp:')) from = from.replace('whatsapp:', '');
+
+        console.log(`[OTP Request] Channel: ${channel} | To: ${to} | FromEnv: ${fromNumber}`);
 
         if (accountSid && authToken) {
             const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
@@ -94,10 +87,7 @@ serve(async (req) => {
             params.append('To', to)
             if (from) params.append('From', from)
 
-            // Customize body slightly
-            const bodyText = channel === 'whatsapp'
-                ? `Tu código de verificación para la firma digital de Multicentros es: ${otp}. No lo compartas.`
-                : `FirmaClara: Tu código de seguridad es ${otp}.`;
+            const bodyText = `FirmaClara: Tu código de seguridad es ${otp}.`;
 
             params.append('Body', bodyText)
 
@@ -113,7 +103,7 @@ serve(async (req) => {
             if (!res.ok) {
                 const txt = await res.text()
                 console.error('Twilio Error:', txt)
-                throw new Error('Error al enviar mensaje de WhatsApp. Verifica el número.')
+                throw new Error(`Error al enviar mensaje (${channel}). Twilio: ${txt}`)
             }
         } else {
             console.log('---------------------------------------------------')

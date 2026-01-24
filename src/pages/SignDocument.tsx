@@ -369,14 +369,14 @@ export default function SignDocument() {
 
     if (requiresOtp) {
       if (!docData.signer_phone) {
-        toast.error("Error: Este documento requiere verificación por WhatsApp pero no tiene número de teléfono asociado.");
+        toast.error("Error: Este documento requiere verificación SMS pero no tiene número de teléfono asociado.");
         return;
       }
 
       const toastId = toast.loading("Enviando código de seguridad...");
       try {
         const { error } = await supabase.functions.invoke('send-otp', {
-          body: { token }
+          body: { token, channel: 'sms' }
         });
 
         if (error) {
@@ -386,7 +386,7 @@ export default function SignDocument() {
 
         toast.dismiss(toastId);
         setStep("otp");
-        toast.info("Código enviado a tu WhatsApp");
+        toast.info("Código enviado por SMS a tu móvil");
       } catch (err: any) {
         console.error(err);
         toast.error(err.message, { id: toastId });
@@ -762,7 +762,7 @@ export default function SignDocument() {
               Verificación de Seguridad
             </DialogTitle>
             <DialogDescription>
-              Por seguridad, introduce el código de 6 dígitos que hemos enviado a tu WhatsApp.
+              Por seguridad, introduce el código de 6 dígitos que hemos enviado por SMS.
             </DialogDescription>
           </DialogHeader>
 
@@ -789,16 +789,7 @@ export default function SignDocument() {
               <p className="text-sm text-red-500 font-medium animate-pulse">{otpError}</p>
             )}
 
-            <div className="flex flex-col gap-2 w-full sm:flex-row sm:justify-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleResendOtp('whatsapp')}
-                disabled={resendCooldown > 0}
-                className={resendCooldown > 0 ? "opacity-50" : ""}
-              >
-                {resendCooldown > 0 ? `Reenviar en ${resendCooldown}s` : "Reenviar (WhatsApp)"}
-              </Button>
+            <div className="flex justify-center w-full">
               <Button
                 variant="ghost"
                 size="sm"
@@ -806,7 +797,7 @@ export default function SignDocument() {
                 disabled={resendCooldown > 0}
                 className={resendCooldown > 0 ? "opacity-50" : ""}
               >
-                {resendCooldown > 0 ? `SMS en ${resendCooldown}s` : "Enviar por SMS"}
+                {resendCooldown > 0 ? `Reenviar en ${resendCooldown}s` : "Reenviar código por SMS"}
               </Button>
             </div>
           </div>

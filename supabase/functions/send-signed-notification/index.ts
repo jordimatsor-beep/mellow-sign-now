@@ -2,52 +2,52 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1"
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 interface RequestBody {
-    document_id: string;
+  document_id: string;
 }
 
 serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+    if (!RESEND_API_KEY) {
+      throw new Error('Missing RESEND_API_KEY')
     }
 
-    try {
-        const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-        if (!RESEND_API_KEY) {
-            throw new Error('Missing RESEND_API_KEY')
-        }
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
-        const supabase = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        )
+    const { document_id }: RequestBody = await req.json()
 
-        const { document_id }: RequestBody = await req.json()
+    // 1. Fetch Document Details including User (Issuer)
+    const { data: doc, error: docError } = await supabase
+      .from('documents')
+      .select('*, users:user_id (email, name, company_name)')
+      .eq('id', document_id)
+      .single()
 
-        // 1. Fetch Document Details including User (Issuer)
-        const { data: doc, error: docError } = await supabase
-            .from('documents')
-            .select('*, users:user_id (email, name, company_name)')
-            .eq('id', document_id)
-            .single()
+    if (docError || !doc) throw new Error('Document not found')
 
-        if (docError || !doc) throw new Error('Document not found')
+    // 2. Prepare Email Content
+    const signerEmail = doc.signer_email
+    const issuerEmail = doc.users?.email
+    const fileUrl = doc.signed_file_url || doc.file_url // Fallback if signed_file_url not set yet (should be)
+    const docTitle = doc.title || 'Documento Firmado'
 
-        // 2. Prepare Email Content
-        const signerEmail = doc.signer_email
-        const issuerEmail = doc.users?.email
-        const fileUrl = doc.signed_file_url || doc.file_url // Fallback if signed_file_url not set yet (should be)
-        const docTitle = doc.title || 'Documento Firmado'
+    // Determine sender name
+    const senderName = doc.users?.company_name || doc.users?.name || 'FirmaClara'
 
-        // Determine sender name
-        const senderName = doc.users?.company_name || doc.users?.name || 'FirmaClara'
-
-        // HTML Template
-        const html = `
+    // HTML Template
+    const html = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -89,59 +89,92 @@ serve(async (req) => {
       </html>
     `
 
-        // 3. Send Emails (To Signer AND Issuer)
-        const recipients = [signerEmail];
-        if (issuerEmail && issuerEmail !== signerEmail) {
-            recipients.push(issuerEmail);
+    // 3. Send Emails (To Signer AND Issuer)
+    const recipients = [signerEmail];
+    if (issuerEmail && issuerEmail !== signerEmail) {
+      recipients.push(issuerEmail);
+    }
+
+    // Using bcc for simplicity or separate emails. Resend supports multiple 'to' but they see each other.
+    // Better to loop or send as "to: signer, cc: issuer"
+    // Let's send to Signer, CC Issuer
+
+    const emailPayload: any = {
+      from: 'FirmaClara <noreply@firmaclara.es>',
+      to: [signerEmail],
+      subject: `[Firmado] ${docTitle} - Copia Legal`,
+      html: html,
+      attachments: [
+        {
+          filename: `${docTitle.replace(/[^a-z0-9]/gi, '_')}_signed.pdf`,
+          path: fileUrl
         }
+      ]
+    }
 
-        // Using bcc for simplicity or separate emails. Resend supports multiple 'to' but they see each other.
-        // Better to loop or send as "to: signer, cc: issuer"
-        // Let's send to Signer, CC Issuer
+    if (issuerEmail) {
+      emailPayload.cc = [issuerEmail];
+    }
 
-        const emailPayload: any = {
-            from: 'FirmaClara <noreply@firmaclara.es>',
-            to: [signerEmail],
-            subject: `[Firmado] ${docTitle} - Copia Legal`,
-            html: html,
-            attachments: [
-                {
-                    filename: `${docTitle.replace(/[^a-z0-9]/gi, '_')}_signed.pdf`,
-                    path: fileUrl
-                }
-            ]
-        }
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${RESEND_API_KEY}`
+      },
+      body: JSON.stringify(emailPayload)
+    })
 
-        if (issuerEmail) {
-            emailPayload.cc = [issuerEmail];
-        }
+    const data = await res.json()
 
-        const res = await fetch('https://api.resend.com/emails', {
+    if (!res.ok) {
+      console.error("Resend Error", data);
+      throw new Error("Failed to send email");
+    }
+
+
+    // 4. Send SMS (Twilio) - Optional but good for UX since we used SMS for OTP
+    if (doc.signer_phone) {
+      try {
+        const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
+        const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
+        const fromNumber = Deno.env.get('TWILIO_FROM_NUMBER')
+        // Remove whatsapp: prefix if exists (we want SMS)
+        const from = fromNumber?.replace('whatsapp:', '')
+        const to = doc.signer_phone.replace(/[\s\-\(\)]/g, '')
+
+        if (accountSid && authToken && from) {
+          const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
+          const params = new URLSearchParams()
+          params.append('To', to)
+          params.append('From', from)
+          params.append('Body', `FirmaClara: Documento "${docTitle}" firmado correctamente. Revisa tu email para descargar la copia.`)
+
+          // Fire and forget (don't block response)
+          fetch(twilioUrl, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${RESEND_API_KEY}`
+              'Authorization': 'Basic ' + btoa(`${accountSid}:${authToken}`),
+              'Content-Type': 'application/x-www-form-urlencoded'
             },
-            body: JSON.stringify(emailPayload)
-        })
-
-        const data = await res.json()
-
-        if (!res.ok) {
-            console.error("Resend Error", data);
-            throw new Error("Failed to send email");
+            body: params
+          }).then(r => r.text()).then(t => console.log("SMS result:", t)).catch(e => console.error("SMS fail:", e));
         }
-
-        return new Response(
-            JSON.stringify({ success: true, id: data.id }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-
-    } catch (error: any) {
-        console.error(error)
-        return new Response(
-            JSON.stringify({ error: error.message }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        )
+      } catch (smsErr) {
+        console.error("Error preparing SMS:", smsErr);
+      }
     }
+
+    return new Response(
+      JSON.stringify({ success: true, id: data.id }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+
+  } catch (error: any) {
+    console.error(error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+    )
+  }
 })

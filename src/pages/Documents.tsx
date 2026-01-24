@@ -1,56 +1,35 @@
-import { Search, Plus, Filter } from "lucide-react";
+import { Search, Plus, Filter, Loader2, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge, DocumentStatus } from "@/components/shared/StatusBadge";
 import { FileText } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { useState } from "react";
 
-// Mock data
-const mockDocuments = [
-  {
-    id: "1",
-    title: "Presupuesto diseño web",
-    signerName: "Juan Pérez",
-    signerEmail: "cliente@email.com",
-    status: "sent" as DocumentStatus,
-    createdAt: "20/01/2025",
-  },
-  {
-    id: "2",
-    title: "Contrato diseño logo",
-    signerName: "María García",
-    signerEmail: "otro@email.com",
-    status: "signed" as DocumentStatus,
-    createdAt: "18/01/2025",
-  },
-  {
-    id: "3",
-    title: "Propuesta mantenimiento",
-    signerName: "Carlos López",
-    signerEmail: "empresa@email.com",
-    status: "viewed" as DocumentStatus,
-    createdAt: "17/01/2025",
-  },
-  {
-    id: "4",
-    title: "Acuerdo colaboración",
-    signerName: "Ana Martín",
-    signerEmail: "ana@empresa.com",
-    status: "expired" as DocumentStatus,
-    createdAt: "10/01/2025",
-  },
-  {
-    id: "5",
-    title: "Contrato freelance",
-    signerName: "Pedro Sánchez",
-    signerEmail: "pedro@email.com",
-    status: "signed" as DocumentStatus,
-    createdAt: "08/01/2025",
-  },
-];
+// Document type matching Supabase
+type Document = {
+  id: string;
+  title: string;
+  signer_name: string | null;
+  signer_email: string | null;
+  status: string | null;
+  created_at: string | null;
+};
 
-function DocumentCard({ doc }: { doc: (typeof mockDocuments)[0] }) {
+function DocumentCard({ doc }: { doc: Document }) {
+  // Map status string to DocumentStatus type safely
+  const status = (doc.status || 'draft') as DocumentStatus;
+
+  // Format date
+  const dateStr = doc.created_at
+    ? format(new Date(doc.created_at), "dd/MM/yyyy", { locale: es })
+    : "-";
+
   return (
     <Link
       to={`/documents/${doc.id}`}
@@ -62,27 +41,73 @@ function DocumentCard({ doc }: { doc: (typeof mockDocuments)[0] }) {
             <FileText className="h-6 w-6 text-slate-500 group-hover:text-primary transition-colors" />
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{doc.title}</p>
+            <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{doc.title || "Sin título"}</p>
             <div className="flex items-center gap-2 mt-1">
               <p className="text-sm text-muted-foreground truncate">
-                {doc.signerName} · {doc.signerEmail}
+                {doc.signer_name || "Sin firmante"} · {doc.signer_email || "-"}
               </p>
               <span className="text-xs text-muted-foreground">•</span>
-              <p className="text-xs text-muted-foreground">{doc.createdAt}</p>
+              <p className="text-xs text-muted-foreground">{dateStr}</p>
             </div>
           </div>
         </div>
-        <StatusBadge status={doc.status} className="shrink-0" />
+        <StatusBadge status={status} className="shrink-0" />
       </div>
     </Link>
   );
 }
 
 export default function Documents() {
-  const pendingDocs = mockDocuments.filter(
+  const [search, setSearch] = useState("");
+
+  const { data: documents, isLoading, error } = useQuery({
+    queryKey: ["documents"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+        Cargando documentos...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center text-red-500">
+        <AlertCircle className="h-8 w-8 mb-2" />
+        <p>Error al cargar documentos</p>
+        <p className="text-sm opacity-70">{(error as Error).message}</p>
+      </div>
+    );
+  }
+
+  const allDocs = documents || [];
+
+  // Filter logic
+  const filteredDocs = allDocs.filter(doc => {
+    const matchesSearch = search.toLowerCase() === "" ||
+      doc.title.toLowerCase().includes(search.toLowerCase()) ||
+      (doc.signer_name?.toLowerCase() || "").includes(search.toLowerCase()) ||
+      (doc.signer_email?.toLowerCase() || "").includes(search.toLowerCase());
+
+    return matchesSearch;
+  });
+
+  const pendingDocs = filteredDocs.filter(
     (d) => d.status === "sent" || d.status === "viewed"
   );
-  const signedDocs = mockDocuments.filter((d) => d.status === "signed");
+  const signedDocs = filteredDocs.filter((d) => d.status === "signed");
 
   return (
     <div className="space-y-6">
@@ -103,6 +128,8 @@ export default function Documents() {
         <Input
           placeholder="Buscar por título o destinatario..."
           className="pl-9"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
@@ -110,7 +137,7 @@ export default function Documents() {
       <Tabs defaultValue="all" className="w-full">
         <TabsList className="w-full">
           <TabsTrigger value="all" className="flex-1">
-            Todos ({mockDocuments.length})
+            Todos ({filteredDocs.length})
           </TabsTrigger>
           <TabsTrigger value="pending" className="flex-1">
             Pendientes ({pendingDocs.length})
@@ -121,21 +148,39 @@ export default function Documents() {
         </TabsList>
 
         <TabsContent value="all" className="mt-4 space-y-2">
-          {mockDocuments.map((doc) => (
-            <DocumentCard key={doc.id} doc={doc} />
-          ))}
+          {filteredDocs.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
+              No hay documentos encontrados.
+            </div>
+          ) : (
+            filteredDocs.map((doc) => (
+              <DocumentCard key={doc.id} doc={doc} />
+            ))
+          )}
         </TabsContent>
 
         <TabsContent value="pending" className="mt-4 space-y-2">
-          {pendingDocs.map((doc) => (
-            <DocumentCard key={doc.id} doc={doc} />
-          ))}
+          {pendingDocs.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
+              No hay documentos pendientes.
+            </div>
+          ) : (
+            pendingDocs.map((doc) => (
+              <DocumentCard key={doc.id} doc={doc} />
+            ))
+          )}
         </TabsContent>
 
         <TabsContent value="signed" className="mt-4 space-y-2">
-          {signedDocs.map((doc) => (
-            <DocumentCard key={doc.id} doc={doc} />
-          ))}
+          {signedDocs.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
+              No hay documentos firmados.
+            </div>
+          ) : (
+            signedDocs.map((doc) => (
+              <DocumentCard key={doc.id} doc={doc} />
+            ))
+          )}
         </TabsContent>
       </Tabs>
     </div>
