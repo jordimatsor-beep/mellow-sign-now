@@ -197,7 +197,7 @@ export default function DocumentDetail() {
                 {item.isCertificate && (
                   <div className="mt-2 flex items-center gap-2 rounded-md bg-purple-50 p-2 text-xs text-purple-700 border border-purple-100">
                     <Award className="h-3 w-3" />
-                    <span>Evidencia generada y sellada en blockchain</span>
+                    <span>Evidencia digital generada y sellada con TSA</span>
                   </div>
                 )}
               </div>
@@ -220,9 +220,9 @@ export default function DocumentDetail() {
         </Button>
         {/* Certificate download - only if signed */}
         {doc.status === 'signed' && (
-          <Button variant="outline" className="w-full justify-start gap-2" disabled>
+          <Button variant="outline" className="w-full justify-start gap-2" onClick={() => window.open(doc.certificate_url || '#', '_blank')} disabled={!doc.certificate_url && false}>
             <FileText className="h-4 w-4" />
-            Descargar certificado de evidencias (Próximamente)
+            Descargar certificado de evidencias
           </Button>
         )}
       </div>

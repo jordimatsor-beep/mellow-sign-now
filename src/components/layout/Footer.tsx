@@ -12,7 +12,7 @@ export function Footer() {
               <MulticentroLogo className="h-10 [&_*]:!text-slate-300 [&_path]:!stroke-slate-400 [&_circle]:!fill-slate-400" />
             </div>
             <p className="text-sm text-slate-400 max-w-xs">
-              La solución de firma digital simple, legal y segura 
+              La solución de firma digital simple, legal y segura
               para profesionales y empresas.
             </p>
           </div>
@@ -22,8 +22,8 @@ export function Footer() {
             <h4 className="mb-4 font-semibold text-white">Producto</h4>
             <ul className="space-y-2 text-sm">
               <li><Link to="/how-it-works" className="text-slate-400 hover:text-white transition-colors">Cómo funciona</Link></li>
-              <li><Link to="/credits/purchase" className="text-slate-400 hover:text-white transition-colors">Precios</Link></li>
-              <li><Link to="/clara" className="text-slate-400 hover:text-white transition-colors">Clara IA</Link></li>
+              <li><a href="/#pricing" className="text-slate-400 hover:text-white transition-colors">Precios</a></li>
+              <li><a href="/#clara" className="text-slate-400 hover:text-white transition-colors">Clara IA</a></li>
             </ul>
           </div>
 

@@ -67,10 +67,10 @@ export function SolutionsModal({ trigger, type }: SolutionsModalProps) {
                             <section>
                                 <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                                     <CheckCircle2 className="h-4 w-4 text-primary" />
-                                    Gestión de RRHH
+                                    Gestión Documental
                                 </h4>
                                 <p className="text-sm text-muted-foreground">
-                                    Contratos laborales, acuerdos de confidencialidad, y registrosarios firmados digitalmente.
+                                    Acuerdos de confidencialidad, contratos de proveedores y documentación interna firmada digitalmente.
                                     Ahorra horas de gestión administrativa y papel.
                                 </p>
                             </section>

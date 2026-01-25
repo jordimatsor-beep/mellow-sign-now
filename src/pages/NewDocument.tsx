@@ -412,16 +412,14 @@ export default function NewDocument() {
               </div>
 
               {/* WhatsApp Security Toggle - Prominent Card */}
-              <div className={`rounded-xl border-2 p-4 transition-all ${
-                whatsappVerification 
-                  ? 'border-green-500 bg-green-50/50 shadow-sm' 
+              <div className={`rounded-xl border-2 p-4 transition-all ${whatsappVerification
+                  ? 'border-green-500 bg-green-50/50 shadow-sm'
                   : 'border-dashed border-muted-foreground/30 bg-muted/20'
-              }`}>
+                }`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                      whatsappVerification ? 'bg-green-100' : 'bg-muted'
-                    }`}>
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${whatsappVerification ? 'bg-green-100' : 'bg-muted'
+                      }`}>
                       {whatsappVerification ? (
                         <Lock className="h-5 w-5 text-green-600" />
                       ) : (
@@ -430,10 +428,10 @@ export default function NewDocument() {
                     </div>
                     <div>
                       <p className="font-semibold text-sm flex items-center gap-2">
-                        🔒 Activar Seguridad Extra (Código por WhatsApp)
+                        🔒 Activar Seguridad Extra (Código por SMS)
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        El firmante recibirá el enlace por Email, pero necesitará un código enviado a su WhatsApp para poder firmar.
+                        El firmante recibirá el enlace por Email, y un código OTP por SMS para firmar.
                       </p>
                     </div>
                   </div>
@@ -451,8 +449,8 @@ export default function NewDocument() {
                       Teléfono Móvil del Firmante *
                     </Label>
                     <div className="flex gap-2 mt-1.5">
-                      <Select 
-                        value={signerPhonePrefix} 
+                      <Select
+                        value={signerPhonePrefix}
                         onValueChange={(value) => {
                           setSignerPhonePrefix(value);
                           // Update full phone with new prefix
@@ -493,7 +491,7 @@ export default function NewDocument() {
                     </div>
                     {!signerPhone.replace(/^\+\d+\s*/, '').trim() && (
                       <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
-                        ⚠️ El número de WhatsApp es obligatorio para la verificación
+                        ⚠️ El teléfono móvil es obligatorio para el código SMS
                       </p>
                     )}
                   </div>
@@ -503,8 +501,8 @@ export default function NewDocument() {
               <Button
                 className="w-full"
                 disabled={
-                  !signerName || 
-                  !signerEmail || 
+                  !signerName ||
+                  !signerEmail ||
                   (!isPresupuesto && (!signerNif || !signerAddress)) ||
                   (whatsappVerification && !signerPhone.replace(/^\+\d+\s*/, '').trim())
                 }
@@ -522,32 +520,19 @@ export default function NewDocument() {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Opciones adicionales</h2>
 
-            <div className="space-y-3">
-              <Label>Tipo de firma</Label>
-              <RadioGroup value={signatureType} onValueChange={setSignatureType}>
-                <div className="space-y-2">
-                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent [&:has(:checked)]:ring-2 [&:has(:checked)]:ring-primary">
-                    <RadioGroupItem value="full" className="mt-0.5" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">Aceptación + nombre + firma</p>
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                          Recomendado
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">Máxima prueba legal</p>
-                    </div>
-                  </label>
-
-                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent [&:has(:checked)]:ring-2 [&:has(:checked)]:ring-primary">
-                    <RadioGroupItem value="name" className="mt-0.5" />
-                    <div>
-                      <p className="font-medium">Aceptación + nombre</p>
-                      <p className="text-sm text-muted-foreground">Confirmación con nombre</p>
-                    </div>
-                  </label>
+            {/* Signature Type simplified to single option */}
+            <div className="rounded-lg border p-4 bg-muted/20">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <FileSignature className="h-5 w-5 text-primary" />
                 </div>
-              </RadioGroup>
+                <div>
+                  <p className="font-medium text-foreground">Firma Digital Estándar (eIDAS)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Incluye sello de tiempo y certificado de evidencias.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -620,7 +605,7 @@ export default function NewDocument() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Tipo de firma</span>
                 <span>
-                  {signatureType === 'full' ? 'Aceptación + nombre + firma' : 'Aceptación + nombre'}
+                  Firma Digital Estándar
                 </span>
               </div>
               <div className="flex justify-between">
@@ -629,7 +614,7 @@ export default function NewDocument() {
                   {whatsappVerification ? (
                     <>
                       <Lock className="h-3 w-3 text-primary" />
-                      WhatsApp OTP
+                      SMS OTP
                     </>
                   ) : (
                     "Estándar"

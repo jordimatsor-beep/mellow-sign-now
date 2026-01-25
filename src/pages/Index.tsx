@@ -47,15 +47,15 @@ export default function Index() {
             <Link to="/how-it-works" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Cómo funciona
             </Link>
-            <Link to="/credits/purchase" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <a href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Precios
-            </Link>
+            </a>
             <Link to="/legal" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Legalidad
             </Link>
-            <Link to="/help" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <a href="mailto:soporte@firmaclara.com" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Ayuda
-            </Link>
+            </a>
           </nav>
 
           {/* Actions - Right */}
@@ -301,7 +301,7 @@ export default function Index() {
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">Legal</h3>
                 <p className="text-muted-foreground">
-                  Contratos laborales y acuerdos con plena validez.
+                  Contratos comerciales y acuerdos con plena validez.
                   Cumplimiento eIDAS garantizado.
                 </p>
               </CardContent>
@@ -311,7 +311,7 @@ export default function Index() {
       </section>
 
       {/* Clara AI Section */}
-      <section className="py-16 lg:py-20 bg-secondary">
+      <section id="clara" className="py-16 lg:py-20 bg-secondary">
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left - Content */}
@@ -422,6 +422,110 @@ export default function Index() {
                 Documento con validez legal inmediata
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-16 lg:py-24 bg-secondary/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-foreground mb-3">
+              Precios transparentes
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Paga solo por lo que usas. Sin cuotas mensuales fijas.
+              Los créditos no caducan nunca.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {/* Starter Pack */}
+            <Card className="bg-background border border-border shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+              <CardContent className="p-8">
+                <h3 className="font-semibold text-lg text-foreground mb-2">Pack Básico</h3>
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className="text-4xl font-bold text-foreground">15€</span>
+                  <span className="text-muted-foreground">/ pack</span>
+                </div>
+                <ul className="space-y-3 mb-8 text-sm">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    <span>10 documentos (1.50€ / doc)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    <span>Créditos sin caducidad</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    <span>Certificado de evidencias</span>
+                  </li>
+                </ul>
+                <Button className="w-full" asChild>
+                  <Link to="/register">Empezar ahora</Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Pro Pack - Highlighted */}
+            <Card className="bg-background border-2 border-primary shadow-xl scale-105 relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">
+                MÁS POPULAR
+              </div>
+              <CardContent className="p-8">
+                <h3 className="font-semibold text-lg text-foreground mb-2">Pack Profesional</h3>
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className="text-4xl font-bold text-foreground">60€</span>
+                  <span className="text-muted-foreground">/ pack</span>
+                </div>
+                <ul className="space-y-3 mb-8 text-sm">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    <span>50 documentos (1.20€ / doc)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    <span>Ahorras un 20%</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    <span>Soporte prioritario</span>
+                  </li>
+                </ul>
+                <Button className="w-full bg-primary hover:bg-primary/90" size="lg" asChild>
+                  <Link to="/register">Comprar Pack</Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Business Pack */}
+            <Card className="bg-background border border-border shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+              <CardContent className="p-8">
+                <h3 className="font-semibold text-lg text-foreground mb-2">Pack Empresa</h3>
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className="text-4xl font-bold text-foreground">100€</span>
+                  <span className="text-muted-foreground">/ pack</span>
+                </div>
+                <ul className="space-y-3 mb-8 text-sm">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    <span>100 documentos (1.00€ / doc)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    <span>Ahorras un 33%</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    <span>API disponible (beta)</span>
+                  </li>
+                </ul>
+                <Button className="w-full" asChild>
+                  <Link to="/register">Contactar Ventas</Link>
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>

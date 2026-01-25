@@ -18,7 +18,9 @@ RETURNS TABLE (
   issuer_name text,     -- Joined from users
   issuer_company text,  -- Joined from users
   issuer_email text,    -- Joined from users
-  issuer_tax_id text    -- Joined from users
+  issuer_tax_id text,   -- Joined from users
+  signed_file_url text,
+  certificate_url text
 ) 
 LANGUAGE plpgsql
 SECURITY DEFINER -- Bypasses RLS
@@ -48,7 +50,9 @@ BEGIN
     u.name AS issuer_name,
     u.company_name AS issuer_company,
     u.email AS issuer_email,
-    u.tax_id AS issuer_tax_id
+    u.tax_id AS issuer_tax_id,
+    d.signed_file_url,
+    d.certificate_url
   FROM public.documents d
   LEFT JOIN public.users u ON d.user_id = u.id
   WHERE d.sign_token = token_uuid;

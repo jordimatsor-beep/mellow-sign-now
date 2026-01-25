@@ -35,6 +35,8 @@ interface DocumentData {
   whatsapp_verification?: boolean;
   signer_phone?: string;
   security_level?: 'standard' | 'whatsapp_otp';
+  signed_file_url?: string;
+  certificate_url?: string;
 }
 
 export default function SignDocument() {
@@ -327,7 +329,9 @@ export default function SignDocument() {
             name: docRecord.issuer_company || docRecord.issuer_name || "Emisor",
             id: docRecord.issuer_tax_id,
             email: docRecord.issuer_email,
-          }
+          },
+          signed_file_url: docRecord.signed_file_url,
+          certificate_url: docRecord.certificate_url
         };
 
         setDocData(doc);
@@ -535,12 +539,12 @@ export default function SignDocument() {
                 Hemos enviado una copia del documento firmado a tu correo electrónico <strong>{docData?.signer_email}</strong>.
               </p>
               <Button
-                onClick={() => window.location.href = docData?.file_url || '#'}
+                onClick={() => window.open(docData?.signed_file_url || docData.file_url, '_blank')}
                 variant="outline"
                 className="w-full gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary"
               >
                 <Download className="h-4 w-4" />
-                Descargar copia ahora
+                Descargar copia firmada
               </Button>
             </div>
           </CardContent>
@@ -557,7 +561,7 @@ export default function SignDocument() {
     <>
       <div className="container space-y-6 px-4 py-6 max-w-5xl mx-auto">
         {/* Document info */}
-        <div className="text-center space-y-4">
+        <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">
               Documento enviado para tu firma
@@ -570,28 +574,35 @@ export default function SignDocument() {
               <h1 className="mt-1 text-xl font-medium tracking-tight text-muted-foreground">Documento adjunto</h1>
             )}
           </div>
-
-          {/* Issuer Trust Card */}
-          {docData?.issuer_data && (
-            <div className="mx-auto max-w-lg rounded-lg border bg-slate-50/50 p-3 text-left">
-              <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Datos del Emisor (Verificado)
-              </p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                <div>
-                  <span className="text-muted-foreground text-xs">Razón Social:</span>
-                  <p className="font-medium">{docData.issuer_data.name}</p>
-                </div>
-                {docData.issuer_data.id && (
-                  <div>
-                    <span className="text-muted-foreground text-xs">NIF/CIF:</span>
-                    <p className="font-medium">{docData.issuer_data.id}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Navigation for Recipient */}
+          <div>
+            <Button variant="ghost" size="sm" asChild>
+              <a href="/" className="text-muted-foreground hover:text-primary">Inicio</a>
+            </Button>
+          </div>
         </div>
+
+        {/* Issuer Trust Card */}
+        {docData?.issuer_data && (
+          <div className="mx-auto max-w-lg rounded-lg border bg-slate-50/50 p-3 text-left">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Datos del Emisor (Verificado)
+            </p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <div>
+                <span className="text-muted-foreground text-xs">Razón Social:</span>
+                <p className="font-medium">{docData.issuer_data.name}</p>
+              </div>
+              {docData.issuer_data.id && (
+                <div>
+                  <span className="text-muted-foreground text-xs">NIF/CIF:</span>
+                  <p className="font-medium">{docData.issuer_data.id}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* PDF Viewer with scroll trap */}
