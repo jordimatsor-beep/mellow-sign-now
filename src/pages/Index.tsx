@@ -25,11 +25,12 @@ export default function Index() {
   const { session } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (session) {
-      navigate("/dashboard");
-    }
-  }, [session, navigate]);
+  // Removed auto-redirect to allow viewing landing page and pricing
+  // useEffect(() => {
+  //   if (session) {
+  //     navigate("/dashboard");
+  //   }
+  // }, [session, navigate]);
 
   return (
     <div className="min-h-screen bg-background selection:bg-primary/20">
