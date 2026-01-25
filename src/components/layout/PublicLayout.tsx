@@ -14,7 +14,7 @@ export function PublicLayout() {
             <span className="text-lg font-semibold tracking-tight">FirmaClara</span>
           </div>
           <nav>
-            <a href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <a href="/" className="flex items-center gap-2 text-base font-semibold text-foreground/80 hover:text-primary transition-colors hover:scale-105 active:scale-95">
               Inicio
             </a>
           </nav>

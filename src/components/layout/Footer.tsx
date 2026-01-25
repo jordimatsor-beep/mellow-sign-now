@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { MulticentroLogo } from "@/components/brand/BrandHeader";
+import { SolutionsModal } from "@/components/SolutionsModal";
+import { LegalModal } from "@/components/LegalModals";
 
 export function Footer() {
   return (
@@ -31,9 +33,24 @@ export function Footer() {
           <div>
             <h4 className="mb-4 font-semibold text-white">Soluciones</h4>
             <ul className="space-y-2 text-sm">
-              <li><span className="text-slate-400">Autónomos</span></li>
-              <li><span className="text-slate-400">Pymes</span></li>
-              <li><span className="text-slate-400">Comercios</span></li>
+              <li>
+                <SolutionsModal
+                  type="freelance"
+                  trigger={<button className="text-slate-400 hover:text-white transition-colors text-left hover:underline">Autónomos</button>}
+                />
+              </li>
+              <li>
+                <SolutionsModal
+                  type="sme"
+                  trigger={<button className="text-slate-400 hover:text-white transition-colors text-left hover:underline">Pymes</button>}
+                />
+              </li>
+              <li>
+                <SolutionsModal
+                  type="retail"
+                  trigger={<button className="text-slate-400 hover:text-white transition-colors text-left hover:underline">Comercios</button>}
+                />
+              </li>
             </ul>
           </div>
 
@@ -41,9 +58,27 @@ export function Footer() {
           <div>
             <h4 className="mb-4 font-semibold text-white">Legal</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/terms" className="text-slate-400 hover:text-white transition-colors">Términos de uso</Link></li>
-              <li><Link to="/privacy" className="text-slate-400 hover:text-white transition-colors">Privacidad</Link></li>
-              <li><Link to="/legal" className="text-slate-400 hover:text-white transition-colors">Cumplimiento eIDAS</Link></li>
+              <li>
+                <LegalModal
+                  trigger={<button className="text-slate-400 hover:text-white transition-colors text-left hover:underline">Términos de uso</button>}
+                  title="Términos y Condiciones"
+                  type="terms"
+                />
+              </li>
+              <li>
+                <LegalModal
+                  trigger={<button className="text-slate-400 hover:text-white transition-colors text-left hover:underline">Privacidad</button>}
+                  title="Política de Privacidad"
+                  type="privacy"
+                />
+              </li>
+              <li>
+                <LegalModal
+                  trigger={<button className="text-slate-400 hover:text-white transition-colors text-left hover:underline">Cumplimiento eIDAS</button>}
+                  title="Cumplimiento eIDAS"
+                  type="legal"
+                />
+              </li>
             </ul>
           </div>
         </div>

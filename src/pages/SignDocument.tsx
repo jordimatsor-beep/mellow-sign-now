@@ -281,37 +281,57 @@ export default function SignDocument() {
             });
         }
 
-        // Fix for Private Buckets: Transform Public URL to Signed URL if needed
+        // Robust Signed URL generation for Private Buckets
         let finalFileUrl = docRecord.file_url;
 
-        // Check if it's a Supabase URL and we are in a private bucket context
-        if (docRecord.file_url && docRecord.file_url.includes('/storage/v1/object/public/documents/')) {
-          try {
-            // Extract path: .../documents/USER_ID/TIMESTAMP_FILE.pdf
-            const pathParts = docRecord.file_url.split('/documents/');
-            if (pathParts.length > 1) {
-              const filePath = pathParts[1]; // "USER_ID/TIMESTAMP_FILE.pdf"
-
-              // Generate Signed URL valid for 1 hour
-              // Note: We might need RLS policy allowing 'select' on storage objects for anon? 
-              // Or use an RPC for this too. 
-              // Usually storage RLS is separate.
-              const { data: signedData, error: signedError } = await supabase
-                .storage
-                .from('documents')
-                .createSignedUrl(filePath, 3600);
-
-              if (!signedError && signedData) {
-                finalFileUrl = signedData.signedUrl;
-                console.log("Using signed URL for private bucket access");
-              } else {
-                console.warn("Failed to generate signed URL, falling back to public", signedError);
-              }
+        try {
+          let path = '';
+          if (docRecord.file_url) {
+            if (!docRecord.file_url.startsWith('http')) {
+              // It's a path
+              path = docRecord.file_url;
+            } else if (docRecord.file_url.includes('/documents/')) {
+              // Extract path from URL (works for public and signed URLs that contain the bucket name)
+              const parts = docRecord.file_url.split('/documents/');
+              if (parts.length > 1) path = parts[1];
             }
-          } catch (e) {
-            console.error("Error transforming URL:", e);
           }
+
+          if (path) {
+            const { data: signedData, error: signedError } = await supabase
+              .storage
+              .from('documents')
+              .createSignedUrl(path, 3600);
+
+            if (signedData?.signedUrl) {
+              finalFileUrl = signedData.signedUrl;
+              console.log("Generated signed URL for recipient");
+            }
+          }
+        } catch (e) {
+          console.error("Error signing URL for recipient", e);
         }
+
+
+        // Helper to sign path
+        const signIfNeeded = async (urlOrPath: string | null) => {
+          if (!urlOrPath) return undefined;
+          let path = '';
+          if (!urlOrPath.startsWith('http')) path = urlOrPath;
+          else if (urlOrPath.includes('/documents/')) {
+            const parts = urlOrPath.split('/documents/');
+            if (parts.length > 1) path = parts[1];
+          }
+
+          if (path) {
+            const { data } = await supabase.storage.from('documents').createSignedUrl(path, 3600);
+            return data?.signedUrl || urlOrPath;
+          }
+          return urlOrPath;
+        };
+
+        const finalSignedFileUrl = await signIfNeeded(docRecord.signed_file_url);
+        const finalCertificateUrl = await signIfNeeded(docRecord.certificate_url);
 
         // Transform data to match our interface
         const doc: DocumentData = {
@@ -324,14 +344,14 @@ export default function SignDocument() {
           signer_phone: docRecord.signer_phone,
           created_at: docRecord.created_at || '',
           security_level: docRecord.security_level || 'standard',
-          whatsapp_verification: docRecord.whatsapp_verification, // Now coming from RPC
+          whatsapp_verification: docRecord.whatsapp_verification,
           issuer_data: {
             name: docRecord.issuer_company || docRecord.issuer_name || "Emisor",
             id: docRecord.issuer_tax_id,
             email: docRecord.issuer_email,
           },
-          signed_file_url: docRecord.signed_file_url,
-          certificate_url: docRecord.certificate_url
+          signed_file_url: finalSignedFileUrl,
+          certificate_url: finalCertificateUrl
         };
 
         setDocData(doc);
@@ -564,20 +584,16 @@ export default function SignDocument() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">
-              Documento enviado para tu firma
+              Documento para firmar
             </p>
-            {/* Only show title if it's not the generic App Name, or style it differently */}
-            {docData?.title && docData.title !== 'FirmaClara' && (
-              <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">{docData.title}</h1>
-            )}
-            {docData?.title === 'FirmaClara' && (
-              <h1 className="mt-1 text-xl font-medium tracking-tight text-muted-foreground">Documento adjunto</h1>
-            )}
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">
+              {docData?.title || 'Documento sin título'}
+            </h1>
           </div>
           {/* Navigation for Recipient */}
           <div>
             <Button variant="ghost" size="sm" asChild>
-              <a href="/" className="text-muted-foreground hover:text-primary">Inicio</a>
+              <a href="/" className="flex items-center gap-2 text-base font-semibold text-foreground/80 hover:text-primary transition-colors hover:scale-105 active:scale-95">Inicio</a>
             </Button>
           </div>
         </div>

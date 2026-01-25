@@ -213,14 +213,63 @@ export default function DocumentDetail() {
         <Button
           variant="outline"
           className="w-full justify-start gap-2"
-          onClick={() => window.open(doc.signed_file_url || doc.file_url, '_blank')}
+          onClick={async () => {
+            const target = doc.signed_file_url || doc.file_url;
+            if (!target) return;
+
+            let finalUrl = target;
+            // Detect if it is a path or Supabase URL
+            const isPath = !target.startsWith('http');
+            const isSupabase = target.includes('supabase');
+
+            if (isPath || isSupabase) {
+              try {
+                let path = target;
+                if (target.startsWith('http') && target.includes('/documents/')) {
+                  path = target.split('/documents/')[1];
+                }
+
+                if (path) {
+                  const { data } = await supabase.storage.from('documents').createSignedUrl(path, 3600, { download: true });
+                  if (data?.signedUrl) finalUrl = data.signedUrl;
+                }
+              } catch (e) {
+                console.error("Error signing URL:", e);
+              }
+            }
+            window.open(finalUrl, '_blank');
+          }}
         >
           <Download className="h-4 w-4" />
           Descargar documento {doc.status === 'signed' ? 'firmado' : 'original'}
         </Button>
-        {/* Certificate download - only if signed */}
+
+        {/* Certificate download */}
         {doc.status === 'signed' && (
-          <Button variant="outline" className="w-full justify-start gap-2" onClick={() => window.open(doc.certificate_url || '#', '_blank')} disabled={!doc.certificate_url && false}>
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2"
+            disabled={!doc.certificate_url}
+            onClick={async () => {
+              if (!doc.certificate_url) return;
+              let finalUrl = doc.certificate_url;
+
+              try {
+                let path = doc.certificate_url;
+                if (path.startsWith('http') && path.includes('/documents/')) {
+                  path = path.split('/documents/')[1];
+                }
+
+                if (path) {
+                  const { data } = await supabase.storage.from('documents').createSignedUrl(path, 3600, { download: true });
+                  if (data?.signedUrl) finalUrl = data.signedUrl;
+                }
+              } catch (e) {
+                console.error("Error signing cert:", e);
+              }
+              window.open(finalUrl, '_blank');
+            }}
+          >
             <FileText className="h-4 w-4" />
             Descargar certificado de evidencias
           </Button>

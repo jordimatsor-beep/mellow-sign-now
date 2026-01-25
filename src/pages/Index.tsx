@@ -44,18 +44,18 @@ export default function Index() {
 
           {/* Navigation - Center (hidden on mobile) */}
           <nav className="hidden md:flex items-center gap-8">
-            <Link to="/how-it-works" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/how-it-works" className="text-base font-semibold text-foreground/80 hover:text-primary transition-colors">
               Cómo funciona
             </Link>
-            <a href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <a href="#pricing" className="text-base font-semibold text-foreground/80 hover:text-primary transition-colors">
               Precios
             </a>
-            <Link to="/legal" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/legal" className="text-base font-semibold text-foreground/80 hover:text-primary transition-colors">
               Legalidad
             </Link>
-            <a href="mailto:soporte@firmaclara.com" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/help" className="text-base font-semibold text-foreground/80 hover:text-primary transition-colors">
               Ayuda
-            </a>
+            </Link>
           </nav>
 
           {/* Actions - Right */}
@@ -108,7 +108,7 @@ export default function Index() {
                   </Link>
                 </Button>
                 <Button size="lg" variant="outline" asChild className="text-base border-border hover:bg-secondary/50 transition-all duration-300 hover:scale-105 active:scale-95 animate-fade-in [animation-delay:500ms]">
-                  <Link to="/how-it-works">Ver Demostración</Link>
+                  <Link to="/how-it-works">Cómo funciona</Link>
                 </Button>
               </div>
 
