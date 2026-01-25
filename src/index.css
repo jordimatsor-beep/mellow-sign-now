@@ -178,3 +178,13 @@
     background-color: hsl(var(--muted-foreground) / 0.5);
   }
 }
+
+/* Hide Lovable Badge / Watermark */
+div[id^="lovable-"],
+a[href*="lovable.dev"],
+.lovable-badge {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
