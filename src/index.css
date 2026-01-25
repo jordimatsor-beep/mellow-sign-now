@@ -10,7 +10,7 @@
   :root {
     /* Pure White - 90% of the site */
     --background: 0 0% 100%;
-    
+
     /* Deep Navy Blue - Headings (not pure black) #0F172A */
     --foreground: 222 47% 11%;
 
@@ -180,11 +180,14 @@
 }
 
 /* Hide Lovable Badge / Watermark */
+[id^="lovable-"],
+aside[id^="lovable-"],
 div[id^="lovable-"],
 a[href*="lovable.dev"],
-.lovable-badge {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
+.lovable-badge,
+#lovable-badge-close {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
