@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1"
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, handleCorsPreflightRequest, escapeHtml, sanitizeErrorMessage } from '../_shared/cors.ts'
 
 interface RequestBody {
   document_id: string;
@@ -16,9 +12,10 @@ interface RequestBody {
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  const corsHeaders = getCorsHeaders(req);
+
+  const preflightResponse = handleCorsPreflightRequest(req);
+  if (preflightResponse) return preflightResponse;
 
   try {
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
@@ -58,8 +55,10 @@ serve(async (req) => {
     const siteUrl = Deno.env.get('SITE_URL') || 'https://firmaclara.es';
     const signUrl = `${siteUrl}/sign/${sign_token}`
 
-    const docTitle = title || 'Documento sin título'
-    const sender = sender_name || 'FirmaClara'
+    // Escape user-provided content to prevent XSS in emails
+    const docTitle = escapeHtml(title) || 'Documento sin título'
+    const sender = escapeHtml(sender_name) || 'FirmaClara'
+    const safeSignerName = escapeHtml(signer_name)
 
     // Premium HTML Email Template (Zapsign / Docusign Style)
     const html = `
@@ -194,7 +193,7 @@ serve(async (req) => {
               
               <div class="content">
                 <h1>Solicitud de Firma</h1>
-                <p>Hola <strong>${signer_name}</strong>,</p>
+                <p>Hola <strong>${safeSignerName}</strong>,</p>
                 <p><strong>${sender}</strong> te ha enviado un documento y requiere tu firma electrónica.</p>
                 
                 <div class="highlight-box">

@@ -2,11 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { z } from "https://esm.sh/zod@3.22.4"
 import { Database } from '../_shared/types.ts'
-
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, handleCorsPreflightRequest, sanitizeErrorMessage } from '../_shared/cors.ts'
 
 const MessageSchema = z.object({
     role: z.enum(["clara", "user", "model", "assistant"]),
@@ -20,9 +16,10 @@ const RequestSchema = z.object({
 });
 
 serve(async (req: Request) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
-    }
+    const corsHeaders = getCorsHeaders(req);
+
+    const preflightResponse = handleCorsPreflightRequest(req);
+    if (preflightResponse) return preflightResponse;
 
     try {
         const apiKey = Deno.env.get('GEMINI_API_KEY');

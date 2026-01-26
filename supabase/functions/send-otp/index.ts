@@ -1,16 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1"
 import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
-
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, handleCorsPreflightRequest, sanitizeErrorMessage } from '../_shared/cors.ts'
 
 serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
-    }
+    const corsHeaders = getCorsHeaders(req);
+
+    const preflightResponse = handleCorsPreflightRequest(req);
+    if (preflightResponse) return preflightResponse;
 
     try {
         const supabase = createClient(
@@ -113,9 +110,8 @@ serve(async (req) => {
                 throw new Error(`Error al enviar mensaje (${channel}). Twilio: ${txt}`)
             }
         } else {
-            console.log('---------------------------------------------------')
-            console.log(`[MOCK WhatsApp] To: ${phone} | Code: ${otp}`)
-            console.log('---------------------------------------------------')
+            // Development mode - OTP code NOT logged for security
+            console.log('[DEV MODE] OTP would be sent to:', phone.substring(0, 6) + '****');
         }
 
         return new Response(

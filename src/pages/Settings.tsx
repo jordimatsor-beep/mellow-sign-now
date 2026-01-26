@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, User, Bell, Shield, LogOut, ChevronRight, Loader2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, User, Bell, Shield, LogOut, ChevronRight, Loader2, Download, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
@@ -20,6 +20,7 @@ const settingsItems = [
 
 export default function Settings() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [fullName, setFullName] = useState("");
   const [company, setCompany] = useState("");
@@ -27,6 +28,12 @@ export default function Settings() {
 
   const [newPassword, setNewPassword] = useState("");
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+
+  // GDPR states
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [exportingData, setExportingData] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -95,6 +102,103 @@ export default function Settings() {
       toast.error(error.message || "Error al cambiar la contraseña");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // GDPR: Export user data (Article 20 - Data Portability)
+  const handleExportData = async () => {
+    setExportingData(true);
+    try {
+      if (!user) throw new Error("No user logged in");
+
+      // Fetch all user data
+      const [userData, documentsData, contactsData, creditsData, eventsData] = await Promise.all([
+        supabase.from('users').select('*').eq('id', user.id).single(),
+        supabase.from('documents').select('*').eq('user_id', user.id),
+        supabase.from('contacts').select('*').eq('user_id', user.id),
+        supabase.from('credit_packs').select('*').eq('user_id', user.id),
+        supabase.from('event_logs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1000),
+      ]);
+
+      const exportData = {
+        exported_at: new Date().toISOString(),
+        user_email: user.email,
+        profile: userData.data,
+        documents: documentsData.data || [],
+        contacts: contactsData.data || [],
+        credit_packs: creditsData.data || [],
+        event_logs: eventsData.data || [],
+      };
+
+      // Create and download JSON file
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `firmaclara_data_export_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success("Datos exportados correctamente");
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Error al exportar los datos");
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  // GDPR: Delete account (Article 17 - Right to be Forgotten)
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "ELIMINAR") return;
+
+    setDeletingAccount(true);
+    try {
+      if (!user) throw new Error("No user logged in");
+
+      // Delete user data in order (respecting foreign key constraints)
+      // 1. Delete event logs
+      await supabase.from('event_logs').delete().eq('user_id', user.id);
+
+      // 2. Delete signatures related to user's documents
+      const { data: userDocs } = await supabase.from('documents').select('id').eq('user_id', user.id);
+      if (userDocs && userDocs.length > 0) {
+        const docIds = userDocs.map(d => d.id);
+        await supabase.from('signatures').delete().in('document_id', docIds);
+      }
+
+      // 3. Delete documents
+      await supabase.from('documents').delete().eq('user_id', user.id);
+
+      // 4. Delete clara conversations and messages
+      const { data: conversations } = await supabase.from('clara_conversations').select('id').eq('user_id', user.id);
+      if (conversations && conversations.length > 0) {
+        const convIds = conversations.map(c => c.id);
+        await supabase.from('clara_messages').delete().in('conversation_id', convIds);
+      }
+      await supabase.from('clara_conversations').delete().eq('user_id', user.id);
+
+      // 5. Delete credit packs
+      await supabase.from('credit_packs').delete().eq('user_id', user.id);
+
+      // 6. Delete contacts
+      await supabase.from('contacts').delete().eq('user_id', user.id);
+
+      // 7. Delete user profile
+      await supabase.from('users').delete().eq('id', user.id);
+
+      // 8. Sign out and notify
+      toast.success("Tu cuenta ha sido eliminada permanentemente");
+      await signOut();
+      navigate('/');
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      toast.error("Error al eliminar la cuenta. Contacta con soporte.");
+    } finally {
+      setDeletingAccount(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -257,6 +361,96 @@ export default function Settings() {
                   </Button>
                 </DialogFooter>
               </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* GDPR: Data & Privacy Section */}
+      <div className="space-y-4" id="privacy">
+        <h2 className="text-lg font-semibold">Privacidad y Datos (RGPD)</h2>
+
+        {/* Export Data */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium">Exportar mis datos</p>
+            <p className="text-sm text-muted-foreground">Descarga una copia de todos tus datos</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportData}
+            disabled={exportingData}
+          >
+            {exportingData ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            Exportar
+          </Button>
+        </div>
+
+        {/* Delete Account */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium text-destructive">Eliminar mi cuenta</p>
+            <p className="text-sm text-muted-foreground">Borrar permanentemente todos tus datos</p>
+          </div>
+          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <DialogTrigger asChild>
+              <Button variant="destructive" size="sm">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                  Eliminar cuenta permanentemente
+                </DialogTitle>
+                <DialogDescription>
+                  Esta acción es irreversible. Se eliminarán permanentemente:
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+                  <li>Tu perfil y datos personales</li>
+                  <li>Todos tus documentos enviados y recibidos</li>
+                  <li>Historial de firmas y certificados</li>
+                  <li>Conversaciones con Clara</li>
+                  <li>Créditos y historial de compras</li>
+                  <li>Contactos guardados</li>
+                </ul>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-delete">
+                    Escribe <span className="font-mono font-bold">ELIMINAR</span> para confirmar:
+                  </Label>
+                  <Input
+                    id="confirm-delete"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="ELIMINAR"
+                    className="font-mono"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirmText !== "ELIMINAR" || deletingAccount}
+                >
+                  {deletingAccount && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Eliminar cuenta permanentemente
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>

@@ -319,6 +319,59 @@ VITE_STRIPE_PUBLIC_KEY=pk_...
 
 ---
 
+## Security & Compliance
+
+### CORS Configuration
+All Edge Functions use secure CORS configuration via `_shared/cors.ts`:
+- Only whitelisted origins allowed (no wildcard `*`)
+- Origins: `firmaclara.com`, `firmaclara.es`, `localhost:8080`
+- Use `getCorsHeaders(req)` and `handleCorsPreflightRequest(req)` functions
+
+### GDPR Compliance
+The application includes full GDPR compliance features:
+
+**Article 17 - Right to Erasure (Delete Account)**
+- Located in Settings page (`src/pages/Settings.tsx`)
+- Cascading deletion of all user data
+- Requires typing "ELIMINAR" to confirm
+
+**Article 20 - Data Portability (Export Data)**
+- Export all user data as JSON
+- Includes: profile, documents, contacts, credits, event logs
+
+**Cookie Consent**
+- `CookieConsent` component in `src/components/CookieConsent.tsx`
+- Stores preferences in localStorage
+- Categories: necessary (always on), analytics, marketing
+
+### Input Validation
+
+**Server-side (Edge Functions)**
+- Signature image validation (PNG format, max 500KB)
+- Token format validation (UUID regex)
+- HTML escaping for email content (`escapeHtml()`)
+- Error messages sanitized (no stack traces exposed)
+
+**Client-side (Validators)**
+- Enhanced validators in `src/lib/validators.ts`
+- Spanish NIF/NIE/CIF with MOD 23 checksum validation
+- Phone validation (Spanish and international formats)
+- Email validation (RFC 5322 compliant)
+- Password strength (min 12 chars, mixed case, number)
+
+### Error Handling
+- `ErrorBoundary` component wraps the app
+- Prevents white screen crashes
+- User-friendly error messages
+
+### Authentication Security
+- Passwords require: 12+ characters, uppercase, lowercase, number
+- Session management via Supabase Auth
+- OTP codes are hashed (SHA-256) before storage
+- OTP codes NOT logged (security fix)
+
+---
+
 ## Code Quality Notes
 
 ### TypeScript Configuration
@@ -326,7 +379,7 @@ VITE_STRIPE_PUBLIC_KEY=pk_...
 - `noImplicitAny: false`, `strictNullChecks: false`
 - Path aliases configured (`@/*`)
 
-### Security Considerations
+### Database Security
 - Row Level Security (RLS) enabled on all tables
 - Auth tokens stored in localStorage via Supabase
 - File uploads go to Supabase Storage
@@ -334,8 +387,25 @@ VITE_STRIPE_PUBLIC_KEY=pk_...
 - TSA timestamps for legal validity
 
 ### Testing
-- Vitest available (`vitest` in devDependencies)
+- **Vitest** for unit testing
 - Test files in `src/test/`
+- Run tests: `npm test` or `npx vitest`
+- Validator tests in `src/test/validators.test.ts`
+
+---
+
+## Recent Security Updates (2026-01)
+
+1. **CORS Hardening** - Removed wildcard CORS from all 8 Edge Functions
+2. **XSS Prevention** - HTML escaping in email templates
+3. **OTP Security** - Removed sensitive OTP logging
+4. **Error Sanitization** - Stack traces no longer exposed to clients
+5. **Input Validation** - Server-side validation for signatures and tokens
+6. **Password Strength** - Increased to 12 characters minimum
+7. **GDPR Features** - Added data export and account deletion
+8. **Cookie Consent** - GDPR-compliant consent banner
+9. **Error Boundary** - React error handling to prevent crashes
+10. **Validator Improvements** - Full Spanish NIF/NIE/CIF checksum validation
 
 ---
 

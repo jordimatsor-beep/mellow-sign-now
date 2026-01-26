@@ -3,16 +3,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1"
 import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib'
 import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
 import { Database } from '../_shared/types.ts'
-
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, handleCorsPreflightRequest, sanitizeErrorMessage } from '../_shared/cors.ts'
 
 serve(async (req: Request) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
-    }
+    const corsHeaders = getCorsHeaders(req);
+
+    const preflightResponse = handleCorsPreflightRequest(req);
+    if (preflightResponse) return preflightResponse;
 
     try {
         const supabase = createClient<Database>(
@@ -28,6 +25,25 @@ serve(async (req: Request) => {
             || 'unknown'
 
         if (!token || !signature_image) throw new Error('Faltan datos requeridos (token o firma)')
+
+        // Security: Validate signature image (must be base64 PNG, max 500KB)
+        if (typeof signature_image !== 'string') {
+            throw new Error('Formato de firma inválido');
+        }
+        if (!signature_image.startsWith('data:image/png;base64,')) {
+            throw new Error('La firma debe ser una imagen PNG válida');
+        }
+        // Check base64 size (approx 500KB max = ~680KB base64)
+        const base64Data = signature_image.replace('data:image/png;base64,', '');
+        if (base64Data.length > 700000) {
+            throw new Error('La imagen de firma es demasiado grande (máx 500KB)');
+        }
+
+        // Validate token format (UUID)
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(token)) {
+            throw new Error('Token de documento inválido');
+        }
 
         // 1. Fetch Document
         const { data: doc, error: docError } = await supabase

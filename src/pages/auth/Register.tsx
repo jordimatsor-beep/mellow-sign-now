@@ -106,8 +106,13 @@ export default function Register() {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         className="h-11"
-                        minLength={6}
+                        minLength={12}
+                        pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{12,}$"
+                        title="Mínimo 12 caracteres, incluyendo mayúscula, minúscula y número"
                     />
+                    <p className="text-xs text-muted-foreground">
+                        Mínimo 12 caracteres, con mayúscula, minúscula y número
+                    </p>
                 </div>
                 <Button className="w-full h-11 text-base" type="submit" disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

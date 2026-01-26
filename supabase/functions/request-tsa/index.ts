@@ -159,14 +159,12 @@ serve(async (req: Request) => {
     throw lastError || new Error('All TSA providers failed');
 
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown TSA Error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
+    // Log full error internally but never expose stack traces to client
     console.error('[TSA Error]', error);
     return new Response(
       JSON.stringify({
-        error: errorMessage,
-        stack: errorStack,
-        details: 'All providers failed. Check logs.'
+        error: 'Error al obtener sello de tiempo. Por favor, inténtalo de nuevo.',
+        details: 'TSA service temporarily unavailable'
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
