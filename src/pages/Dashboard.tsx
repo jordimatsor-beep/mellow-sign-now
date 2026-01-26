@@ -48,7 +48,7 @@ export default function Dashboard() {
         // 2. Fetch Credits (via RPC or View)
         // Using RPC for simplicity and security
         const { data: creditsData, error: creditsError } = await supabase
-          .rpc('get_available_credits', { p_user_id: user.id });
+          .rpc('get_available_credits');
 
         if (creditsError) {
           console.error("Error fetching credits:", creditsError);

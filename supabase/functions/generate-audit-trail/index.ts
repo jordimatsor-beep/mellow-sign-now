@@ -14,6 +14,15 @@ serve(async (req) => {
     }
 
     try {
+        // 1. Auth Guard (Service Role Only)
+        // This function should ONLY be triggered by internal system events (sign-complete)
+        const authHeader = req.headers.get('Authorization');
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+        if (!authHeader || !authHeader.includes(serviceRoleKey ?? 'INVALID_KEY')) {
+            throw new Error('Unauthorized: Service Role required');
+        }
+
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''

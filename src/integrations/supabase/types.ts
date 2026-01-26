@@ -610,7 +610,7 @@ export type Database = {
           issuer_tax_id: string
         }[]
       }
-      get_available_credits: { Args: { p_user_id: string }; Returns: number }
+      get_available_credits: { Args: Record<string, never>; Returns: number }
       get_document_by_token: {
         Args: { p_token: string }
         Returns: {
