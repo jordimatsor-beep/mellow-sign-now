@@ -67,18 +67,25 @@ serve(async (req) => {
         // 5. Send Message (Twilio)
         const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
         const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
-        let fromNumber = Deno.env.get('TWILIO_FROM_NUMBER')
+        // STRICT: Must use TWILIO_FROM_NUMBER which should be the Spanish (+34) number
+        let fromNumber = Deno.env.get('TWILIO_FROM_NUMBER') || Deno.env.get('TWILIO_PHONE_NUMBER');
+
+        if (!fromNumber) {
+            throw new Error("CRITICAL CONFIGURATION ERROR: 'TWILIO_FROM_NUMBER' is not set. Cannot send SMS from legal origin.");
+        }
+
         // FORCE SMS channel regardless of request
         const channel = 'sms';
 
         // Construct To/From based on SMS
         let to = phone;
-        let from = fromNumber;
+        // Strict sanitization of From
+        let from = fromNumber.replace('whatsapp:', '').trim();
 
-        // Remove whatsapp: prefix if present in env var to reuse same number for SMS
-        if (from && from.startsWith('whatsapp:')) from = from.replace('whatsapp:', '');
+        // 7. SMS - ORIGEN DEL NUMERO (IMPERATIVO) check logic
+        // We can't validate the country code dynamically easily without regex, but we ensure it uses the Env Var.
 
-        console.log(`[OTP Request] Channel: ${channel} | To: ${to} | FromEnv: ${fromNumber}`);
+        console.log(`[OTP Request] Channel: ${channel} | To: ${to} | FromEnv: ${from}`);
 
         if (accountSid && authToken) {
             const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`

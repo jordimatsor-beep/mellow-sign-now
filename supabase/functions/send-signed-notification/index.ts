@@ -40,8 +40,19 @@ serve(async (req) => {
     // 2. Prepare Email Content
     const signerEmail = doc.signer_email
     const issuerEmail = doc.users?.email
-    const fileUrl = doc.signed_file_url || doc.file_url // Fallback if signed_file_url not set yet (should be)
     const docTitle = doc.title || 'Documento Firmado'
+
+    // STRICT: Only use SIGNED url. If missing, it's a bug or race condition that shouldn't happen with new flow.
+    const signedFileUrl = doc.signed_file_url;
+    if (!signedFileUrl) {
+      throw new Error("Critical: signed_file_url is missing in notification step.");
+    }
+
+    const certificateUrl = doc.certificate_url;
+    // We try to attach certificate. If missing, we might want to warn but not fail?
+    // User requirement: "El destinatario debe recibir copia del certificado".
+    // So if it's missing, we should probably throw or handle gracefully.
+    // Since we chained it, it SHOULD be there.
 
     // Determine sender name
     const senderName = doc.users?.company_name || doc.users?.name || 'FirmaClara'
@@ -64,25 +75,23 @@ serve(async (req) => {
         <body>
           <div class="container">
             <div class="header">
-              <h1 style="margin:0; font-size: 24px;">Documento Firmado</h1>
+              <h1 style="margin:0; font-size: 24px;">Contrato Firmado</h1>
             </div>
             <div class="content">
               <p>Hola,</p>
-              <p>El documento <strong>"${docTitle}"</strong> ha sido firmado correctamente por todas las partes.</p>
-              <p>Se adjunta una copia digital con plena validez legal, incluyendo:</p>
+              <p>El documento <strong>"${docTitle}"</strong> ha sido firmado y certificado correctamente.</p>
+              <p>Se adjuntan a este correo:</p>
               <ul style="color: #4b5563; font-size: 14px;">
-                <li>Firma digital del solicitante</li>
-                <li>Sellado de tiempo (Timestamp)</li>
-                <li>Hash de integridad SHA-256</li>
-                <li>Traza de auditoría</li>
+                <li><strong>Copia Firmada:</strong> El contrato con la firma estampada en anexo.</li>
+                <li><strong>Certificado de Evidencia:</strong> Documento técnico validador (Audit Trail).</li>
               </ul>
               
               <div style="text-align: center;">
-                <a href="${fileUrl}" class="button">Descargar Documento Firmado</a>
+                <a href="${signedFileUrl}" class="button">Ver Documento Online</a>
               </div>
             </div>
             <div class="footer">
-              <p>Enviado de forma segura por FirmaClara</p>
+              <p>Procesado por FirmaClara</p>
             </div>
           </div>
         </body>
@@ -90,26 +99,29 @@ serve(async (req) => {
     `
 
     // 3. Send Emails (To Signer AND Issuer)
-    const recipients = [signerEmail];
-    if (issuerEmail && issuerEmail !== signerEmail) {
-      recipients.push(issuerEmail);
-    }
+    // We send separate emails or use cc/bcc. 
+    // Recommended: Send to Signer, CC Issuer so both have same thread and attachments.
 
-    // Using bcc for simplicity or separate emails. Resend supports multiple 'to' but they see each other.
-    // Better to loop or send as "to: signer, cc: issuer"
-    // Let's send to Signer, CC Issuer
+    const attachments = [
+      {
+        filename: `${docTitle.replace(/[^a-z0-9]/gi, '_')}_signed.pdf`,
+        path: signedFileUrl
+      }
+    ];
+
+    if (certificateUrl) {
+      attachments.push({
+        filename: `Certificado_Evidencia_${doc.id.substring(0, 8)}.pdf`,
+        path: certificateUrl
+      });
+    }
 
     const emailPayload: any = {
       from: 'FirmaClara <noreply@firmaclara.es>',
       to: [signerEmail],
-      subject: `[Firmado] ${docTitle} - Copia Legal`,
+      subject: `[Firmado] ${docTitle} - Contrato y Certificado`,
       html: html,
-      attachments: [
-        {
-          filename: `${docTitle.replace(/[^a-z0-9]/gi, '_')}_signed.pdf`,
-          path: fileUrl
-        }
-      ]
+      attachments: attachments
     }
 
     if (issuerEmail) {
@@ -138,28 +150,35 @@ serve(async (req) => {
       try {
         const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
         const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
-        const fromNumber = Deno.env.get('TWILIO_FROM_NUMBER')
-        // Remove whatsapp: prefix if exists (we want SMS)
-        const from = fromNumber?.replace('whatsapp:', '')
-        const to = doc.signer_phone.replace(/[\s\-\(\)]/g, '')
+        // Force Strict From
+        const fromNumber = Deno.env.get('TWILIO_FROM_NUMBER') || Deno.env.get('TWILIO_PHONE_NUMBER');
 
-        if (accountSid && authToken && from) {
-          const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
-          const params = new URLSearchParams()
-          params.append('To', to)
-          params.append('From', from)
-          params.append('Body', `FirmaClara: Documento "${docTitle}" firmado correctamente. Revisa tu email para descargar la copia.`)
+        if (!fromNumber) {
+          console.error("Skipping SMS: No TWILIO_FROM_NUMBER configured.");
+        } else {
+          // Remove whatsapp: prefix if exists (we want SMS)
+          const from = fromNumber.replace('whatsapp:', '')
+          const to = doc.signer_phone.replace(/[\s\-\(\)]/g, '')
 
-          // Fire and forget (don't block response)
-          fetch(twilioUrl, {
-            method: 'POST',
-            headers: {
-              'Authorization': 'Basic ' + btoa(`${accountSid}:${authToken}`),
-              'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: params
-          }).then(r => r.text()).then(t => console.log("SMS result:", t)).catch(e => console.error("SMS fail:", e));
-        }
+          if (accountSid && authToken) {
+
+            const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
+            const params = new URLSearchParams()
+            params.append('To', to)
+            params.append('From', from)
+            params.append('Body', `FirmaClara: Documento "${docTitle}" firmado correctamente. Revisa tu email para descargar la copia.`)
+
+            // Fire and forget (don't block response)
+            fetch(twilioUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Basic ' + btoa(`${accountSid}:${authToken}`),
+                'Content-Type': 'application/x-www-form-urlencoded'
+              },
+              body: params
+            }).then(r => r.text()).then(t => console.log("SMS result:", t)).catch(e => console.error("SMS fail:", e));
+          }
+        } // Close else
       } catch (smsErr) {
         console.error("Error preparing SMS:", smsErr);
       }

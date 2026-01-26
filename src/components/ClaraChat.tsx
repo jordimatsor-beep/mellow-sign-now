@@ -122,6 +122,8 @@ export function ClaraChat({ documentId }: { documentId?: string }) {
                 errorMessage = t('clara.error_rate_limit');
             } else if (error.message?.includes("Unauthorized")) {
                 errorMessage = t('clara.error_auth');
+            } else if (error.status === 404 || error.message?.includes("not found") || error.message?.includes("404")) {
+                errorMessage = "Error de conexión (404): El asistente no está disponible o no se ha desplegado correctamente. Por favor, verifica la configuración de Edge Functions.";
             }
 
             setMessages((prev) => [

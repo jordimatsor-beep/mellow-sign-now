@@ -150,6 +150,21 @@ serve(async (req) => {
 
         if (updateError) console.error('Failed to update document certificate_url:', updateError)
 
+        // 6. Trigger Notification Email (Chained)
+        // Now that the Evidence PDF is generated and saved, we notify the parties.
+        try {
+            await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-signed-notification`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ document_id: doc.id })
+            });
+        } catch (e) {
+            console.error("Failed to trigger notification from audit trail:", e);
+        }
+
         return new Response(
             JSON.stringify({ success: true, url: publicUrl }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

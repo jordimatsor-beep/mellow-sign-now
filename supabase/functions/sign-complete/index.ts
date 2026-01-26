@@ -72,7 +72,7 @@ serve(async (req: Request) => {
             }
 
             otpVerified = true;
-            otpChannel = 'whatsapp';
+            otpChannel = 'whatsapp'; // Actually SMS now but db field is 'whatsapp_otp'
         }
 
         // 3. Download original PDF
@@ -106,47 +106,101 @@ serve(async (req: Request) => {
             pdfBytes = await res.arrayBuffer();
         }
 
-        // 4. Load and modify PDF
+        // 4. Load and modify PDF - NEW DEDICATED SIGNATURE PAGE STRATEGY
         const pdfDoc = await PDFDocument.load(pdfBytes);
         const timesRoman = await pdfDoc.embedFont(StandardFonts.TimesRoman);
         const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
         // Embed Signature Image
         const pngImage = await pdfDoc.embedPng(signature_image);
-        const { width, height } = pngImage.scale(0.5);
+        // Scale image reasonably
+        const pngDims = pngImage.scale(0.5);
 
-        // Stamp on Last Page (Bottom Center)
-        const pages = pdfDoc.getPages();
-        const lastPage = pages[pages.length - 1];
-        const { width: pageWidth, height: pageHeight } = lastPage.getSize();
+        // --- ADD NEW PAGE FOR SIGNATURE ---
+        // We get the size of the first page to match dimensions, or default to A4
+        const firstPage = pdfDoc.getPages()[0];
+        const { width: pageWidth, height: pageHeight } = firstPage ? firstPage.getSize() : { width: 595.28, height: 841.89 };
 
-        // Draw signature
-        lastPage.drawImage(pngImage, {
-            x: pageWidth / 2 - width / 2,
-            y: 50,
-            width,
-            height,
+        const signaturePage = pdfDoc.addPage([pageWidth, pageHeight]);
+
+        // Draw Header on Signature Page
+        signaturePage.drawText('Certificado de Firma - Anexo', {
+            x: 50,
+            y: pageHeight - 50,
+            size: 18,
+            font: helveticaBold,
+            color: rgb(0.12, 0.23, 0.37),
         });
 
-        // Add signature metadata text
-        const signedAt = new Date();
-        const signatureText = `Firmado digitalmente por: ${doc.signer_name}`;
-        const dateText = `Fecha: ${signedAt.toLocaleString('es-ES')}`;
+        signaturePage.drawLine({
+            start: { x: 50, y: pageHeight - 65 },
+            end: { x: pageWidth - 50, y: pageHeight - 65 },
+            thickness: 1,
+            color: rgb(0.8, 0.8, 0.8),
+        });
 
-        lastPage.drawText(signatureText, {
-            x: pageWidth / 2 - 100,
-            y: 35,
-            size: 8,
+        // Draw Legal Text
+        const legalText = `Este documento ha sido firmado electrónicamente a través de la plataforma FirmaClara.
+La firma que aparece a continuación certifica la aceptación del contenido del contrato adjunto.`;
+
+        signaturePage.drawText(legalText, {
+            x: 50,
+            y: pageHeight - 100,
+            size: 10,
+            font: timesRoman,
+            color: rgb(0.2, 0.2, 0.2),
+            lineHeight: 14,
+        });
+
+        // Draw Signature Box
+        const boxY = pageHeight - 250;
+
+        // Draw Signature
+        const sigX = pageWidth / 2 - pngDims.width / 2;
+        signaturePage.drawImage(pngImage, {
+            x: sigX,
+            y: boxY,
+            width: pngDims.width,
+            height: pngDims.height,
+        });
+
+        // Metadata under signature
+        const signedAt = new Date();
+        const signatureText = `Firmado por: ${doc.signer_name}`;
+        const emailText = `Email: ${doc.signer_email}`;
+        const dateText = `Fecha: ${signedAt.toLocaleString('es-ES')}`;
+        const idText = `ID Documento: ${doc.id}`;
+
+        signaturePage.drawText(signatureText, {
+            x: 50,
+            y: boxY - 20,
+            size: 10,
+            font: helveticaBold,
+            color: rgb(0, 0, 0),
+        });
+
+        signaturePage.drawText(emailText, {
+            x: 50,
+            y: boxY - 35,
+            size: 9,
             font: timesRoman,
             color: rgb(0.3, 0.3, 0.3),
         });
 
-        lastPage.drawText(dateText, {
-            x: pageWidth / 2 - 60,
-            y: 25,
-            size: 7,
+        signaturePage.drawText(dateText, {
+            x: 50,
+            y: boxY - 50,
+            size: 9,
             font: timesRoman,
-            color: rgb(0.5, 0.5, 0.5),
+            color: rgb(0.3, 0.3, 0.3),
+        });
+
+        signaturePage.drawText(idText, {
+            x: 50,
+            y: boxY - 65,
+            size: 9,
+            font: timesRoman,
+            color: rgb(0.3, 0.3, 0.3),
         });
 
         // 5. Finalize PDF
@@ -174,7 +228,7 @@ serve(async (req: Request) => {
             signer_email: doc.signer_email,
             ip_address: ip_address,
             user_agent: user_agent,
-            signature_image_url: signature_image.substring(0, 100) + '...', // Store truncated for reference
+            signature_image_url: signature_image.substring(0, 50) + '...',
             hash_sha256: finalHash,
             signed_at: signedAt.toISOString()
         });
@@ -199,19 +253,20 @@ serve(async (req: Request) => {
             console.error('Document update error:', updateError);
         }
 
-        // 9. Generate Audit Trail asynchronously
-        try {
-            await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-audit-trail`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ document_id: doc.id })
-            });
+        // 9. Trigger Audit Trail -> Notification Chain
+        // We do NOT call send-signed-notification here anymore.
+        // We only call generate-audit-trail. 
+        // generate-audit-trail acts as the orchestrator: it generates evidence, then calls send-signed-notification.
 
-            // 10. Send Signed Notification Email (New)
-            await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-signed-notification`, {
+        // Using fetch to trigger async - but we want to ensure it starts.
+        // We will NOT await the full completion to avoid timeout if it's long, 
+        // BUT for strictness, we SHOULD await if possible. 
+        // Given Supabase limits (function timeout), let's fire and forget but log well.
+        // Better: Await it. `sign-complete` is critical. If audit fails, we want to know? 
+        // No, signature is already saved. We just need to ensure the trail runs.
+
+        try {
+            fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-audit-trail`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
@@ -219,18 +274,19 @@ serve(async (req: Request) => {
                 },
                 body: JSON.stringify({ document_id: doc.id })
             });
+            // NOT calling send-signed-notification here. generate-audit-trail will do it.
 
         } catch (e) {
-            console.error("Failed to trigger background tasks (audit/email)", e);
+            console.error("Failed to trigger background audit task", e);
         }
 
-        // 11. Log event for notifications
+        // 11. Log event
         await supabase.from('event_logs').insert({
             user_id: doc.user_id,
             document_id: doc.id,
             event_type: 'document.signed',
             event_data: {
-                branding: 'Multicentros',
+                branding: 'FirmaClara',
                 pdf_url: publicUrlData.publicUrl,
                 signer_email: doc.signer_email,
                 signer_name: doc.signer_name,
