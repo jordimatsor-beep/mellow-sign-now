@@ -46,56 +46,56 @@ const queryClient = new QueryClient();
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ProfileProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <CookieConsent />
-            <BrowserRouter>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/update-password" element={<UpdatePassword />} />
+      <BrowserRouter>
+        <AuthProvider>
+          <ProfileProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <CookieConsent />
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/update-password" element={<UpdatePassword />} />
 
-              {/* Public signing page & Content pages */}
-              <Route element={<PublicLayout />}>
-                <Route path="/sign/:token" element={<SignDocument />} />
-                <Route path="/legal" element={<Legal />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/how-it-works" element={<HowItWorks />} />
-              </Route>
-
-              {/* Authenticated routes */}
-              <Route element={<RequireAuth />}>
-                <Route element={<AuthenticatedLayout />}>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/documents" element={<Documents />} />
-                  <Route path="/contacts" element={<Contacts />} />
-                  <Route path="/documents/new" element={<NewDocument />} />
-                  <Route path="/documents/:id" element={<DocumentDetail />} />
-                  <Route path="/clara" element={<Clara />} />
-                  <Route path="/credits" element={<Credits />} />
-                  <Route path="/credits/purchase" element={<CreditsPurchase />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/help" element={<Help />} />
+                {/* Public signing page & Content pages */}
+                <Route element={<PublicLayout />}>
+                  <Route path="/sign/:token" element={<SignDocument />} />
+                  <Route path="/legal" element={<Legal />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/how-it-works" element={<HowItWorks />} />
                 </Route>
-              </Route>
 
-              {/* Redirects */}
+                {/* Authenticated routes */}
+                <Route element={<RequireAuth />}>
+                  <Route element={<AuthenticatedLayout />}>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/documents" element={<Documents />} />
+                    <Route path="/contacts" element={<Contacts />} />
+                    <Route path="/documents/new" element={<NewDocument />} />
+                    <Route path="/documents/:id" element={<DocumentDetail />} />
+                    <Route path="/clara" element={<Clara />} />
+                    <Route path="/credits" element={<Credits />} />
+                    <Route path="/credits/purchase" element={<CreditsPurchase />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/help" element={<Help />} />
+                  </Route>
+                </Route>
+
+                {/* Redirects */}
 
 
-              {/* 404 */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </ProfileProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+                {/* 404 */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </TooltipProvider>
+          </ProfileProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   </ErrorBoundary>
 );
 

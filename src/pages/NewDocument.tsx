@@ -184,15 +184,14 @@ export default function NewDocument() {
 
   const handleSendDocument = async (docId: string, userId: string, signToken: string) => {
     try {
-      const { data: creditResult, error: creditError } = await supabase.rpc('consume_credit', { amount: 1 });
+      const { error: creditError } = await supabase.rpc('consume_credit', { amount: 1 });
 
-      if (creditError) throw creditError;
-
-      const resultRow = (creditResult as any)?.[0];
-
-      if (!resultRow || !resultRow.success) {
-        toast.error("No tienes créditos suficientes.");
-        navigate('/credits/purchase');
+      if (creditError) {
+        console.error("Credit Error:", creditError);
+        toast.error("No tienes créditos suficientes o hubo un error.");
+        if (creditError.message.includes('Insufficient credits')) {
+          navigate('/credits/purchase');
+        }
         return;
       }
 
@@ -217,17 +216,20 @@ export default function NewDocument() {
         }
       });
 
-      if (fnError) {
-        console.error("Error sending email:", fnError);
-        toast.warning("Documento creado pero hubo un error al enviar el email.");
-      }
-
       await supabase.from('event_logs').insert({
         user_id: userId,
         document_id: docId,
         event_type: 'document.sent',
-        event_data: { credits_remaining: resultRow.remaining }
+        event_data: { credits_consumed: 1, email_sent: !fnError }
       });
+
+      if (fnError) {
+        console.error("Error sending email:", fnError);
+        const errorMessage = fnError.message || fnError.error || JSON.stringify(fnError);
+        toast.warning(`Error al enviar email: ${errorMessage}. El documento se ha guardado.`);
+        navigate('/dashboard');
+        return;
+      }
 
       toast.success("Documento enviado correctamente");
       navigate('/dashboard');
@@ -649,43 +651,39 @@ export default function NewDocument() {
               {/* Custom position inputs */}
               {signaturePosition === "custom" && (
                 <div className="ml-6 p-3 rounded-lg bg-muted/30 space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Página</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={signaturePage || 1}
-                        onChange={(e) => setSignaturePage(parseInt(e.target.value) || 1)}
-                        className="h-9"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">X (0-595)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="595"
-                        value={signatureX}
-                        onChange={(e) => setSignatureX(parseInt(e.target.value) || 0)}
-                        className="h-9"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Y (0-841)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="841"
-                        value={signatureY}
-                        onChange={(e) => setSignatureY(parseInt(e.target.value) || 0)}
-                        className="h-9"
-                      />
+                  <div className="space-y-1">
+                    <Label className="text-xs">Número de página</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={signaturePage || 1}
+                      onChange={(e) => setSignaturePage(parseInt(e.target.value) || 1)}
+                      className="h-9 w-24"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-sm">Posición en la página:</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { value: "bottom-left", label: "Abajo izq." },
+                        { value: "bottom-center", label: "Abajo centro" },
+                        { value: "bottom-right", label: "Abajo der." },
+                        { value: "center", label: "Centro" },
+                      ].map((preset) => (
+                        <Button
+                          key={preset.value}
+                          type="button"
+                          variant={signaturePreset === preset.value ? "default" : "outline"}
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => handleSignaturePreset(preset.value)}
+                        >
+                          {preset.label}
+                        </Button>
+                      ))}
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Coordenadas en puntos PDF (A4 = 595x841). Y=0 es la parte inferior.
-                  </p>
                 </div>
               )}
             </div>
@@ -784,7 +782,11 @@ export default function NewDocument() {
                 <span className="text-muted-foreground">Posición firma</span>
                 <span>
                   {signaturePosition === "new_page" && "Página nueva"}
-                  {signaturePosition === "last_page" && `Última pág. (${signaturePreset})`}
+                  {signaturePosition === "last_page" && `Última pág. (${signaturePreset === 'bottom-right' ? 'Abajo derecha' :
+                    signaturePreset === 'bottom-left' ? 'Abajo izquierda' :
+                      signaturePreset === 'bottom-center' ? 'Abajo centro' :
+                        signaturePreset === 'center' ? 'Centro' : signaturePreset
+                    })`}
                   {signaturePosition === "custom" && `Pág. ${signaturePage} (${signatureX}, ${signatureY})`}
                 </span>
               </div>
