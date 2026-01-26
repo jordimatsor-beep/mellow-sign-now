@@ -145,7 +145,7 @@ export default function NewDocument() {
 
   const handleSendDocument = async (docId: string, userId: string, signToken: string) => {
     try {
-      const { data: creditResult, error: creditError } = await supabase.rpc('consume_credit', { p_user_id: userId });
+      const { data: creditResult, error: creditError } = await supabase.rpc('consume_credit', { amount: 1 });
 
       if (creditError) throw creditError;
 
@@ -413,8 +413,8 @@ export default function NewDocument() {
 
               {/* WhatsApp Security Toggle - Prominent Card */}
               <div className={`rounded-xl border-2 p-4 transition-all ${whatsappVerification
-                  ? 'border-green-500 bg-green-50/50 shadow-sm'
-                  : 'border-dashed border-muted-foreground/30 bg-muted/20'
+                ? 'border-green-500 bg-green-50/50 shadow-sm'
+                : 'border-dashed border-muted-foreground/30 bg-muted/20'
                 }`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">

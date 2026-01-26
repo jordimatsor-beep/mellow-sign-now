@@ -581,7 +581,7 @@ export type Database = {
     }
     Functions: {
       consume_credit: {
-        Args: { p_user_id: string }
+        Args: { amount: number }
         Returns: {
           remaining: number
           success: boolean

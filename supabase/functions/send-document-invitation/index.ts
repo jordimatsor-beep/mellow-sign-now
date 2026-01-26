@@ -26,15 +26,35 @@ serve(async (req) => {
       throw new Error('Missing RESEND_API_KEY')
     }
 
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+    )
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) throw new Error('Unauthorized')
+
     const { document_id, signer_email, signer_name, sign_token, sender_name, title }: RequestBody = await req.json()
 
-    if (!signer_email || !sign_token) {
-      throw new Error('Missing required fields: signer_email or sign_token')
+    if (!signer_email || !sign_token || !document_id) {
+      throw new Error('Missing required fields')
     }
 
-    // URL Configuration (Fixing localhost issue)
-    // We prioritize the SITE_URL env var, then the origin header, and finally a fallback.
-    // User should set SITE_URL in Supabase Secrets for production.
+    // Verify ownership
+    const { data: doc, error: docError } = await supabase
+      .from('documents')
+      .select('user_id')
+      .eq('id', document_id)
+      .single()
+
+    if (docError || !doc) throw new Error('Document not found')
+
+    if (doc.user_id !== user.id) {
+      throw new Error('Unauthorized: You do not own this document')
+    }
+
+    // URL Configuration
     const siteUrl = Deno.env.get('SITE_URL') || 'https://firmaclara.es';
     const signUrl = `${siteUrl}/sign/${sign_token}`
 
@@ -71,7 +91,7 @@ serve(async (req) => {
               overflow: hidden;
             }
             .header { 
-              background-color: #ffffff; /* Or brand color if preferred, but white is cleaner */
+              background-color: #ffffff; 
               padding: 30px 40px; 
               border-bottom: 1px solid #f3f4f6;
               text-align: center;
@@ -83,7 +103,7 @@ serve(async (req) => {
               text-decoration: none; 
               letter-spacing: -0.5px;
             }
-            .logo span { color: #2563eb; } /* Primary blue */
+            .logo span { color: #2563eb; } 
             
             .content { padding: 40px; }
             
@@ -121,7 +141,7 @@ serve(async (req) => {
             .button { 
               display: inline-block; 
               padding: 14px 32px; 
-              background-color: #2563eb; /* Primary Blue */
+              background-color: #2563eb; 
               color: white !important; 
               text-decoration: none; 
               border-radius: 8px; 
@@ -213,7 +233,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${RESEND_API_KEY}`
       },
       body: JSON.stringify({
-        from: 'FirmaClara <noreply@firmaclara.es>', // Domain verified!
+        from: 'FirmaClara <noreply@firmaclara.es>',
         to: [signer_email],
         subject: `FirmaClara: ${sender} solicita tu firma en "${docTitle}"`,
         html: html
