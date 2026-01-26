@@ -312,53 +312,64 @@ LEFT JOIN public.signatures s ON d.id = s.document_id;
 -- ============================================
 
 -- Función: Consumir crédito (FIFO)
-CREATE OR REPLACE FUNCTION public.consume_credit(p_user_id UUID)
-RETURNS TABLE(success BOOLEAN, remaining INTEGER) AS $$
+CREATE OR REPLACE FUNCTION public.consume_credit(amount integer)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 DECLARE
-  v_pack_id UUID;
-  v_remaining INTEGER;
+  v_user_id uuid;
+  v_current_credits integer;
 BEGIN
-  -- Buscar pack más antiguo con créditos disponibles
-  SELECT id INTO v_pack_id
-  FROM public.credit_packs
-  WHERE user_id = p_user_id
-    AND credits_total > credits_used
-  ORDER BY purchased_at ASC
-  LIMIT 1
-  FOR UPDATE;
+  -- Get current user ID securely
+  v_user_id := auth.uid();
   
-  IF v_pack_id IS NULL THEN
-    RETURN QUERY SELECT FALSE, 0;
-    RETURN;
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
   END IF;
-  
-  -- Incrementar créditos usados
-  UPDATE public.credit_packs
-  SET credits_used = credits_used + 1
-  WHERE id = v_pack_id;
-  
-  -- Calcular restantes
-  SELECT COALESCE(SUM(credits_total - credits_used), 0)::INTEGER
-  INTO v_remaining
+
+  -- Get current credits
+  SELECT (credits_total - credits_used) INTO v_current_credits
   FROM public.credit_packs
-  WHERE user_id = p_user_id;
-  
-  RETURN QUERY SELECT TRUE, v_remaining;
+  WHERE user_id = v_user_id;
+
+  IF v_current_credits < amount THEN
+    RAISE EXCEPTION 'Insufficient credits';
+  END IF;
+
+  -- Update credits
+  UPDATE public.credit_packs
+  SET credits_used = credits_used + amount,
+      updated_at = now()
+  WHERE user_id = v_user_id;
 END;
-$$ LANGUAGE plpgsql;
+$function$;
 
 -- Función: Obtener créditos disponibles
-CREATE OR REPLACE FUNCTION public.get_available_credits(p_user_id UUID)
-RETURNS INTEGER AS $$
+CREATE OR REPLACE FUNCTION public.get_available_credits()
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+  v_user_id uuid;
+  v_credits integer;
 BEGIN
-  RETURN COALESCE(
-    (SELECT SUM(credits_total - credits_used)
-     FROM public.credit_packs
-     WHERE user_id = p_user_id),
-    0
-  )::INTEGER;
+  v_user_id := auth.uid();
+  
+  IF v_user_id IS NULL THEN
+    RETURN 0;
+  END IF;
+
+  SELECT COALESCE(SUM(credits_total - credits_used), 0)
+  INTO v_credits
+  FROM public.credit_packs
+  WHERE user_id = v_user_id
+  AND (expires_at IS NULL OR expires_at > now());
+
+  RETURN v_credits;
 END;
-$$ LANGUAGE plpgsql;
+$function$;
 
 -- Función: Marcar documentos expirados
 CREATE OR REPLACE FUNCTION public.mark_expired_documents()
