@@ -207,6 +207,9 @@ export type Database = {
                     sent_at: string | null
                     sign_token: string | null
                     signature_type: string | null
+                    signature_page: number | null
+                    signature_x: number | null
+                    signature_y: number | null
                     signed_at: string | null
                     signed_file_url: string | null
                     signer_address: string | null
@@ -238,6 +241,9 @@ export type Database = {
                     sent_at?: string | null
                     sign_token?: string | null
                     signature_type?: string | null
+                    signature_page?: number | null
+                    signature_x?: number | null
+                    signature_y?: number | null
                     signed_at?: string | null
                     signed_file_url?: string | null
                     signer_address?: string | null
@@ -269,6 +275,9 @@ export type Database = {
                     sent_at?: string | null
                     sign_token?: string | null
                     signature_type?: string | null
+                    signature_page?: number | null
+                    signature_x?: number | null
+                    signature_y?: number | null
                     signed_at?: string | null
                     signed_file_url?: string | null
                     signer_address?: string | null

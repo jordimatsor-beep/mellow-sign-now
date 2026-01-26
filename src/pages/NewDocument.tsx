@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, Sparkles, FileText, ArrowRight, Loader2, User, Lock, Unlock, Receipt, Wrench, FileSignature, ClipboardList } from "lucide-react";
+import { ArrowLeft, Upload, Sparkles, FileText, ArrowRight, Loader2, User, Lock, Unlock, Receipt, Wrench, FileSignature, ClipboardList, MapPin } from "lucide-react";
 import { ContactSelector } from "@/components/contacts/ContactSelector";
 import { useProfile } from "@/context/ProfileContext";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,13 @@ export default function NewDocument() {
   const [customMessage, setCustomMessage] = useState("");
   const [expiresInDays, setExpiresInDays] = useState("7");
   const [isContactSelectorOpen, setIsContactSelectorOpen] = useState(false);
+
+  // Signature position settings
+  const [signaturePosition, setSignaturePosition] = useState<"new_page" | "last_page" | "custom">("new_page");
+  const [signaturePage, setSignaturePage] = useState(0);
+  const [signatureX, setSignatureX] = useState(0);
+  const [signatureY, setSignatureY] = useState(0);
+  const [signaturePreset, setSignaturePreset] = useState<string>("bottom-center");
 
   // Fields are optional for "presupuesto" type
   const isPresupuesto = docType === "presupuesto";
@@ -91,6 +98,34 @@ export default function NewDocument() {
     setSecurityLevel(checked ? "whatsapp_otp" : "standard");
   };
 
+  // Signature position presets (based on A4: 595 x 841 points)
+  const handleSignaturePreset = (preset: string) => {
+    setSignaturePreset(preset);
+    // Standard A4 dimensions: 595.28 x 841.89 points
+    // Signature area: ~200x100 points
+    switch (preset) {
+      case "bottom-left":
+        setSignatureX(50);
+        setSignatureY(80);
+        break;
+      case "bottom-center":
+        setSignatureX(200); // Centered for ~200px signature
+        setSignatureY(80);
+        break;
+      case "bottom-right":
+        setSignatureX(350);
+        setSignatureY(80);
+        break;
+      case "center":
+        setSignatureX(200);
+        setSignatureY(400);
+        break;
+      default:
+        setSignatureX(200);
+        setSignatureY(80);
+    }
+  };
+
   const handleCreateDocument = async () => {
     if (!file || !title || !signerEmail || !signerName) return;
 
@@ -125,7 +160,11 @@ export default function NewDocument() {
           signature_type: signatureType,
           expires_at: new Date(Date.now() + parseInt(expiresInDays) * 24 * 60 * 60 * 1000).toISOString(),
           sign_token: crypto.randomUUID(),
-          security_level: securityLevel
+          security_level: securityLevel,
+          // Signature position settings
+          signature_page: signaturePage,
+          signature_x: signatureX,
+          signature_y: signatureY
         })
         .select()
         .single();
@@ -535,6 +574,122 @@ export default function NewDocument() {
               </div>
             </div>
 
+            {/* Signature Position Selector */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Posición de la firma
+              </Label>
+
+              <RadioGroup
+                value={signaturePosition}
+                onValueChange={(value: "new_page" | "last_page" | "custom") => {
+                  setSignaturePosition(value);
+                  if (value === "new_page") {
+                    setSignaturePage(0);
+                    setSignatureX(0);
+                    setSignatureY(0);
+                  } else if (value === "last_page") {
+                    setSignaturePage(-1); // -1 = última página
+                    handleSignaturePreset(signaturePreset);
+                  }
+                }}
+                className="space-y-2"
+              >
+                <div className={`flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-all ${signaturePosition === "new_page" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
+                  <RadioGroupItem value="new_page" id="pos-new" />
+                  <Label htmlFor="pos-new" className="cursor-pointer flex-1">
+                    <span className="font-medium">Página nueva (recomendado)</span>
+                    <p className="text-xs text-muted-foreground">Añade una página al final con la firma y certificado</p>
+                  </Label>
+                </div>
+
+                <div className={`flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-all ${signaturePosition === "last_page" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
+                  <RadioGroupItem value="last_page" id="pos-last" />
+                  <Label htmlFor="pos-last" className="cursor-pointer flex-1">
+                    <span className="font-medium">Última página del documento</span>
+                    <p className="text-xs text-muted-foreground">Coloca la firma en una posición específica</p>
+                  </Label>
+                </div>
+
+                <div className={`flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-all ${signaturePosition === "custom" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
+                  <RadioGroupItem value="custom" id="pos-custom" />
+                  <Label htmlFor="pos-custom" className="cursor-pointer flex-1">
+                    <span className="font-medium">Página específica</span>
+                    <p className="text-xs text-muted-foreground">Elige página y coordenadas exactas</p>
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              {/* Position presets for last_page */}
+              {signaturePosition === "last_page" && (
+                <div className="ml-6 p-3 rounded-lg bg-muted/30 space-y-3">
+                  <Label className="text-sm">Posición en la página:</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: "bottom-left", label: "Abajo izq." },
+                      { value: "bottom-center", label: "Abajo centro" },
+                      { value: "bottom-right", label: "Abajo der." },
+                    ].map((preset) => (
+                      <Button
+                        key={preset.value}
+                        type="button"
+                        variant={signaturePreset === preset.value ? "default" : "outline"}
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => handleSignaturePreset(preset.value)}
+                      >
+                        {preset.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Custom position inputs */}
+              {signaturePosition === "custom" && (
+                <div className="ml-6 p-3 rounded-lg bg-muted/30 space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Página</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={signaturePage || 1}
+                        onChange={(e) => setSignaturePage(parseInt(e.target.value) || 1)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">X (0-595)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="595"
+                        value={signatureX}
+                        onChange={(e) => setSignatureX(parseInt(e.target.value) || 0)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Y (0-841)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="841"
+                        value={signatureY}
+                        onChange={(e) => setSignatureY(parseInt(e.target.value) || 0)}
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Coordenadas en puntos PDF (A4 = 595x841). Y=0 es la parte inferior.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="message">Mensaje para el firmante (opcional)</Label>
               <Textarea
@@ -624,6 +779,14 @@ export default function NewDocument() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Plazo</span>
                 <span>{expiresInDays} días</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Posición firma</span>
+                <span>
+                  {signaturePosition === "new_page" && "Página nueva"}
+                  {signaturePosition === "last_page" && `Última pág. (${signaturePreset})`}
+                  {signaturePosition === "custom" && `Pág. ${signaturePage} (${signatureX}, ${signatureY})`}
+                </span>
               </div>
             </div>
 

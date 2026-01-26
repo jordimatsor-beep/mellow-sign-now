@@ -122,7 +122,7 @@ serve(async (req: Request) => {
             pdfBytes = await res.arrayBuffer();
         }
 
-        // 4. Load and modify PDF - NEW DEDICATED SIGNATURE PAGE STRATEGY
+        // 4. Load and modify PDF - CONFIGURABLE SIGNATURE PLACEMENT
         const pdfDoc = await PDFDocument.load(pdfBytes);
         const timesRoman = await pdfDoc.embedFont(StandardFonts.TimesRoman);
         const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -132,92 +132,139 @@ serve(async (req: Request) => {
         // Scale image reasonably
         const pngDims = pngImage.scale(0.5);
 
-        // --- ADD NEW PAGE FOR SIGNATURE ---
-        // We get the size of the first page to match dimensions, or default to A4
-        const firstPage = pdfDoc.getPages()[0];
+        // Get pages array
+        const pages = pdfDoc.getPages();
+        const firstPage = pages[0];
         const { width: pageWidth, height: pageHeight } = firstPage ? firstPage.getSize() : { width: 595.28, height: 841.89 };
 
-        const signaturePage = pdfDoc.addPage([pageWidth, pageHeight]);
+        // Signature position configuration from document settings
+        const sigPageSetting = doc.signature_page ?? 0; // 0 = new page, -1 = last page, >0 = specific page
+        const sigX = doc.signature_x ?? 0;
+        const sigY = doc.signature_y ?? 0;
 
-        // Draw Header on Signature Page
-        signaturePage.drawText('Certificado de Firma - Anexo', {
-            x: 50,
-            y: pageHeight - 50,
-            size: 18,
-            font: helveticaBold,
-            color: rgb(0.12, 0.23, 0.37),
-        });
+        const signedAt = new Date();
+        let targetPage;
+        let drawFullCertificate = false;
 
-        signaturePage.drawLine({
-            start: { x: 50, y: pageHeight - 65 },
-            end: { x: pageWidth - 50, y: pageHeight - 65 },
-            thickness: 1,
-            color: rgb(0.8, 0.8, 0.8),
-        });
+        if (sigPageSetting === 0) {
+            // --- ADD NEW PAGE FOR SIGNATURE (default behavior) ---
+            targetPage = pdfDoc.addPage([pageWidth, pageHeight]);
+            drawFullCertificate = true;
+        } else if (sigPageSetting === -1) {
+            // --- USE LAST PAGE ---
+            targetPage = pages[pages.length - 1];
+        } else if (sigPageSetting > 0 && sigPageSetting <= pages.length) {
+            // --- USE SPECIFIC PAGE ---
+            targetPage = pages[sigPageSetting - 1]; // Convert to 0-indexed
+        } else {
+            // Invalid page number, fallback to new page
+            targetPage = pdfDoc.addPage([pageWidth, pageHeight]);
+            drawFullCertificate = true;
+        }
 
-        // Draw Legal Text
-        const legalText = `Este documento ha sido firmado electrónicamente a través de la plataforma FirmaClara.
+        const targetPageSize = targetPage.getSize();
+
+        if (drawFullCertificate) {
+            // Draw Header on Signature Page (only for new page mode)
+            targetPage.drawText('Certificado de Firma - Anexo', {
+                x: 50,
+                y: targetPageSize.height - 50,
+                size: 18,
+                font: helveticaBold,
+                color: rgb(0.12, 0.23, 0.37),
+            });
+
+            targetPage.drawLine({
+                start: { x: 50, y: targetPageSize.height - 65 },
+                end: { x: targetPageSize.width - 50, y: targetPageSize.height - 65 },
+                thickness: 1,
+                color: rgb(0.8, 0.8, 0.8),
+            });
+
+            // Draw Legal Text
+            const legalText = `Este documento ha sido firmado electrónicamente a través de la plataforma FirmaClara.
 La firma que aparece a continuación certifica la aceptación del contenido del contrato adjunto.`;
 
-        signaturePage.drawText(legalText, {
-            x: 50,
-            y: pageHeight - 100,
-            size: 10,
-            font: timesRoman,
-            color: rgb(0.2, 0.2, 0.2),
-            lineHeight: 14,
-        });
+            targetPage.drawText(legalText, {
+                x: 50,
+                y: targetPageSize.height - 100,
+                size: 10,
+                font: timesRoman,
+                color: rgb(0.2, 0.2, 0.2),
+                lineHeight: 14,
+            });
 
-        // Draw Signature Box
-        const boxY = pageHeight - 250;
+            // Draw Signature centered on new page
+            const boxY = targetPageSize.height - 250;
+            const centeredX = targetPageSize.width / 2 - pngDims.width / 2;
+            targetPage.drawImage(pngImage, {
+                x: centeredX,
+                y: boxY,
+                width: pngDims.width,
+                height: pngDims.height,
+            });
 
-        // Draw Signature
-        const sigX = pageWidth / 2 - pngDims.width / 2;
-        signaturePage.drawImage(pngImage, {
-            x: sigX,
-            y: boxY,
-            width: pngDims.width,
-            height: pngDims.height,
-        });
+            // Metadata under signature
+            const signatureText = `Firmado por: ${doc.signer_name}`;
+            const emailText = `Email: ${doc.signer_email}`;
+            const dateText = `Fecha: ${signedAt.toLocaleString('es-ES')}`;
+            const idText = `ID Documento: ${doc.id}`;
 
-        // Metadata under signature
-        const signedAt = new Date();
-        const signatureText = `Firmado por: ${doc.signer_name}`;
-        const emailText = `Email: ${doc.signer_email}`;
-        const dateText = `Fecha: ${signedAt.toLocaleString('es-ES')}`;
-        const idText = `ID Documento: ${doc.id}`;
+            targetPage.drawText(signatureText, {
+                x: 50,
+                y: boxY - 20,
+                size: 10,
+                font: helveticaBold,
+                color: rgb(0, 0, 0),
+            });
 
-        signaturePage.drawText(signatureText, {
-            x: 50,
-            y: boxY - 20,
-            size: 10,
-            font: helveticaBold,
-            color: rgb(0, 0, 0),
-        });
+            targetPage.drawText(emailText, {
+                x: 50,
+                y: boxY - 35,
+                size: 9,
+                font: timesRoman,
+                color: rgb(0.3, 0.3, 0.3),
+            });
 
-        signaturePage.drawText(emailText, {
-            x: 50,
-            y: boxY - 35,
-            size: 9,
-            font: timesRoman,
-            color: rgb(0.3, 0.3, 0.3),
-        });
+            targetPage.drawText(dateText, {
+                x: 50,
+                y: boxY - 50,
+                size: 9,
+                font: timesRoman,
+                color: rgb(0.3, 0.3, 0.3),
+            });
 
-        signaturePage.drawText(dateText, {
-            x: 50,
-            y: boxY - 50,
-            size: 9,
-            font: timesRoman,
-            color: rgb(0.3, 0.3, 0.3),
-        });
+            targetPage.drawText(idText, {
+                x: 50,
+                y: boxY - 65,
+                size: 9,
+                font: timesRoman,
+                color: rgb(0.3, 0.3, 0.3),
+            });
+        } else {
+            // --- PLACE SIGNATURE ON EXISTING PAGE AT SPECIFIED COORDINATES ---
+            const finalX = sigX > 0 ? sigX : (targetPageSize.width / 2 - pngDims.width / 2);
+            const finalY = sigY > 0 ? sigY : 80; // Default 80pt from bottom
 
-        signaturePage.drawText(idText, {
-            x: 50,
-            y: boxY - 65,
-            size: 9,
-            font: timesRoman,
-            color: rgb(0.3, 0.3, 0.3),
-        });
+            // Draw signature image
+            targetPage.drawImage(pngImage, {
+                x: finalX,
+                y: finalY,
+                width: pngDims.width,
+                height: pngDims.height,
+            });
+
+            // Draw minimal metadata below signature
+            const metaY = finalY - 15;
+            const dateText = `Firmado: ${signedAt.toLocaleString('es-ES')}`;
+            targetPage.drawText(dateText, {
+                x: finalX,
+                y: metaY,
+                size: 7,
+                font: timesRoman,
+                color: rgb(0.4, 0.4, 0.4),
+            });
+        }
 
         // 5. Finalize PDF
         const signedPdfBytes = await pdfDoc.save();
