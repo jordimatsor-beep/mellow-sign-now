@@ -4,18 +4,44 @@ import Stripe from 'https://esm.sh/stripe@14.10.0'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { z } from "https://esm.sh/zod@3.22.4"
 
+// Validation Schema for checkout request
+const CheckoutSchema = z.object({
+    priceId: z.enum(['basic', 'pro', 'business']),
+    returnUrl: z.string().url().optional()
+});
+
+// Pack Details (matching pack_types table in database)
+const PACK_DETAILS: Record<string, { name: string; credits: number; amount: number }> = {
+    basic: {
+        name: 'Básico',
+        credits: 10,
+        amount: 1200  // €12.00 in cents
+    },
+    pro: {
+        name: 'Profesional',
+        credits: 30,
+        amount: 2900  // €29.00 in cents
+    },
+    business: {
+        name: 'Business',
+        credits: 100,
+        amount: 6900  // €69.00 in cents
+    }
+};
+
 const ALLOWED_ORIGINS = [
     'https://firmaclara.com',
+    'https://mellow-sign-now.lovable.app',
     'http://localhost:8080',
     'http://localhost:3000'
 ];
 
 const ALLOWED_RETURN_URLS = [
     'https://firmaclara.com',
+    'https://mellow-sign-now.lovable.app',
     'http://localhost:8080',
     'http://localhost:3000'
 ];
-
 serve(async (req) => {
     // CORS Hardening
     const origin = req.headers.get('Origin');
