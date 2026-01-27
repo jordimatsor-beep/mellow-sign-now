@@ -1,13 +1,38 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1"
 import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
-import { getCorsHeaders, handleCorsPreflightRequest, sanitizeErrorMessage } from '../_shared/cors.ts'
+
+// --- INLINED CORS LOGIC ---
+const ALLOWED_ORIGINS = [
+    'https://firmaclara.com',
+    'https://firmaclara.es',
+    'https://www.firmaclara.com',
+    'https://www.firmaclara.es',
+    'https://mellow-sign-now.lovable.app',
+    'http://localhost:8080',
+    'http://localhost:3000',
+    'http://localhost:5173',
+];
+
+function getCorsHeaders(request: Request): Record<string, string> {
+    const origin = request.headers.get('Origin');
+    const isAllowed = origin && ALLOWED_ORIGINS.includes(origin);
+
+    return {
+        'Access-Control-Allow-Origin': isAllowed ? origin : 'null',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+        'Vary': 'Origin',
+    };
+}
 
 serve(async (req) => {
     const corsHeaders = getCorsHeaders(req);
 
-    const preflightResponse = handleCorsPreflightRequest(req);
-    if (preflightResponse) return preflightResponse;
+    // CORS Preflight
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders })
+    }
 
     try {
         const supabase = createClient(
@@ -16,7 +41,13 @@ serve(async (req) => {
         )
 
         // Parse body
-        const body = await req.json()
+        let body;
+        try {
+            body = await req.json()
+        } catch (e) {
+            throw new Error('Invalid JSON body');
+        }
+
         const { token } = body
 
         if (!token) throw new Error('Token is required')
@@ -29,6 +60,7 @@ serve(async (req) => {
             .single()
 
         if (docError || !doc) throw new Error('Documento no encontrado')
+
         // Allow SMS fallback even if security level says whatsapp_otp? Yes, it's just the channel.
         if (doc.security_level === 'standard') throw new Error('Este documento no requiere verificación por OTP')
 
@@ -59,28 +91,21 @@ serve(async (req) => {
             })
             .eq('id', doc.id)
 
-        if (updateError) throw updateError
+        if (updateError) throw new Error('Database Error: ' + updateError.message)
 
         // 5. Send Message (Twilio)
         const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
         const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
-        // STRICT: Must use TWILIO_FROM_NUMBER which should be the Spanish (+34) number
         let fromNumber = Deno.env.get('TWILIO_FROM_NUMBER') || Deno.env.get('TWILIO_PHONE_NUMBER');
 
         if (!fromNumber) {
-            throw new Error("CRITICAL CONFIGURATION ERROR: 'TWILIO_FROM_NUMBER' is not set. Cannot send SMS from legal origin.");
+            console.error("Missing/Invalid TWILIO_FROM_NUMBER");
+            throw new Error("Configuration Error: Missing Twilio Number");
         }
 
-        // FORCE SMS channel regardless of request
         const channel = 'sms';
-
-        // Construct To/From based on SMS
         let to = phone;
-        // Strict sanitization of From
         let from = fromNumber.replace('whatsapp:', '').trim();
-
-        // 7. SMS - ORIGEN DEL NUMERO (IMPERATIVO) check logic
-        // We can't validate the country code dynamically easily without regex, but we ensure it uses the Env Var.
 
         console.log(`[OTP Request] Channel: ${channel} | To: ${to} | FromEnv: ${from}`);
 
@@ -107,11 +132,10 @@ serve(async (req) => {
             if (!res.ok) {
                 const txt = await res.text()
                 console.error('Twilio Error:', txt)
-                throw new Error(`Error al enviar mensaje (${channel}). Twilio: ${txt}`)
+                throw new Error(`Error al enviar mensaje SMS: ${txt.substring(0, 100)}`)
             }
         } else {
-            // Development mode - OTP code NOT logged for security
-            console.log('[DEV MODE] OTP would be sent to:', phone.substring(0, 6) + '****');
+            console.log('[DEV MODE] OTP would be sent to:', phone.substring(0, 6) + '****', 'Code:', otp);
         }
 
         return new Response(
@@ -120,10 +144,15 @@ serve(async (req) => {
         )
 
     } catch (error: any) {
-        console.error(error)
+        console.error("Send-OTP Error:", error)
+        const message = error instanceof Error ? error.message : 'Error desconocido';
         return new Response(
-            JSON.stringify({ error: error.message }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+            JSON.stringify({
+                success: false,
+                error: message,
+                details: JSON.stringify(error)
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         )
     }
 })
