@@ -571,7 +571,7 @@ export default function SignDocument() {
         </Card>
 
         <p className="mt-8 text-sm text-muted-foreground opacity-60">
-          Power by FirmaClara Â· Seguridad y Confianza
+          Powered by FirmaClara | Seguridad y Confianza
         </p>
       </div>
     );

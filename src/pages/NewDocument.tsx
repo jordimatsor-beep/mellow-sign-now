@@ -46,7 +46,7 @@ export default function NewDocument() {
   const [isContactSelectorOpen, setIsContactSelectorOpen] = useState(false);
 
   // Signature position settings
-  const [signaturePosition, setSignaturePosition] = useState<"new_page" | "last_page" | "custom">("new_page");
+  const [signaturePosition, setSignaturePosition] = useState<"new_page" | "last_page" | "custom">("last_page");
   const [signaturePage, setSignaturePage] = useState(0);
   const [signatureX, setSignatureX] = useState(0);
   const [signatureY, setSignatureY] = useState(0);
