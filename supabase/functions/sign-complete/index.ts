@@ -371,12 +371,12 @@ La firma que aparece a continuación certifica la aceptación del contenido del 
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
 
-    } catch (error: unknown) {
+    } catch (error: any) {
         const message = error instanceof Error ? error.message : 'Error desconocido';
-        console.error('Sign-complete error:', message);
+        console.error('Sign-complete error:', error);
         return new Response(
-            JSON.stringify({ error: message }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+            JSON.stringify({ success: false, error: message, details: JSON.stringify(error) }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         );
     }
 })

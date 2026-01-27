@@ -12,3 +12,6 @@ entrypoint = "./functions/request-tsa/index.ts"
 
 [functions.send-invite-v2]
 verify_jwt = false
+
+[functions.sign-complete]
+verify_jwt = false

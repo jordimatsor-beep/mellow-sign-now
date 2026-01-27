@@ -455,8 +455,14 @@ export default function SignDocument() {
       });
 
       if (error) {
-        const body = await error.context?.json().catch(() => ({}));
-        throw new Error(body.error || error.message || "Hubo un error al procesar la firma.");
+        console.error("Sign Error (Network):", error);
+        const status = (error as any).status || (error as any).code || 'Unknown';
+        throw new Error(`Error de conexión (${status}): ${error.message}`);
+      }
+
+      if (data && (data.error || data.success === false)) {
+        console.error("Sign Error (Backend):", data);
+        throw new Error(data.error || "Error al procesar la firma");
       }
 
       setDocData({ ...docData, signedAt: new Date().toISOString() });
