@@ -1,6 +1,5 @@
 {
-    "permissions": {
-        "env": true,
-        "net": true
+    "imports": {
+        "std/": "https://deno.land/std@0.168.0/"
     }
 }
