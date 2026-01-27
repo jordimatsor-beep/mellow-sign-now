@@ -21,3 +21,9 @@ verify_jwt = false
 
 [functions.send-otp]
 verify_jwt = false
+
+[functions.send-daily-metrics]
+verify_jwt = false
+
+[functions.clara-chat]
+verify_jwt = false

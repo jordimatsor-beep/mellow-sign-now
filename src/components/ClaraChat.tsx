@@ -131,7 +131,7 @@ export function ClaraChat({ documentId }: { documentId?: string }) {
                 {
                     id: Date.now().toString(),
                     role: "clara",
-                    content: errorMessage,
+                    content: `${errorMessage} (Detalle: ${error.message || JSON.stringify(error)})`,
                 },
             ]);
         } finally {
