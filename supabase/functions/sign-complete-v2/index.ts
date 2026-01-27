@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1"
 import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib@1.17.1'
-import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
 
 // --- INLINED CORS LOGIC (No external dependencies) ---
 const ALLOWED_ORIGINS = [
