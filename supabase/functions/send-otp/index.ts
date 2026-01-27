@@ -34,11 +34,17 @@ serve(async (req) => {
         return new Response('ok', { headers: corsHeaders })
     }
 
+    let supabaseC: any = null; // Scope for catch block
+    let ipAddress = 'unknown';
+    let docId: string | null = null;
+    let userAgent = req.headers.get('user-agent') || 'unknown';
+
     try {
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
+        supabaseC = supabase;
 
         // Parse body
         let body;
@@ -52,6 +58,13 @@ serve(async (req) => {
 
         if (!token) throw new Error('Token is required')
 
+        // Get IP - Hardened: Prioritize x-real-ip (LB trusted) over XFF (Client-appendable)
+        const xRealIp = req.headers.get('x-real-ip');
+        const xForwardedFor = req.headers.get('x-forwarded-for');
+        ipAddress = xRealIp
+            ? xRealIp.trim()
+            : (xForwardedFor?.split(',')[0]?.trim() || 'unknown');
+
         // 1. Get Document
         const { data: doc, error: docError } = await supabase
             .from('documents')
@@ -60,9 +73,66 @@ serve(async (req) => {
             .single()
 
         if (docError || !doc) throw new Error('Documento no encontrado')
+        docId = doc.id;
+
+        // --- SECURITY: RATE LIMITING CHECKS ---
+        const now = new Date();
+        const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+
+        // Check 1: Doc Limit (Max 3 per 10 mins)
+        const { count: docCount, error: err1 } = await supabase
+            .from('otp_logs')
+            .select('*', { count: 'exact', head: true })
+            .eq('document_id', doc.id)
+            .gt('created_at', tenMinutesAgo);
+
+        if (err1) throw new Error('Security Check Error 1');
+        if ((docCount || 0) >= 3) {
+            await logAttempt(supabase, doc.id, ipAddress, userAgent, false, true, 'limit_doc');
+            return new Response(
+                JSON.stringify({ error: 'Demasiados intentos. Espera unos minutos.' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
+            );
+        }
+
+        // Check 2: IP Limit (Max 10 per 10 mins)
+        const { count: ipCount, error: err2 } = await supabase
+            .from('otp_logs')
+            .select('*', { count: 'exact', head: true })
+            .eq('ip_address', ipAddress)
+            .gt('created_at', tenMinutesAgo);
+
+        if (err2) throw new Error('Security Check Error 2');
+        if ((ipCount || 0) >= 10) {
+            await logAttempt(supabase, doc.id, ipAddress, userAgent, false, true, 'limit_ip');
+            return new Response(
+                JSON.stringify({ error: 'Too many requests from this IP.' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
+            );
+        }
+
+        // Check 3: Global Limit (Max 50 per hour)
+        const { count: globalCount, error: err3 } = await supabase
+            .from('otp_logs')
+            .select('*', { count: 'exact', head: true })
+            .gt('created_at', oneHourAgo);
+
+        if (err3) throw new Error('Security Check Error 3');
+        if ((globalCount || 0) >= 50) {
+            await logAttempt(supabase, doc.id, ipAddress, userAgent, false, true, 'limit_global');
+            return new Response(
+                JSON.stringify({ error: 'System busy. Try again later.' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
+            );
+        }
+
+        // --- END RATE LIMITING ---
 
         // Allow SMS fallback even if security level says whatsapp_otp? Yes, it's just the channel.
-        if (doc.security_level === 'standard') throw new Error('Este documento no requiere verificación por OTP')
+        if (doc.security_level === 'standard') {
+            throw new Error('Este documento no requiere verificación por OTP')
+        }
 
         // Clean phone number (remove spaces, ensure + prefix if needed)
         if (!doc.signer_phone) throw new Error('El teléfono del firmante no está registrado')
@@ -87,7 +157,7 @@ serve(async (req) => {
             .update({
                 otp_code_hash: otpHash,
                 otp_expires_at: expiresAt.toISOString(),
-                whatsapp_verification_status: 'sent' // We keep this name for legacy compatibility
+                whatsapp_verification_status: 'sent'
             })
             .eq('id', doc.id)
 
@@ -99,15 +169,13 @@ serve(async (req) => {
         let fromNumber = Deno.env.get('TWILIO_FROM_NUMBER') || Deno.env.get('TWILIO_PHONE_NUMBER');
 
         if (!fromNumber) {
-            console.error("Missing/Invalid TWILIO_FROM_NUMBER");
             throw new Error("Configuration Error: Missing Twilio Number");
         }
 
-        const channel = 'sms';
         let to = phone;
         let from = fromNumber.replace('whatsapp:', '').trim();
 
-        console.log(`[OTP Request] Channel: ${channel} | To: ${to} | FromEnv: ${from}`);
+        console.log(`[OTP Request] To: ${to} | FromEnv: ${from}`);
 
         if (accountSid && authToken) {
             const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
@@ -115,9 +183,7 @@ serve(async (req) => {
             const params = new URLSearchParams()
             params.append('To', to)
             if (from) params.append('From', from)
-
             const bodyText = `FirmaClara: Tu código de seguridad es ${otp}.`;
-
             params.append('Body', bodyText)
 
             const res = await fetch(twilioUrl, {
@@ -132,10 +198,18 @@ serve(async (req) => {
             if (!res.ok) {
                 const txt = await res.text()
                 console.error('Twilio Error:', txt)
+                // Log failed attempt but not blocked
+                await logAttempt(supabase, doc.id, ipAddress, userAgent, false, false, 'provider_error');
                 throw new Error(`Error al enviar mensaje SMS: ${txt.substring(0, 100)}`)
             }
+
+            // Log SUCCESS
+            await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, null);
+
         } else {
             console.log('[DEV MODE] OTP would be sent to:', phone.substring(0, 6) + '****', 'Code:', otp);
+            // Log SUCCESS (Dev)
+            await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'dev_mode');
         }
 
         return new Response(
@@ -146,6 +220,7 @@ serve(async (req) => {
     } catch (error: any) {
         console.error("Send-OTP Error:", error)
         const message = error instanceof Error ? error.message : 'Error desconocido';
+
         return new Response(
             JSON.stringify({
                 success: false,
@@ -156,3 +231,26 @@ serve(async (req) => {
         )
     }
 })
+
+async function logAttempt(
+    supabase: any,
+    docId: string,
+    ip: string,
+    ua: string,
+    success: boolean,
+    blocked: boolean,
+    reason: string | null
+) {
+    try {
+        await supabase.from('otp_logs').insert({
+            document_id: docId,
+            ip_address: ip,
+            user_agent: ua,
+            success: success,
+            blocked: blocked,
+            block_reason: reason
+        });
+    } catch (e) {
+        console.error("Failed to log OTP attempt:", e);
+    }
+}

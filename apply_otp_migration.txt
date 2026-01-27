@@ -1,0 +1,1 @@
+psql -h aws-0-eu-central-1.pooler.supabase.com -p 5432 -d postgres -U postgres -f supabase/migrations/20260127_otp_rate_limiting.sql
