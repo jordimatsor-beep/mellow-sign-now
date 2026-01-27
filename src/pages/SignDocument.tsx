@@ -444,7 +444,7 @@ export default function SignDocument() {
       // Using generic external service for IP if possible, or letting backend handle it
       // Edge function will see the request IP.
 
-      const { data, error } = await supabase.functions.invoke('sign-complete', {
+      const { data, error } = await supabase.functions.invoke('sign-complete-v2', {
         body: {
           token,
           otp_code: otpCode || undefined,

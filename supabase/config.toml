@@ -15,3 +15,6 @@ verify_jwt = false
 
 [functions.sign-complete]
 verify_jwt = false
+
+[functions.sign-complete-v2]
+verify_jwt = false
