@@ -71,6 +71,7 @@ const App = () => (
 
                 {/* Authenticated routes */}
                 <Route element={<RequireAuth />}>
+                  <Route path="/onboarding" element={<Onboarding />} />
                   <Route element={<AuthenticatedLayout />}>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/documents" element={<Documents />} />
