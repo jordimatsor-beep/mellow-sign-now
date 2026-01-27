@@ -234,7 +234,8 @@ export default function NewDocument() {
       // Manejo de errores de red (Supabase client throw)
       if (fnError) {
         console.error("Error sending email (Network/Client):", fnError);
-        toast.error(`Error de conexión: ${fnError.message}. El documento se ha guardado.`);
+        const status = (fnError as any).status || (fnError as any).code || (fnError as any).context?.status || 'Unknown';
+        toast.error(`Error de conexión (Code: ${status}): ${fnError.message}. El documento se ha guardado.`, { duration: 10000 });
         setTimeout(() => navigate('/dashboard'), 4000);
         return;
       }
