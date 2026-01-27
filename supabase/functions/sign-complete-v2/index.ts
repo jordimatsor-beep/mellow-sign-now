@@ -35,9 +35,24 @@ serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
 
     try {
-        console.log("Sign-complete-v2 invoked"); // Debug log
+        console.log("Sign-complete-v2 invoked");
 
-        // Initialize Supabase Client
+        // --- DEBUG: IMMEDIATE RETURN TO TEST CONNECTIVITY ---
+        // Uncomment the return below to test if the function is reachable and imports are working.
+        /*
+        return new Response(
+            JSON.stringify({ success: true, message: "Debug Mode: Function is alive" }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        ); 
+        */
+
+        // Let's actually ENABLE it for this test
+        return new Response(
+            JSON.stringify({ success: true, message: "Debug Mode: Function is alive", document_id: "debug-id", signed_at: new Date().toISOString() }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+
+        // ... Rest of code unreachable for now ...
         const supabaseUrl = Deno.env.get('SUPABASE_URL')
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
