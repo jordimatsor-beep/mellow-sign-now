@@ -205,32 +205,49 @@ export default function NewDocument() {
 
       if (updateError) throw updateError;
 
-      const { error: fnError } = await supabase.functions.invoke('send-document-invitation', {
-        body: {
+      const payload = {
+        document_id: docId,
+        signer_email: signerEmail,
+        signer_name: signerName,
+        sign_token: signToken,
+        sender_name: profile?.name || profile?.email || 'Usuario',
+        title: title
+      };
+      console.log('Invoking send-document-invitation with payload:', payload);
+
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('send-document-invitation', {
+        body: payload
+      });
+
+      // Registrar el evento
+      await supabase.from('event_logs').insert({
+        user_id: userId,
+        event_type: 'document.sent',
+        event_data: {
+          credits_consumed: 1,
+          email_sent: !fnError && fnData?.success !== false, // Check both
           document_id: docId,
-          signer_email: signerEmail,
-          signer_name: signerName,
-          sign_token: signToken,
-          sender_name: profile?.name || profile?.email || 'Usuario',
-          title: title
+          signer_email: signerEmail
         }
       });
 
-      await supabase.from('event_logs').insert({
-        user_id: userId,
-        document_id: docId,
-        event_type: 'document.sent',
-        event_data: { credits_consumed: 1, email_sent: !fnError }
-      });
-
+      // Manejo de errores de red (Supabase client throw)
       if (fnError) {
-        console.error("Error sending email:", fnError);
-        const errorMessage = fnError.message || fnError.error || JSON.stringify(fnError);
-        toast.warning(`Error al enviar email: ${errorMessage}. El documento se ha guardado.`);
-        navigate('/dashboard');
+        console.error("Error sending email (Network/Client):", fnError);
+        toast.error(`Error de conexión: ${fnError.message}. El documento se ha guardado.`);
+        setTimeout(() => navigate('/dashboard'), 4000);
         return;
       }
 
+      // Manejo de errores lógicos del backend (Soft Error 200 OK)
+      if (fnData && (fnData.error || fnData.success === false)) {
+        console.error("Error sending email (Backend Logic):", fnData);
+        toast.error(`Error del servidor: ${fnData.error}. El documento se ha guardado.`, { duration: 10000 });
+        setTimeout(() => navigate('/dashboard'), 4000);
+        return;
+      }
+
+      console.log('Email sent successfully:', fnData);
       toast.success("Documento enviado correctamente");
       navigate('/dashboard');
 
