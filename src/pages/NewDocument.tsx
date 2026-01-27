@@ -215,7 +215,7 @@ export default function NewDocument() {
       };
       console.log('Invoking send-document-invitation with payload:', payload);
 
-      const { data: fnData, error: fnError } = await supabase.functions.invoke('send-document-invitation', {
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('send-invite-v2', {
         body: payload
       });
 
