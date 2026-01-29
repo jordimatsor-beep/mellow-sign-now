@@ -347,7 +347,7 @@ export default function Index() {
               </ul>
 
               <Button size="lg" asChild className="bg-primary hover:bg-primary/90">
-                <Link to="/auth/register">
+                <Link to="/register">
                   Probar Clara IA
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -541,7 +541,7 @@ export default function Index() {
             Sin compromisos. Sin tarjeta de crédito. 3 documentos gratis para probar.
           </p>
           <Button size="lg" asChild className="bg-background text-foreground hover:bg-background/90 shadow-xl shadow-black/10 hover:shadow-black/20 transition-all duration-300 hover:scale-105 active:scale-95">
-            <Link to="/auth/register">
+            <Link to="/register">
               Crear Cuenta Gratis
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>

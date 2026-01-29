@@ -6,9 +6,13 @@ import * as pvutils from "https://esm.sh/pvutils@1.1.3?target=deno";
 
 const ALLOWED_ORIGINS = [
   'https://firmaclara.com',
+  'https://firmaclara.es',
+  'https://www.firmaclara.com',
+  'https://www.firmaclara.es',
   'https://mellow-sign-now.lovable.app',
   'http://localhost:8080',
-  'http://localhost:3000'
+  'http://localhost:3000',
+  'http://localhost:5173',
 ];
 
 // Robust list of TSAs to try in order
@@ -166,7 +170,7 @@ serve(async (req: Request) => {
         error: 'Error al obtener sello de tiempo. Por favor, inténtalo de nuevo.',
         details: 'TSA service temporarily unavailable'
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 })

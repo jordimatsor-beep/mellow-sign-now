@@ -330,7 +330,7 @@ serve(async (req: Request) => {
                 error: error.message || 'Error desconocido al procesar la firma',
                 details: JSON.stringify(error)
             }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
     }
 })

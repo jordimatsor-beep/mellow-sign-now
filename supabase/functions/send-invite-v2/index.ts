@@ -3,127 +3,127 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // --- INLINED _shared/cors.ts START ---
 const ALLOWED_ORIGINS = [
-    'https://firmaclara.com',
-    'https://firmaclara.es',
-    'https://www.firmaclara.com',
-    'https://www.firmaclara.es',
-    'https://mellow-sign-now.lovable.app',
-    'http://localhost:8080',
-    'http://localhost:3000',
-    'http://localhost:5173',
+  'https://firmaclara.com',
+  'https://firmaclara.es',
+  'https://www.firmaclara.com',
+  'https://www.firmaclara.es',
+  'https://mellow-sign-now.lovable.app',
+  'http://localhost:8080',
+  'http://localhost:3000',
+  'http://localhost:5173',
 ];
 
 function getCorsHeaders(request: Request): Record<string, string> {
-    const origin = request.headers.get('Origin');
-    const isAllowed = origin && ALLOWED_ORIGINS.includes(origin);
+  const origin = request.headers.get('Origin');
+  const isAllowed = origin && ALLOWED_ORIGINS.includes(origin);
 
-    return {
-        'Access-Control-Allow-Origin': isAllowed ? origin : 'null',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-        'Vary': 'Origin',
-    };
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'null',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Vary': 'Origin',
+  };
 }
 
 function handleCorsPreflightRequest(request: Request): Response | null {
-    if (request.method === 'OPTIONS') {
-        return new Response('ok', { headers: getCorsHeaders(request) });
-    }
-    return null;
+  if (request.method === 'OPTIONS') {
+    return new Response('ok', { headers: getCorsHeaders(request) });
+  }
+  return null;
 }
 
 function escapeHtml(text: string | null | undefined): string {
-    if (!text) return '';
-    const htmlEntities: Record<string, string> = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;',
-    };
-    return text.replace(/[&<>"']/g, (char) => htmlEntities[char] || char);
+  if (!text) return '';
+  const htmlEntities: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  };
+  return text.replace(/[&<>"']/g, (char) => htmlEntities[char] || char);
 }
 // --- INLINED _shared/cors.ts END ---
 
 interface RequestBody {
-    document_id: string;
-    signer_email: string;
-    signer_name: string;
-    sign_token: string;
-    sender_name?: string;
-    title?: string;
+  document_id: string;
+  signer_email: string;
+  signer_name: string;
+  sign_token: string;
+  sender_name?: string;
+  title?: string;
 }
 
 serve(async (req) => {
-    const corsHeaders = getCorsHeaders(req);
+  const corsHeaders = getCorsHeaders(req);
 
-    // Handle CORS preflight
-    const preflightResponse = handleCorsPreflightRequest(req);
-    if (preflightResponse) return preflightResponse;
+  // Handle CORS preflight
+  const preflightResponse = handleCorsPreflightRequest(req);
+  if (preflightResponse) return preflightResponse;
 
-    console.log("Send-document-invitation V2 invoked");
+  console.log("Send-document-invitation V2 invoked");
 
+  try {
+    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+    if (!RESEND_API_KEY) {
+      console.error("Missing RESEND_API_KEY");
+      throw new Error('Internal Server Error: Missing Configuration')
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+    )
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      console.error("Auth error:", userError);
+      throw new Error('Unauthorized')
+    }
+
+    let body: RequestBody;
     try {
-        const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-        if (!RESEND_API_KEY) {
-            console.error("Missing RESEND_API_KEY");
-            throw new Error('Internal Server Error: Missing Configuration')
-        }
+      body = await req.json();
+    } catch (e) {
+      console.error("Error parsing JSON body:", e);
+      throw new Error('Invalid JSON body');
+    }
 
-        const supabase = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-        )
+    const { document_id, signer_email, signer_name, sign_token, sender_name, title } = body;
 
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) {
-            console.error("Auth error:", userError);
-            throw new Error('Unauthorized')
-        }
+    if (!signer_email || !sign_token || !document_id) {
+      console.error("Missing fields:", body);
+      throw new Error('Missing required fields')
+    }
 
-        let body: RequestBody;
-        try {
-            body = await req.json();
-        } catch (e) {
-            console.error("Error parsing JSON body:", e);
-            throw new Error('Invalid JSON body');
-        }
+    // Verify ownership
+    const { data: doc, error: docError } = await supabase
+      .from('documents')
+      .select('user_id')
+      .eq('id', document_id)
+      .single()
 
-        const { document_id, signer_email, signer_name, sign_token, sender_name, title } = body;
+    if (docError || !doc) {
+      console.error("Document not found or error:", docError);
+      throw new Error('Document not found')
+    }
 
-        if (!signer_email || !sign_token || !document_id) {
-            console.error("Missing fields:", body);
-            throw new Error('Missing required fields')
-        }
+    if (doc.user_id !== user.id) {
+      throw new Error('Unauthorized: You do not own this document')
+    }
 
-        // Verify ownership
-        const { data: doc, error: docError } = await supabase
-            .from('documents')
-            .select('user_id')
-            .eq('id', document_id)
-            .single()
+    // URL Configuration
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://firmaclara.es';
+    const signUrl = `${siteUrl}/sign/${sign_token}`
 
-        if (docError || !doc) {
-            console.error("Document not found or error:", docError);
-            throw new Error('Document not found')
-        }
+    // Escape user-provided content
+    const docTitle = escapeHtml(title) || 'Documento sin título'
+    const sender = escapeHtml(sender_name) || 'FirmaClara'
+    const safeSignerName = escapeHtml(signer_name)
 
-        if (doc.user_id !== user.id) {
-            throw new Error('Unauthorized: You do not own this document')
-        }
-
-        // URL Configuration
-        const siteUrl = Deno.env.get('SITE_URL') || 'https://firmaclara.es';
-        const signUrl = `${siteUrl}/sign/${sign_token}`
-
-        // Escape user-provided content
-        const docTitle = escapeHtml(title) || 'Documento sin título'
-        const sender = escapeHtml(sender_name) || 'FirmaClara'
-        const safeSignerName = escapeHtml(signer_name)
-
-        // Premium HTML Email Template
-        const html = `
+    // Premium HTML Email Template
+    const html = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -287,46 +287,46 @@ serve(async (req) => {
       </html>
     `
 
-        console.log("Sending email via Resend to:", signer_email);
+    console.log("Sending email via Resend to:", signer_email);
 
-        const res = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${RESEND_API_KEY}`
-            },
-            body: JSON.stringify({
-                from: 'FirmaClara <noreply@firmaclara.es>',
-                to: [signer_email],
-                subject: `FirmaClara: ${sender} solicita tu firma en "${docTitle}"`,
-                html: html
-            })
-        })
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${RESEND_API_KEY}`
+      },
+      body: JSON.stringify({
+        from: 'FirmaClara <noreply@firmaclara.es>',
+        to: [signer_email],
+        subject: `FirmaClara: ${sender} solicita tu firma en "${docTitle}"`,
+        html: html
+      })
+    })
 
-        const data = await res.json()
+    const data = await res.json()
 
-        if (!res.ok) {
-            console.error('Resend Error Response:', data)
-            throw new Error(data.message || 'Error sending email with Resend')
-        }
-
-        console.log("Email sent successfully:", data.id);
-
-        return new Response(
-            JSON.stringify({ success: true, id: data.id }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-
-    } catch (error: any) {
-        console.error("Function Error:", error)
-        // RETURN 200 OK even on error to bypass supabase-js strict checks
-        return new Response(
-            JSON.stringify({
-                success: false,
-                error: error.message || 'Unknown error occurred',
-                details: JSON.stringify(error)
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-        )
+    if (!res.ok) {
+      console.error('Resend Error Response:', data)
+      throw new Error(data.message || 'Error sending email with Resend')
     }
+
+    console.log("Email sent successfully:", data.id);
+
+    return new Response(
+      JSON.stringify({ success: true, id: data.id }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+
+  } catch (error: any) {
+    console.error("Function Error:", error)
+    // RETURN 200 OK even on error to bypass supabase-js strict checks
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message || 'Unknown error occurred',
+        details: JSON.stringify(error)
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+    )
+  }
 })

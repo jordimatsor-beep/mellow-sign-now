@@ -11,6 +11,7 @@ export function Sidebar() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [userName, setUserName] = useState<string>("");
+  const [credits, setCredits] = useState<number | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -27,7 +28,16 @@ export function Sidebar() {
           setUserName(user.user_metadata?.full_name || user.email?.split('@')[0] || "Usuario");
         }
       };
+
+      const fetchCredits = async () => {
+        const { data, error } = await supabase.rpc('get_available_credits');
+        if (!error && data !== null) {
+          setCredits(data as number);
+        }
+      };
+
       fetchUserName();
+      fetchCredits();
     }
   }, [user]);
 
@@ -36,7 +46,7 @@ export function Sidebar() {
     { to: "/documents", icon: FileText, label: t('nav.documents') },
     { to: "/contacts", icon: User, label: t('nav.contacts') },
     { to: "/clara", icon: Sparkles, label: t('nav.clara') },
-    { to: "/credits", icon: CreditCard, label: t('nav.credits') },
+    { to: "/credits", icon: CreditCard, label: t('nav.credits'), badge: credits },
   ];
 
   const bottomItems = [
@@ -48,9 +58,9 @@ export function Sidebar() {
     <aside className="hidden w-64 flex-col border-r bg-sidebar md:flex h-full">
       {/* Logo - Multicentro Branding - GRANDE y con espacio */}
       <div className="flex h-24 items-center justify-center border-b px-6 bg-white">
-        <img 
-          src="/multicentro-logo.jpg" 
-          alt="Multicentro" 
+        <img
+          src="/multicentro-logo.jpg"
+          alt="Multicentro"
           className="h-16 w-auto object-contain"
         />
       </div>
@@ -91,6 +101,11 @@ export function Sidebar() {
                 {item.label}
                 {item.to === "/clara" && (
                   <span className="ml-auto inline-flex h-2 w-2 animate-ping rounded-full bg-primary/60 opacity-75"></span>
+                )}
+                {item.badge !== undefined && item.badge !== null && (
+                  <span className="ml-auto inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                    {item.badge}
+                  </span>
                 )}
               </NavLink>
             </li>

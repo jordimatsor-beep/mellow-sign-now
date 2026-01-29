@@ -55,8 +55,8 @@ export function LegalModal({ trigger, title, type }: LegalModalProps) {
                         <div className="grid gap-2">
                             <div className="rounded-lg border p-3">
                                 <p className="font-semibold">Email</p>
-                                <a href="mailto:support@firmaclara.com" className="text-primary hover:underline">
-                                    support@firmaclara.com
+                                <a href="mailto:support@firmaclara.es" className="text-primary hover:underline">
+                                    support@firmaclara.es
                                 </a>
                             </div>
                         </div>

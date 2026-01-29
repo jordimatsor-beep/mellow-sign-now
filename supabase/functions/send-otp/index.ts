@@ -227,7 +227,7 @@ serve(async (req) => {
                 error: message,
                 details: JSON.stringify(error)
             }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         )
     }
 })

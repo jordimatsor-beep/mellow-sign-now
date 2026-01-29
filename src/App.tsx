@@ -18,7 +18,6 @@ import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 
 // Pages
-// Pages
 import Dashboard from "@/pages/Dashboard";
 import Index from "@/pages/Index";
 import Documents from "@/pages/Documents";

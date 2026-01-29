@@ -85,7 +85,7 @@ export default function Help() {
           </SheetContent>
         </Sheet>
 
-        <a href="mailto:support@firmaclara.com" className="block">
+        <a href="mailto:support@firmaclara.es" className="block">
           <Card className="cursor-pointer transition-colors hover:bg-accent h-full">
             <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">

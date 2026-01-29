@@ -202,12 +202,13 @@ export function ClaraChat({ documentId }: { documentId?: string }) {
                         <div className="flex w-full justify-start">
                             <div className="flex max-w-[85%] gap-3">
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-primary border border-slate-100 shadow-sm mt-1">
-                                    <Sparkles className="h-4 w-4" />
+                                    <Sparkles className="h-4 w-4 animate-pulse" />
                                 </div>
                                 <div className="rounded-2xl rounded-tl-none bg-white border border-slate-100 px-5 py-4 shadow-sm">
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                        <span>{t('clara.analyzing')}</span>
+                                    <div className="flex items-center gap-1">
+                                        <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                                        <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                                        <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }}></span>
                                     </div>
                                 </div>
                             </div>

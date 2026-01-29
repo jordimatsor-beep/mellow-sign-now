@@ -260,7 +260,7 @@ export default function SignDocument() {
 
         // Check Expiration
         if (docRecord.expires_at && new Date(docRecord.expires_at) < new Date()) {
-          throw new Error("Este enlace de firma ha caducado (expirÃ³ el " + new Date(docRecord.expires_at).toLocaleDateString() + ")");
+          throw new Error("Este enlace de firma ha caducado (expiró el " + new Date(docRecord.expires_at).toLocaleDateString() + ")");
         }
 
         if (docRecord.status === 'sent') {
@@ -305,7 +305,7 @@ export default function SignDocument() {
 
             if (signedData?.signedUrl) {
               finalFileUrl = signedData.signedUrl;
-              console.log("Generated signed URL for recipient");
+              if (import.meta.env.DEV) console.log("Generated signed URL for recipient");
             }
           }
         } catch (e) {

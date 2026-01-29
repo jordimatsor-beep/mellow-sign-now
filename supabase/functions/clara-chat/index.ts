@@ -2,10 +2,20 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts'
 
-const N8N_WEBHOOK_URL = "https://automatiajordi.app.n8n.cloud/webhook/f6ae1f5f-ee36-4a5b-92e7-e8eb0157b099"
+// Security: Read webhook URL from environment instead of hardcoding
+const N8N_WEBHOOK_URL = Deno.env.get('N8N_WEBHOOK_URL') || ''
 
 serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
+
+    // 0. Check if n8n webhook is configured
+    if (!N8N_WEBHOOK_URL) {
+        console.error("N8N_WEBHOOK_URL environment variable not set");
+        return new Response(
+            JSON.stringify({ error: 'Servicio de IA no configurado' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+    }
 
     // 1. CORS Preflight
     const preflightResponse = handleCorsPreflightRequest(req);

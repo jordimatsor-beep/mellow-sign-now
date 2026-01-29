@@ -71,6 +71,12 @@ export default function NewDocument() {
         toast.error("Solo se permiten archivos PDF");
         return;
       }
+      // Validate file size (max 10MB)
+      const maxSizeBytes = 10 * 1024 * 1024; // 10MB
+      if (selectedFile.size > maxSizeBytes) {
+        toast.error("El archivo es demasiado grande. Máximo 10MB.");
+        return;
+      }
       setFile(selectedFile);
       if (!title) {
         setTitle(selectedFile.name.replace('.pdf', ''));
@@ -213,7 +219,7 @@ export default function NewDocument() {
         sender_name: profile?.name || profile?.email || 'Usuario',
         title: title
       };
-      console.log('Invoking send-document-invitation with payload:', payload);
+      if (import.meta.env.DEV) console.log('Invoking send-document-invitation with payload:', payload);
 
       const { data: fnData, error: fnError } = await supabase.functions.invoke('send-invite-v2', {
         body: payload
@@ -248,7 +254,7 @@ export default function NewDocument() {
         return;
       }
 
-      console.log('Email sent successfully:', fnData);
+      if (import.meta.env.DEV) console.log('Email sent successfully:', fnData);
       toast.success("Documento enviado correctamente");
       navigate('/dashboard');
 

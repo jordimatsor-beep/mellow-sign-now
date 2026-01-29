@@ -108,6 +108,7 @@ export default function Documents() {
     (d) => d.status === "sent" || d.status === "viewed"
   );
   const signedDocs = filteredDocs.filter((d) => d.status === "signed");
+  const draftDocs = filteredDocs.filter((d) => d.status === "draft" || !d.status);
 
   return (
     <div className="space-y-6">
@@ -139,6 +140,9 @@ export default function Documents() {
           <TabsTrigger value="all" className="flex-1">
             Todos ({filteredDocs.length})
           </TabsTrigger>
+          <TabsTrigger value="drafts" className="flex-1">
+            Borradores ({draftDocs.length})
+          </TabsTrigger>
           <TabsTrigger value="pending" className="flex-1">
             Pendientes ({pendingDocs.length})
           </TabsTrigger>
@@ -154,6 +158,18 @@ export default function Documents() {
             </div>
           ) : (
             filteredDocs.map((doc) => (
+              <DocumentCard key={doc.id} doc={doc} />
+            ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="drafts" className="mt-4 space-y-2">
+          {draftDocs.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
+              No hay borradores. Los documentos aparecen aquí antes de enviarlos.
+            </div>
+          ) : (
+            draftDocs.map((doc) => (
               <DocumentCard key={doc.id} doc={doc} />
             ))
           )}
