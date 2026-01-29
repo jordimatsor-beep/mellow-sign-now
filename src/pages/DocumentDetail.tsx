@@ -1,5 +1,5 @@
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Download, FileText, User, Mail, Check, Award, Loader2, AlertCircle } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Download, FileText, User, Mail, Check, Award, Loader2, AlertCircle, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -7,6 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { toast } from "sonner";
+import { useState } from "react";
 
 type TimelineEvent = {
   date: string;
@@ -17,6 +19,8 @@ type TimelineEvent = {
 
 export default function DocumentDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const [resending, setResending] = useState(false);
 
   const { data: doc, isLoading, error } = useQuery({
     queryKey: ["document", id],
@@ -272,6 +276,66 @@ export default function DocumentDetail() {
           >
             <FileText className="h-4 w-4" />
             Descargar certificado de evidencias
+          </Button>
+        )}
+
+        {/* Resend button for pending/expired documents */}
+        {doc.status !== 'signed' && doc.status !== 'draft' && (
+          <Button
+            variant="default"
+            className="w-full justify-start gap-2"
+            disabled={resending}
+            onClick={async () => {
+              setResending(true);
+              try {
+                // Regenerate sign token
+                const newToken = crypto.randomUUID();
+                const newExpiry = new Date();
+                newExpiry.setDate(newExpiry.getDate() + 7);
+
+                const { error: updateError } = await supabase
+                  .from('documents')
+                  .update({
+                    sign_token: newToken,
+                    expires_at: newExpiry.toISOString(),
+                    status: 'sent',
+                    sent_at: new Date().toISOString()
+                  })
+                  .eq('id', doc.id);
+
+                if (updateError) throw updateError;
+
+                // Re-invoke send-document-invitation
+                const { error: sendError } = await supabase.functions.invoke('send-document-invitation', {
+                  body: {
+                    document_id: doc.id,
+                    signer_email: doc.signer_email,
+                    signer_name: doc.signer_name,
+                    sign_token: newToken,
+                    sender_name: 'Usuario',
+                    title: doc.title
+                  }
+                });
+
+                if (sendError) throw sendError;
+
+                toast.success('Documento reenviado correctamente');
+                // Refresh page
+                navigate(0);
+              } catch (e) {
+                if (import.meta.env.DEV) console.error('Resend error:', e);
+                toast.error('Error al reenviar documento');
+              } finally {
+                setResending(false);
+              }
+            }}
+          >
+            {resending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCw className="h-4 w-4" />
+            )}
+            Reenviar invitación
           </Button>
         )}
       </div>

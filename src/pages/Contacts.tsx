@@ -80,8 +80,9 @@ export default function Contacts() {
 
             if (error) throw error;
             setContacts(data || []);
-        } catch (error: any) {
-            toast.error("Error al cargar contactos: " + error.message);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "desconocido";
+            toast.error("Error al cargar contactos: " + message);
         } finally {
             setLoading(false);
         }

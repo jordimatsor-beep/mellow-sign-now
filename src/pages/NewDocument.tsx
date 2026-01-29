@@ -181,9 +181,10 @@ export default function NewDocument() {
         await handleSendDocument(doc.id, user.id, doc.sign_token);
       }
 
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message);
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error(error);
+      const message = error instanceof Error ? error.message : "Error al enviar documento";
+      toast.error(message);
       setIsSubmitting(false);
     }
   };
@@ -193,7 +194,7 @@ export default function NewDocument() {
       const { error: creditError } = await supabase.rpc('consume_credit', { amount: 1 });
 
       if (creditError) {
-        console.error("Credit Error:", creditError);
+        if (import.meta.env.DEV) console.error("Credit Error:", creditError);
         toast.error("No tienes créditos suficientes o hubo un error.");
         if (creditError.message.includes('Insufficient credits')) {
           navigate('/credits/purchase');

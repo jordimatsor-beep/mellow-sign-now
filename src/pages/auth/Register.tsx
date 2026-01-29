@@ -14,6 +14,7 @@ export default function Register() {
     const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
 
@@ -28,6 +29,12 @@ export default function Register() {
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (password !== confirmPassword) {
+            toast.error("Las contraseñas no coinciden");
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -45,8 +52,9 @@ export default function Register() {
 
             setIsSuccess(true);
             toast.success("Cuenta creada exitosamente");
-        } catch (error: any) {
-            toast.error(error.message || "Error al crear la cuenta");
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Error al crear la cuenta";
+            toast.error(message);
         } finally {
             setLoading(false);
         }
@@ -114,7 +122,21 @@ export default function Register() {
                         Mínimo 12 caracteres, con mayúscula, minúscula y número
                     </p>
                 </div>
-                <Button className="w-full h-11 text-base" type="submit" disabled={loading}>
+                <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+                    <Input
+                        id="confirmPassword"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        className="h-11"
+                    />
+                    {confirmPassword && password !== confirmPassword && (
+                        <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
+                    )}
+                </div>
+                <Button className="w-full h-11 text-base" type="submit" disabled={loading || password !== confirmPassword}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Registrarse
                 </Button>

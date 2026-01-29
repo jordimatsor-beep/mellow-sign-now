@@ -49,7 +49,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
                     .single();
 
                 if (error) {
-                    console.error("Error fetching profile:", error);
+                    if (import.meta.env.DEV) console.error("Error fetching profile:", error);
                     return;
                 }
 
@@ -68,7 +68,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
                     });
                 }
             } catch (err) {
-                console.error("Unexpected error fetching profile:", err);
+                if (import.meta.env.DEV) console.error("Unexpected error fetching profile:", err);
             } finally {
                 setIsLoading(false);
             }
@@ -109,7 +109,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
             if (error) throw error;
             // toast.success("Perfil guardado en la nube"); // Handled by the form usually
         } catch (error) {
-            console.error("Error updating profile:", error);
+            if (import.meta.env.DEV) console.error("Error updating profile:", error);
             toast.error("Error al guardar en la nube");
         }
     };

@@ -35,6 +35,29 @@ export default function Settings() {
   const [exportingData, setExportingData] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
+  // Notification preferences (persisted to localStorage)
+  const [emailNotifications, setEmailNotifications] = useState(() => {
+    const saved = localStorage.getItem('firmaclara_email_notifications');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [autoReminders, setAutoReminders] = useState(() => {
+    const saved = localStorage.getItem('firmaclara_auto_reminders');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  // Save notification preferences to localStorage
+  const handleEmailNotificationsChange = (checked: boolean) => {
+    setEmailNotifications(checked);
+    localStorage.setItem('firmaclara_email_notifications', String(checked));
+    toast.success(checked ? 'Notificaciones por email activadas' : 'Notificaciones por email desactivadas');
+  };
+
+  const handleAutoRemindersChange = (checked: boolean) => {
+    setAutoReminders(checked);
+    localStorage.setItem('firmaclara_auto_reminders', String(checked));
+    toast.success(checked ? 'Recordatorios automáticos activados' : 'Recordatorios automáticos desactivados');
+  };
+
   useEffect(() => {
     if (user) {
       // Load data from public.users instead of metadata
@@ -82,9 +105,10 @@ export default function Settings() {
 
       toast.success("Perfil actualizado correctamente");
       setIsEditing(false);
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Error al actualizar perfil");
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error(error);
+      const message = error instanceof Error ? error.message : "Error al actualizar perfil";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -302,7 +326,10 @@ export default function Settings() {
               Recibir avisos cuando firmen
             </p>
           </div>
-          <Switch defaultChecked />
+          <Switch
+            checked={emailNotifications}
+            onCheckedChange={handleEmailNotificationsChange}
+          />
         </div>
 
         <div className="flex items-center justify-between">
@@ -312,7 +339,10 @@ export default function Settings() {
               Enviar recordatorio a firmantes
             </p>
           </div>
-          <Switch defaultChecked />
+          <Switch
+            checked={autoReminders}
+            onCheckedChange={handleAutoRemindersChange}
+          />
         </div>
       </div>
 

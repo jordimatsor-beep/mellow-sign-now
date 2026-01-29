@@ -51,14 +51,14 @@ export default function Dashboard() {
           .rpc('get_available_credits');
 
         if (creditsError) {
-          console.error("Error fetching credits:", creditsError);
+          if (import.meta.env.DEV) console.error("Error fetching credits:", creditsError);
           setCredits(0);
         } else {
           setCredits(creditsData as number);
         }
 
       } catch (error) {
-        console.error("Failed to fetch dashboard data", error);
+        if (import.meta.env.DEV) console.error("Failed to fetch dashboard data", error);
       } finally {
         setLoading(false);
       }

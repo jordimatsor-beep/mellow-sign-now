@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, Coins, Plus, Minus, Gift, CreditCard, Loader2 } from "lucide-react";
+import { ArrowLeft, Coins, Plus, Minus, Gift, CreditCard, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -7,43 +7,104 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
-const creditHistory = [
-  { id: "1", type: "usage", description: "Presupuesto web", amount: -1, date: "20/01/2025" },
-  { id: "2", type: "usage", description: "Contrato diseño", amount: -1, date: "18/01/2025" },
-  { id: "3", type: "purchase", description: "Pack Básico (10)", amount: 10, date: "15/01/2025" },
-  { id: "4", type: "gift", description: "Pack prueba", amount: 2, date: "10/01/2025" },
-];
+interface CreditTransaction {
+  id: string;
+  type: "purchase" | "usage" | "gift" | "refund" | "expiry";
+  amount: number;
+  description: string;
+  document_id: string | null;
+  created_at: string;
+}
 
 export default function Credits() {
   const { t } = useTranslation();
   const [availableCredits, setAvailableCredits] = useState<number | null>(null);
+  const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(true);
 
   useEffect(() => {
-    async function fetchCredits() {
-      try {
-        const { data, error } = await supabase
-          .from('credit_packs')
-          .select('credits_total, credits_used');
-
-        if (error) throw error;
-
-        if (data) {
-          const total = data.reduce((acc, pack) => {
-            return acc + (pack.credits_total || 0) - (pack.credits_used || 0);
-          }, 0);
-          setAvailableCredits(total);
-        }
-      } catch (e) {
-        console.error("Error fetching credits:", e);
-        toast.error(t('credits.error_fetch'));
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchCredits();
+    fetchTransactions();
   }, []);
+
+  async function fetchCredits() {
+    try {
+      const { data, error } = await supabase
+        .from('credit_packs')
+        .select('credits_total, credits_used');
+
+      if (error) throw error;
+
+      if (data) {
+        const total = data.reduce((acc, pack) => {
+          return acc + (pack.credits_total || 0) - (pack.credits_used || 0);
+        }, 0);
+        setAvailableCredits(total);
+      }
+    } catch (e) {
+      if (import.meta.env.DEV) console.error("Error fetching credits:", e);
+      toast.error(t('credits.error_fetch'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchTransactions() {
+    try {
+      const { data, error } = await supabase.rpc('get_credit_transactions', { p_limit: 20 });
+
+      if (error) throw error;
+
+      setTransactions((data as CreditTransaction[]) || []);
+    } catch (e) {
+      if (import.meta.env.DEV) console.error("Error fetching transactions:", e);
+      // Don't show error toast for transactions - just show empty state
+    } finally {
+      setLoadingHistory(false);
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), "dd/MM/yyyy", { locale: es });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const getTransactionIcon = (type: string) => {
+    switch (type) {
+      case "usage":
+        return <Minus className="h-4 w-4 text-muted-foreground" />;
+      case "purchase":
+        return <CreditCard className="h-4 w-4 text-primary" />;
+      case "gift":
+        return <Gift className="h-4 w-4 text-green-600" />;
+      case "refund":
+        return <RefreshCw className="h-4 w-4 text-blue-600" />;
+      default:
+        return <Minus className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
+  const getTransactionBg = (type: string) => {
+    switch (type) {
+      case "usage":
+      case "expiry":
+        return "bg-muted";
+      case "purchase":
+        return "bg-primary/10";
+      case "gift":
+      case "refund":
+        return "bg-green-100";
+      default:
+        return "bg-muted";
+    }
+  };
 
   return (
     <div className="container space-y-6 px-4 py-6">
@@ -78,43 +139,42 @@ export default function Credits() {
       {/* History */}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold">Historial</h2>
-        <div className="space-y-2">
-          {creditHistory.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between rounded-lg border p-3"
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full ${item.type === "usage"
-                    ? "bg-muted"
-                    : item.type === "purchase"
-                      ? "bg-primary/10"
-                      : "bg-success/10"
-                    }`}
-                >
-                  {item.type === "usage" ? (
-                    <Minus className="h-4 w-4 text-muted-foreground" />
-                  ) : item.type === "purchase" ? (
-                    <CreditCard className="h-4 w-4 text-primary" />
-                  ) : (
-                    <Gift className="h-4 w-4 text-success" />
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{item.description}</p>
-                  <p className="text-xs text-muted-foreground">{item.date}</p>
-                </div>
-              </div>
-              <span
-                className={`text-sm font-semibold ${item.amount > 0 ? "text-success" : "text-muted-foreground"
-                  }`}
+
+        {loadingHistory ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : transactions.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Coins className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p className="font-medium">Sin transacciones</p>
+            <p className="text-sm">Tu historial aparecerá aquí cuando uses o compres créditos.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {transactions.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between rounded-lg border p-3"
               >
-                {item.amount > 0 ? `+${item.amount}` : item.amount}
-              </span>
-            </div>
-          ))}
-        </div>
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-full ${getTransactionBg(item.type)}`}>
+                    {getTransactionIcon(item.type)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{item.description}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(item.created_at)}</p>
+                  </div>
+                </div>
+                <span
+                  className={`text-sm font-semibold ${item.amount > 0 ? "text-green-600" : "text-muted-foreground"}`}
+                >
+                  {item.amount > 0 ? `+${item.amount}` : item.amount}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
