@@ -84,7 +84,7 @@ export default function SignDocument() {
 
       toast.success(`Código reenviado por ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}`, { id: toastId });
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
       toast.error("Error al reenviar el código", { id: toastId });
       setResendCooldown(0); // Reset cooldwon on error so they can try again
     }
@@ -277,7 +277,7 @@ export default function SignDocument() {
             .update({ status: 'viewed', viewed_at: new Date().toISOString() })
             .eq('id', docRecord.id)
             .then(({ error }) => {
-              if (error) console.warn("Could not mark as viewed (RLS restriction?)", error);
+              if (error && import.meta.env.DEV) console.warn("Could not mark as viewed (RLS restriction?)", error);
             });
         }
 
@@ -309,7 +309,7 @@ export default function SignDocument() {
             }
           }
         } catch (e) {
-          console.error("Error signing URL for recipient", e);
+          if (import.meta.env.DEV) console.error("Error signing URL for recipient", e);
         }
 
 
@@ -364,7 +364,7 @@ export default function SignDocument() {
         }
 
       } catch (err: any) {
-        console.error("Error loading document:", err);
+        if (import.meta.env.DEV) console.error("Error loading document:", err);
         setStep("error");
         // Handle Supabase errors (which are not always Error instances)
         const message = err?.message || err?.error_description || (typeof err === 'string' ? err : "Error al cargar el documento");
@@ -412,7 +412,7 @@ export default function SignDocument() {
         setStep("otp");
         toast.info("Código enviado por SMS a tu móvil");
       } catch (err: any) {
-        console.error(err);
+        if (import.meta.env.DEV) console.error(err);
         toast.error(err.message, { id: toastId });
       }
       return;
@@ -455,13 +455,13 @@ export default function SignDocument() {
       });
 
       if (error) {
-        console.error("Sign Error (Network):", error);
+        if (import.meta.env.DEV) console.error("Sign Error (Network):", error);
         const status = (error as any).status || (error as any).code || 'Unknown';
         throw new Error(`Error de conexión (${status}): ${error.message}`);
       }
 
       if (data && (data.error || data.success === false)) {
-        console.error("Sign Error (Backend):", data);
+        if (import.meta.env.DEV) console.error("Sign Error (Backend):", data);
         throw new Error(data.error || "Error al procesar la firma");
       }
 
@@ -470,7 +470,7 @@ export default function SignDocument() {
       toast.success("Documento firmado y sellado correctamente", { id: toastId });
 
     } catch (err: unknown) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
       toast.error(err instanceof Error ? err.message : "Error al guardar la firma", { id: toastId });
       setStep("view"); // Go back to view so they can try again
     }

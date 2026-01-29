@@ -87,6 +87,15 @@ serve(async (req: Request) => {
                     // (though ignoreDuplicates should handle it).
                     console.error('Error inserting credit pack:', error)
                     return new Response('Database Error', { status: 500, headers: corsHeaders })
+                } else {
+                    // Success: Log to Transaction History
+                    await supabaseAdmin.from('credit_transactions').insert({
+                        user_id: user_id,
+                        type: 'purchase',
+                        amount: parseInt(credits),
+                        description: `Compra de Pack ${pack_id.toUpperCase()} (${credits} créditos)`,
+                        created_at: new Date().toISOString()
+                    });
                 }
             }
         }

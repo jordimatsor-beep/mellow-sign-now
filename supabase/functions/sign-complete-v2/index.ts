@@ -295,6 +295,20 @@ serve(async (req: Request) => {
             console.error("Trigger audit error:", e);
         }
 
+        // 10. Trigger Notification (Email + SMS)
+        try {
+            fetch(`${supabaseUrl}/functions/v1/send-signed-notification`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ document_id: doc.id })
+            });
+        } catch (e) {
+            console.error("Trigger notification error:", e);
+        }
+
         // 11. Log event
         await supabase.from('event_logs').insert({
             user_id: doc.user_id,
