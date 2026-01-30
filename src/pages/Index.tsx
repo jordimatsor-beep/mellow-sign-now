@@ -18,7 +18,7 @@ import {
   FileSignature,
   Sparkles
 } from "lucide-react";
-import { MulticentroLogo } from "@/components/brand/BrandHeader";
+import { Logo } from "@/components/brand/Logo";
 import { SolutionsModal } from "@/components/SolutionsModal";
 
 export default function Index() {
@@ -39,8 +39,7 @@ export default function Index() {
         <div className="container mx-auto flex h-20 items-center justify-between px-4">
           {/* Logo - Left - Larger and properly spaced */}
           <div className="flex items-center gap-3">
-            <MulticentroLogo className="h-9" />
-            <span className="text-sm font-medium text-foreground border-l border-border pl-3 hidden sm:inline">Firma Digital</span>
+            <Logo className="h-12 w-auto" />
           </div>
 
           {/* Navigation - Center (hidden on mobile) */}
@@ -558,7 +557,7 @@ export default function Index() {
               <div className="mb-4">
                 <div className="flex items-center gap-3">
                   <div className="bg-background/10 rounded-lg p-2">
-                    <MulticentroLogo className="h-8 [&_*]:!text-background/80 [&_path]:!stroke-background/60 [&_circle]:!fill-background/60" />
+                    <Logo className="h-10 w-auto brightness-0 invert opacity-90" />
                   </div>
                 </div>
               </div>
@@ -635,7 +634,7 @@ export default function Index() {
           {/* Bottom */}
           <div className="mt-12 pt-8 border-t border-background/10 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs text-background/40">
-              &copy; {new Date().getFullYear()} Un servicio del ecosistema Multicentro. Tecnología operada por Operia.
+              &copy; {new Date().getFullYear()} FirmaClara. Tecnología operada por Operia.
             </p>
             <div className="flex items-center gap-4 text-xs text-background/40">
               <span>SSL/TLS</span>

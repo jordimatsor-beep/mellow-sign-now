@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { MulticentroLogo } from "@/components/brand/BrandHeader";
+import { Logo } from "@/components/brand/Logo";
 import { SolutionsModal } from "@/components/SolutionsModal";
 import { LegalModal } from "@/components/LegalModals";
 import { Shield, Lock, Award, CheckCircle } from "lucide-react";
@@ -63,7 +63,7 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="mb-4">
-              <MulticentroLogo className="h-10 [&_*]:!text-slate-300 [&_path]:!stroke-slate-400 [&_circle]:!fill-slate-400" />
+              <Logo className="h-12 w-auto brightness-0 invert opacity-80" />
             </div>
             <p className="text-sm text-slate-400 max-w-xs">
               La solución de firma digital simple, legal y segura
@@ -149,7 +149,7 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="text-center md:text-left">
             <p className="text-xs text-slate-500">
-              &copy; {new Date().getFullYear()} Un servicio del ecosistema Multicentro. Tecnología operada por Operia.
+              &copy; {new Date().getFullYear()} FirmaClara. Tecnología operada por Operia.
             </p>
             <p className="text-xs text-slate-600 mt-1">
               Servicio de firma electrónica avanzada conforme al Reglamento (UE) 910/2014

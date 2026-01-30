@@ -1,31 +1,42 @@
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditsBadge } from "@/components/shared/CreditsBadge";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { MobileMenu } from "./MobileMenu";
-import { MulticentrosLogo, PoweredByOperia } from "@/components/brand/BrandHeader";
+import { Logo } from "@/components/brand/Logo";
 import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/lib/supabase";
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
+  const [credits, setCredits] = useState<number | null>(null);
+
+  // Fetch credits on mount
+  useEffect(() => {
+    const fetchCredits = async () => {
+      const { data, error } = await supabase.rpc('get_available_credits');
+      if (!error && data !== null) {
+        setCredits(data as number);
+      }
+    };
+    fetchCredits();
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4">
-        {/* Logo - Multicentros + Firma Digital */}
+        {/* Logo - FirmaClara */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center h-10 py-1">
-            <MulticentrosLogo className="h-full max-h-8 w-auto object-contain" />
+          <div className="flex items-center h-14 py-1">
+            <Logo className="h-full w-auto object-contain" />
           </div>
-          <Separator orientation="vertical" className="h-6 hidden sm:block" />
-          <span className="text-base font-semibold text-foreground hidden sm:inline">Firma Digital</span>
         </div>
 
         {/* Right side */}
         <div className="flex items-center gap-3">
-          <CreditsBadge count={8} />
-          
+          <CreditsBadge count={credits ?? 0} />
+
           {/* Mobile menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>

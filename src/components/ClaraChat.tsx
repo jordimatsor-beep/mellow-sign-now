@@ -22,14 +22,22 @@ interface Message {
     content: string;
 }
 
-export function ClaraChat({ documentId }: { documentId?: string }) {
+export function ClaraChat({
+    documentId,
+    endpoint = 'clara-chat',
+    initialMessage
+}: {
+    documentId?: string;
+    endpoint?: string;
+    initialMessage?: string;
+}) {
     const { t } = useTranslation();
 
     const [messages, setMessages] = useState<Message[]>(() => [
         {
             id: "1",
             role: "clara",
-            content: t('clara.greeting'),
+            content: initialMessage || t('clara.greeting'),
         },
     ]);
     const [input, setInput] = useState("");
@@ -91,7 +99,7 @@ export function ClaraChat({ documentId }: { documentId?: string }) {
         }
 
         try {
-            const { data, error } = await supabase.functions.invoke('clara-chat', {
+            const { data, error } = await supabase.functions.invoke(endpoint, {
                 body: {
                     messages: [...messages, userMessage],
                     documentId

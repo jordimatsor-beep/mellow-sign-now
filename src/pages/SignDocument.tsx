@@ -10,7 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
-import { MulticentroLogo } from "@/components/brand/BrandHeader";
+import { Logo } from "@/components/brand/Logo";
 
 import { supabase } from "@/lib/supabase";
 
@@ -480,7 +480,7 @@ export default function SignDocument() {
     return (
       <div className="flex h-screen flex-col items-center justify-center space-y-4 bg-gray-50">
         <div className="mb-4 scale-125">
-          <MulticentroLogo />
+          <Logo className="h-8" />
         </div>
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -494,7 +494,7 @@ export default function SignDocument() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center pt-20 px-4">
         <div className="mb-12">
-          <MulticentroLogo />
+          <Logo className="h-8" />
         </div>
         <Alert variant="destructive" className="max-w-md bg-white shadow-lg border-red-100">
           <AlertCircle className="h-5 w-5 text-red-600" />
@@ -517,7 +517,7 @@ export default function SignDocument() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center pt-20 px-4">
         <div className="mb-8 scale-110">
-          <MulticentroLogo />
+          <Logo className="h-8" />
         </div>
 
         <Card className="max-w-lg w-full shadow-xl border-green-100 overflow-hidden">

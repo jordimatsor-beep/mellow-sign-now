@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Multicentro Firma Digital - Enterprise B2B Design System */
+/* FirmaClara Design System */
 /* Aesthetic: Big Tech / Corporate (Signaturit, Yousign inspired) */
 /* Primary Color: Multicentro Purple - used ONLY for CTAs */
 
@@ -21,7 +21,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    /* Primary: Multicentro Purple - ONLY for main CTAs */
+    /* Primary: FirmaClara Purple - ONLY for main CTAs */
     --primary: 263 40% 39%;
     --primary-foreground: 0 0% 100%;
 

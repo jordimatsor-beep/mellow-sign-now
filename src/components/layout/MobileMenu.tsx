@@ -2,6 +2,7 @@ import { Home, FileText, Sparkles, CreditCard, Settings, HelpCircle, LogOut, X }
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Logo } from "@/components/brand/Logo";
 
 interface MobileMenuProps {
   onClose: () => void;
@@ -22,10 +23,7 @@ export function MobileMenu({ onClose }: MobileMenuProps) {
       {/* Header */}
       <div className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <span className="text-lg font-bold text-primary-foreground">F</span>
-          </div>
-          <span className="text-lg font-semibold">FirmaClara</span>
+          <Logo className="h-10 w-auto" />
         </div>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-5 w-5" />

@@ -135,13 +135,12 @@ export default function Settings() {
     try {
       if (!user) throw new Error("No user logged in");
 
-      // Fetch all user data
-      const [userData, documentsData, contactsData, creditsData, eventsData] = await Promise.all([
-        supabase.from('users').select('*').eq('id', user.id).single(),
-        supabase.from('documents').select('*').eq('user_id', user.id),
-        supabase.from('contacts').select('*').eq('user_id', user.id),
-        supabase.from('credit_packs').select('*').eq('user_id', user.id),
-        supabase.from('event_logs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1000),
+      // Fetch only user-provided data (GDPR Article 20 - Data Portability)
+      const [userData, documentsData, contactsData, creditsData] = await Promise.all([
+        supabase.from('users').select('name, email, tax_id, address, city, zip_code, country, phone, company_name').eq('id', user.id).single(),
+        supabase.from('documents').select('title, status, created_at, signed_at, signer_email, signer_name').eq('user_id', user.id),
+        supabase.from('contacts').select('name, email, phone, nif, address').eq('user_id', user.id),
+        supabase.from('credit_packs').select('packs, amount, cost, created_at').eq('user_id', user.id),
       ]);
 
       const exportData = {
@@ -150,8 +149,7 @@ export default function Settings() {
         profile: userData.data,
         documents: documentsData.data || [],
         contacts: contactsData.data || [],
-        credit_packs: creditsData.data || [],
-        event_logs: eventsData.data || [],
+        purchase_history: creditsData.data || [],
       };
 
       // Create and download JSON file
@@ -182,38 +180,13 @@ export default function Settings() {
     try {
       if (!user) throw new Error("No user logged in");
 
-      // Delete user data in order (respecting foreign key constraints)
-      // 1. Delete event logs
-      await supabase.from('event_logs').delete().eq('user_id', user.id);
+      // We call the Edge Function which runs with Service Role to delete the Auth User.
+      // Database data will cascade delete based on Foreign Keys if configured,
+      // or the function handles it.
+      const { error } = await supabase.functions.invoke('delete-account');
 
-      // 2. Delete signatures related to user's documents
-      const { data: userDocs } = await supabase.from('documents').select('id').eq('user_id', user.id);
-      if (userDocs && userDocs.length > 0) {
-        const docIds = userDocs.map(d => d.id);
-        await supabase.from('signatures').delete().in('document_id', docIds);
-      }
+      if (error) throw error;
 
-      // 3. Delete documents
-      await supabase.from('documents').delete().eq('user_id', user.id);
-
-      // 4. Delete clara conversations and messages
-      const { data: conversations } = await supabase.from('clara_conversations').select('id').eq('user_id', user.id);
-      if (conversations && conversations.length > 0) {
-        const convIds = conversations.map(c => c.id);
-        await supabase.from('clara_messages').delete().in('conversation_id', convIds);
-      }
-      await supabase.from('clara_conversations').delete().eq('user_id', user.id);
-
-      // 5. Delete credit packs
-      await supabase.from('credit_packs').delete().eq('user_id', user.id);
-
-      // 6. Delete contacts
-      await supabase.from('contacts').delete().eq('user_id', user.id);
-
-      // 7. Delete user profile
-      await supabase.from('users').delete().eq('id', user.id);
-
-      // 8. Sign out and notify
       toast.success("Tu cuenta ha sido eliminada permanentemente");
       await signOut();
       navigate('/');
@@ -289,14 +262,25 @@ export default function Settings() {
       {/* Settings list */}
       <div className="space-y-1">
         {settingsItems.map((item) => (
-          <Link
+          <div
             key={item.label}
-            to={item.to}
-            className="flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-accent"
-            onClick={(e) => {
+            role="button"
+            className="flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-accent cursor-pointer"
+            onClick={() => {
               if (item.label === "Perfil") {
-                e.preventDefault();
                 setIsEditing(true);
+                return;
+              }
+
+              if (item.to.startsWith("#")) {
+                const id = item.to.substring(1);
+                const element = document.getElementById(id);
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  // Add a subtle highlight effect
+                  element.classList.add('bg-accent/20');
+                  setTimeout(() => element.classList.remove('bg-accent/20'), 1000);
+                }
               }
             }}
           >
@@ -308,7 +292,7 @@ export default function Settings() {
               <p className="text-sm text-muted-foreground">{item.description}</p>
             </div>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
-          </Link>
+          </div>
         ))}
       </div>
 
@@ -316,7 +300,7 @@ export default function Settings() {
 
       {/* Quick settings */}
       {/* Quick settings - Notifications */}
-      <div className="space-y-4" id="notifications">
+      <div className="space-y-4 transition-colors duration-500 rounded-lg p-2 -mx-2" id="notifications">
         <h2 className="text-lg font-semibold">Preferencias de Notificaciones</h2>
 
         <div className="flex items-center justify-between">
@@ -351,7 +335,7 @@ export default function Settings() {
 
 
       {/* Security Section */}
-      <div className="space-y-4" id="security">
+      <div className="space-y-4 transition-colors duration-500 rounded-lg p-2 -mx-2" id="security">
         <h2 className="text-lg font-semibold">Seguridad</h2>
         <div className="flex items-center justify-between">
           <div>
@@ -497,6 +481,9 @@ export default function Settings() {
         <LogOut className="h-5 w-5" />
         Cerrar sesión
       </Button>
+
+      {/* Spacer to allow scrolling to bottom sections */}
+      <div className="h-20" />
     </div>
   );
 }

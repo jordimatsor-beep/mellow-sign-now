@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { Logo } from "@/components/brand/Logo";
 
 export function Sidebar() {
   const { t } = useTranslation();
@@ -56,19 +57,12 @@ export function Sidebar() {
 
   return (
     <aside className="hidden w-64 flex-col border-r bg-sidebar md:flex h-full">
-      {/* Logo - Multicentro Branding - GRANDE y con espacio */}
-      <div className="flex h-24 items-center justify-center border-b px-6 bg-white">
-        <img
-          src="/multicentro-logo.jpg"
-          alt="Multicentro"
-          className="h-16 w-auto object-contain"
-        />
+      {/* Logo - FirmaClara Branding */}
+      <div className="flex bg-white py-4 justify-center border-b px-2">
+        <Logo className="h-20 w-auto" />
       </div>
 
-      {/* Service name - Sin "Powered by" */}
-      <div className="flex items-center justify-center px-4 py-3 border-b bg-primary/5">
-        <span className="text-sm font-bold text-primary">Firma Digital</span>
-      </div>
+
 
       {/* CTA */}
       <div className="p-4">

@@ -1,46 +1,6 @@
 import { Separator } from "@/components/ui/separator";
 
-// Multicentro logo component - Horizontal compact version for headers
-export function MulticentroLogo({ className = "h-8" }: { className?: string }) {
-  return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      {/* Cart icon with dots - simplified */}
-      <svg viewBox="0 0 48 48" className="h-full w-auto flex-shrink-0">
-        {/* Cart base */}
-        <path 
-          d="M6 14 L14 14 L14 34 Q14 40 20 40 L38 40" 
-          stroke="hsl(var(--muted-foreground))" 
-          strokeWidth="4" 
-          strokeLinecap="round" 
-          fill="none"
-        />
-        {/* Cart handle */}
-        <path 
-          d="M6 14 L2 6" 
-          stroke="hsl(var(--muted-foreground))" 
-          strokeWidth="4" 
-          strokeLinecap="round" 
-          fill="none"
-        />
-        {/* Wheels */}
-        <circle cx="22" cy="42" r="3" fill="hsl(var(--muted-foreground))" />
-        <circle cx="34" cy="42" r="3" fill="hsl(var(--muted-foreground))" />
-        {/* Colored dots */}
-        <circle cx="14" cy="6" r="4" fill="hsl(var(--primary))" />
-        <circle cx="24" cy="10" r="4" fill="hsl(var(--destructive))" />
-        <circle cx="34" cy="10" r="4" fill="hsl(var(--chart-4))" />
-      </svg>
-      {/* Horizontal text layout */}
-      <div className="flex items-baseline gap-0.5 leading-none">
-        <span className="text-sm font-light text-muted-foreground">multi</span>
-        <span className="text-sm font-semibold text-primary">centro</span>
-      </div>
-    </div>
-  );
-}
 
-// Backward compatibility alias
-export const MulticentrosLogo = MulticentroLogo;
 
 // Operia logo component - Tech attribution
 export function OperiaLogo({ className = "h-6" }: { className?: string }) {
@@ -67,19 +27,17 @@ interface BrandHeaderProps {
   className?: string;
 }
 
-export function BrandHeader({ 
-  showServiceName = true, 
+export function BrandHeader({
+  showServiceName = true,
   serviceName = "Firma Digital",
-  className = "" 
+  className = ""
 }: BrandHeaderProps) {
   return (
     <div className={`flex items-center gap-4 ${className}`}>
-      {/* Main brand - Multicentro */}
+      {/* Main brand - FirmaClara */}
       <div className="flex items-center gap-3">
-        <MulticentroLogo className="h-10" />
         {showServiceName && (
           <>
-            <Separator orientation="vertical" className="h-8" />
             <span className="text-lg font-semibold text-foreground">{serviceName}</span>
           </>
         )}

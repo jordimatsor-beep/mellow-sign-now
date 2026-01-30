@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 interface AuthLayoutProps {
     children: ReactNode;
@@ -18,12 +19,10 @@ export function AuthLayout({ children, title, subtitle, mode = 'login' }: AuthLa
             <div className="flex w-full flex-col justify-center px-4 sm:px-6 lg:w-1/2 lg:px-20 xl:px-24 relative z-10">
                 <div className="mx-auto w-full max-w-sm lg:w-96">
                     <div className="mb-10">
-                        {/* Logo Multicentro - El usuario debe sentir que está en su entorno de confianza */}
-                        <img
-                            src="/multicentro-logo.jpg"
-                            alt="Multicentro"
-                            className="h-20 w-auto mb-6"
-                        />
+                        {/* Logo FirmaClara */}
+                        <div className="mb-6">
+                            <Logo className="h-24 w-auto" />
+                        </div>
                         <h2 className="text-3xl font-bold tracking-tight text-slate-900">{title}</h2>
                         {subtitle && (
                             <p className="mt-2 text-sm text-slate-600">
@@ -120,7 +119,7 @@ export function AuthLayout({ children, title, subtitle, mode = 'login' }: AuthLa
                                     <span className="text-white/80">acuerdos digitales.</span>
                                 </h3>
                                 <p className="mt-6 text-lg text-white/80 font-light">
-                                    Centraliza tus firmas y documentos con la garantía del ecosistema Multicentros.
+                                    Centraliza tus firmas y documentos con la garantía de FirmaClara.
                                 </p>
                             </div>
 
