@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
+import { sanitizeFileName } from "@/lib/utils";
 
 type Step = "source" | "doctype" | "upload" | "signer" | "options" | "confirm";
 type DocType = "presupuesto" | "parte" | "contrato" | "otro";
@@ -140,7 +141,7 @@ export default function NewDocument() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No estás autenticado");
 
-      const fileName = `${user.id}/${Date.now()}_${file.name}`;
+      const fileName = `${user.id}/${Date.now()}_${sanitizeFileName(file.name)}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('documents')
         .upload(fileName, file);
