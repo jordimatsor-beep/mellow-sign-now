@@ -66,8 +66,9 @@ serve(async (req: Request) => {
 
         const base64Data = signature_image.replace('data:image/png;base64,', '');
         // ~500KB limit
-        if (base64Data.length > 700000) {
-            throw new Error('La imagen de firma es demasiado grande (máx 500KB)');
+        // Increased limit for high-DPI signatures (approx 6MB base64)
+        if (base64Data.length > 8000000) {
+            throw new Error('La imagen de firma es demasiado grande (máx 6MB)');
         }
 
         // Validate token format (UUID)

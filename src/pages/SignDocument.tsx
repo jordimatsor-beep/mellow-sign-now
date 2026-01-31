@@ -456,8 +456,21 @@ export default function SignDocument() {
 
       if (error) {
         if (import.meta.env.DEV) console.error("Sign Error (Network):", error);
-        const status = (error as any).status || (error as any).code || 'Unknown';
-        throw new Error(`Error de conexión (${status}): ${error.message}`);
+
+        // Try to extract the real error message from the response body
+        let backendErrorMessage = "";
+        try {
+          const context = (error as any).context;
+          if (context && typeof context.json === 'function') {
+            const body = await context.json();
+            backendErrorMessage = body.error || body.message;
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
+
+        const message = backendErrorMessage || error.message || "Error al procesar la firma";
+        throw new Error(message);
       }
 
       if (data && (data.error || data.success === false)) {
