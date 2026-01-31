@@ -130,20 +130,35 @@ serve(async (req: Request) => {
         let pdfBytes: ArrayBuffer;
         let fileUrl = doc.file_url;
 
+        console.log("Original document URL/Path:", fileUrl); // DEBUG
+
         // Handle internal paths vs public URLs
         if (fileUrl && !fileUrl.startsWith('http')) {
             // It's a path
+            console.log("Downloading from internal storage path...");
             const { data: fileData, error: fileError } = await supabase.storage
                 .from('documents')
                 .download(fileUrl);
-            if (fileError || !fileData) throw new Error('Error al descargar documento interno');
+
+            if (fileError || !fileData) {
+                console.error("Storage download error:", fileError);
+                throw new Error(`Error al descargar documento interno: ${fileError?.message}`);
+            }
             pdfBytes = await fileData.arrayBuffer();
         } else {
             // Download URL (Public or Signed)
-            console.log("Downloading PDF from:", fileUrl);
-            const res = await fetch(fileUrl);
-            if (!res.ok) throw new Error('No se pudo descargar el documento original (Fetch)');
-            pdfBytes = await res.arrayBuffer();
+            console.log("Downloading from public/signed URL:", fileUrl);
+            try {
+                const res = await fetch(fileUrl);
+                if (!res.ok) {
+                    console.error("Fetch status:", res.status, res.statusText);
+                    throw new Error(`Fetch failed with status ${res.status}`);
+                }
+                pdfBytes = await res.arrayBuffer();
+            } catch (e: any) {
+                console.error("Fetch error details:", e);
+                throw new Error(`No se pudo descargar el documento original (Fetch): ${e.message}`);
+            }
         }
 
         // 4. Load and modify PDF - CONFIGURABLE SIGNATURE PLACEMENT
