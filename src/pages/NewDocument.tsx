@@ -195,10 +195,14 @@ export default function NewDocument() {
       const { error: creditError } = await supabase.rpc('consume_credit', { amount: 1 });
 
       if (creditError) {
-        if (import.meta.env.DEV) console.error("Credit Error:", creditError);
-        toast.error("No tienes créditos suficientes o hubo un error.");
-        if (creditError.message.includes('Insufficient credits')) {
-          navigate('/credits/purchase');
+        console.error("Credit Error Details:", creditError);
+        // Show exact error from backend
+        toast.error(`Error de créditos: ${creditError.message || creditError.details || 'Desconocido'}`);
+
+        if (creditError.message && creditError.message.includes('Insufficient credits')) {
+          // Give them a moment to read the error before redirecting, or don't redirect if we want them to see the toast?
+          // Let's redirect after a delay so they see the toast.
+          setTimeout(() => navigate('/credits/purchase'), 2000);
         }
         return;
       }
