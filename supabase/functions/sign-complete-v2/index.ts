@@ -132,13 +132,44 @@ serve(async (req: Request) => {
 
         console.log("Original document URL/Path:", fileUrl); // DEBUG
 
-        // Handle internal paths vs public URLs
+        // Determine if we should use internal download or public fetch
+        let useInternalDownload = false;
+        let downloadPath = fileUrl;
+
+        // Check if it's a relative path (not http)
         if (fileUrl && !fileUrl.startsWith('http')) {
-            // It's a path
-            console.log("Downloading from internal storage path...");
+            useInternalDownload = true;
+        }
+        // Check if it's OUR Supabase URL (optimized download)
+        else if (fileUrl && fileUrl.includes('/storage/v1/object/public/documents/')) {
+            // Extract path from public URL
+            // Format: .../storage/v1/object/public/documents/FOLDER/FILE.pdf
+            const urlParts = fileUrl.split('/documents/');
+            if (urlParts.length > 1) {
+                downloadPath = decodeURIComponent(urlParts[1]); // Decode in case of %20 etc.
+                useInternalDownload = true;
+                console.log(`Detected internal Supabase URL. Converted to path: ${downloadPath}`);
+            }
+        }
+        else if (fileUrl && fileUrl.includes('/storage/v1/object/sign/documents/')) {
+            // Extract path from signed URL
+            const urlParts = fileUrl.split('/documents/');
+            if (urlParts.length > 1) {
+                // Remove query params if any
+                let path = urlParts[1];
+                if (path.includes('?')) path = path.split('?')[0];
+                downloadPath = decodeURIComponent(path);
+                useInternalDownload = true;
+                console.log(`Detected signed Supabase URL. Converted to path: ${downloadPath}`);
+            }
+        }
+
+        if (useInternalDownload) {
+            // Internal Download via Service Role (Bypasses RLS/Public checks)
+            console.log(`Downloading internally from path: ${downloadPath}`);
             const { data: fileData, error: fileError } = await supabase.storage
                 .from('documents')
-                .download(fileUrl);
+                .download(downloadPath);
 
             if (fileError || !fileData) {
                 console.error("Storage download error:", fileError);
@@ -146,8 +177,8 @@ serve(async (req: Request) => {
             }
             pdfBytes = await fileData.arrayBuffer();
         } else {
-            // Download URL (Public or Signed)
-            console.log("Downloading from public/signed URL:", fileUrl);
+            // Fallback: External URL Fetch
+            console.log("Downloading from public/external URL:", fileUrl);
             try {
                 const res = await fetch(fileUrl);
                 if (!res.ok) {
@@ -157,6 +188,7 @@ serve(async (req: Request) => {
                 pdfBytes = await res.arrayBuffer();
             } catch (e: any) {
                 console.error("Fetch error details:", e);
+                // Intentionally vague? No, specific.
                 throw new Error(`No se pudo descargar el documento original (Fetch): ${e.message}`);
             }
         }
