@@ -342,6 +342,11 @@ BEGIN
   SET credits_used = credits_used + amount,
       updated_at = now()
   WHERE user_id = v_user_id;
+
+  -- Log transaction
+  INSERT INTO public.credit_transactions (user_id, type, amount, description)
+  VALUES (v_user_id, 'usage', -amount, 'Consumo de crédito por envío de documento');
+
 END;
 $function$;
 

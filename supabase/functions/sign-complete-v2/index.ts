@@ -344,6 +344,8 @@ serve(async (req: Request) => {
         }
 
         // 10. Trigger Notification (Email + SMS)
+        // MOVED TO generate-audit-trail to ensure Certificate is included!
+        /*
         try {
             fetch(`${supabaseUrl}/functions/v1/send-signed-notification`, {
                 method: 'POST',
@@ -356,6 +358,7 @@ serve(async (req: Request) => {
         } catch (e) {
             console.error("Trigger notification error:", e);
         }
+        */
 
         // 11. Log event
         await supabase.from('event_logs').insert({
