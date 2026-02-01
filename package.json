@@ -2,6 +2,7 @@
   "name": "firmaclara",
   "version": "1.0.0",
   "description": "FirmaClara - Plataforma de firma electrónica simple para autónomos",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
