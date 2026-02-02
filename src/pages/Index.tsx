@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { SolutionsModal } from "@/components/SolutionsModal";
+import { ContactSalesDialog } from "@/components/ContactSalesDialog";
 
 export default function Index() {
   const { session } = useAuth();
@@ -521,9 +522,13 @@ export default function Index() {
                     <span>API disponible (beta)</span>
                   </li>
                 </ul>
-                <Button className="w-full" asChild>
-                  <Link to="/register">Contactar Ventas</Link>
-                </Button>
+                <ContactSalesDialog
+                  trigger={
+                    <Button className="w-full">
+                      Contactar Ventas
+                    </Button>
+                  }
+                />
               </CardContent>
             </Card>
           </div>
