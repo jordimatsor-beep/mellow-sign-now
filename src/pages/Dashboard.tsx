@@ -21,9 +21,9 @@ interface Document {
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { t } = useTranslation();
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuario";
+  const userName = profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuario";
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [credits, setCredits] = useState<number | null>(null);

@@ -10,26 +10,11 @@ import { Logo } from "@/components/brand/Logo";
 
 export function Sidebar() {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const [userName, setUserName] = useState<string>("");
+  const { user, profile } = useAuth();
   const [credits, setCredits] = useState<number | null>(null);
 
   useEffect(() => {
     if (user) {
-      const fetchUserName = async () => {
-        const { data } = await supabase
-          .from('users')
-          .select('name')
-          .eq('id', user.id)
-          .single();
-
-        if (data && data.name) {
-          setUserName(data.name);
-        } else {
-          setUserName(user.user_metadata?.full_name || user.email?.split('@')[0] || "Usuario");
-        }
-      };
-
       const fetchCredits = async () => {
         const { data, error } = await supabase.rpc('get_available_credits');
         if (!error && data !== null) {
@@ -37,10 +22,11 @@ export function Sidebar() {
         }
       };
 
-      fetchUserName();
       fetchCredits();
     }
   }, [user]);
+
+  const userName = profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuario";
 
   const navItems = [
     { to: "/dashboard", icon: Home, label: t('nav.home') },

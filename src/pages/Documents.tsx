@@ -1,4 +1,4 @@
-import { Search, Plus, Filter, Loader2, AlertCircle } from "lucide-react";
+import { Search, Plus, Filter, Loader2, AlertCircle, Clock, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,8 +153,15 @@ export default function Documents() {
 
         <TabsContent value="all" className="mt-4 space-y-2">
           {filteredDocs.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
-              No hay documentos encontrados.
+            <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+              <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                <FileText className="h-6 w-6 text-slate-400" />
+              </div>
+              <h3 className="text-sm font-medium text-slate-900">No hay documentos</h3>
+              <p className="text-xs text-slate-500 mb-4 mt-1">No se encontraron documentos que coincidan con tu búsqueda.</p>
+              <Button size="sm" variant="outline" onClick={() => setSearch("")}>
+                Limpiar búsqueda
+              </Button>
             </div>
           ) : (
             filteredDocs.map((doc) => (
@@ -165,8 +172,15 @@ export default function Documents() {
 
         <TabsContent value="drafts" className="mt-4 space-y-2">
           {draftDocs.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
-              No hay borradores. Los documentos aparecen aquí antes de enviarlos.
+            <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+              <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                <FileText className="h-6 w-6 text-slate-400" />
+              </div>
+              <h3 className="text-sm font-medium text-slate-900">No hay borradores</h3>
+              <p className="text-xs text-slate-500 mb-4 mt-1">Los documentos guardados aparecerán aquí.</p>
+              <Button size="sm" variant="outline" asChild>
+                <Link to="/documents/new">Crear nuevo</Link>
+              </Button>
             </div>
           ) : (
             draftDocs.map((doc) => (
@@ -177,8 +191,12 @@ export default function Documents() {
 
         <TabsContent value="pending" className="mt-4 space-y-2">
           {pendingDocs.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
-              No hay documentos pendientes.
+            <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+              <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                <Clock className="h-6 w-6 text-slate-400" />
+              </div>
+              <h3 className="text-sm font-medium text-slate-900">No hay pendientes</h3>
+              <p className="text-xs text-slate-500 mb-4 mt-1">Todos tus envíos han sido completados o no has enviado nada aún.</p>
             </div>
           ) : (
             pendingDocs.map((doc) => (
@@ -189,8 +207,12 @@ export default function Documents() {
 
         <TabsContent value="signed" className="mt-4 space-y-2">
           {signedDocs.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
-              No hay documentos firmados.
+            <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+              <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                <Check className="h-6 w-6 text-slate-400" />
+              </div>
+              <h3 className="text-sm font-medium text-slate-900">No hay firmados</h3>
+              <p className="text-xs text-slate-500 mb-4 mt-1">Los documentos firmados aparecerán aquí.</p>
             </div>
           ) : (
             signedDocs.map((doc) => (

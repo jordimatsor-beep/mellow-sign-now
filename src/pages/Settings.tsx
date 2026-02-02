@@ -19,7 +19,7 @@ const settingsItems = [
 ];
 
 export default function Settings() {
-  const { user, signOut } = useAuth();
+  const { user, profile, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -59,27 +59,11 @@ export default function Settings() {
   };
 
   useEffect(() => {
-    if (user) {
-      // Load data from public.users instead of metadata
-      const fetchUserData = async () => {
-        const { data } = await supabase
-          .from('users')
-          .select('name, company_name')
-          .eq('id', user.id)
-          .single();
-
-        if (data) {
-          setFullName(data.name || "");
-          setCompany(data.company_name || "");
-        } else {
-          // Fallback to metadata if DB entry missing
-          setFullName(user.user_metadata?.full_name || "");
-          setCompany(user.user_metadata?.company || "");
-        }
-      };
-      fetchUserData();
+    if (profile) {
+      setFullName(profile.name || user?.user_metadata?.full_name || "");
+      setCompany(profile.company_name || user?.user_metadata?.company || "");
     }
-  }, [user]);
+  }, [profile, user]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,10 +82,7 @@ export default function Settings() {
 
       if (error) throw error;
 
-      // Optionally update auth metadata if we want to keep them in sync, 
-      // but the requirement is to use public.users. 
-      // updating metadata is good practice for session consistency if used elsewhere, 
-      // but we will prioritize the table update as requested.
+      await refreshProfile(); // Refresh context to update UI globally
 
       toast.success("Perfil actualizado correctamente");
       setIsEditing(false);

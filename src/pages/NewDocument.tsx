@@ -225,7 +225,6 @@ export default function NewDocument() {
         sender_name: profile?.name || profile?.email || 'Usuario',
         title: title
       };
-      if (import.meta.env.DEV) console.log('Invoking send-document-invitation with payload:', payload);
 
       const { data: fnData, error: fnError } = await supabase.functions.invoke('send-invite-v2', {
         body: payload
@@ -260,7 +259,6 @@ export default function NewDocument() {
         return;
       }
 
-      if (import.meta.env.DEV) console.log('Email sent successfully:', fnData);
       toast.success("Documento enviado correctamente");
       navigate('/dashboard');
 

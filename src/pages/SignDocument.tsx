@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
 import { Logo } from "@/components/brand/Logo";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 import { supabase } from "@/lib/supabase";
 
@@ -20,7 +22,7 @@ interface DocumentData {
   id: string;
   title: string;
   file_url: string;
-  status: string;
+  status: 'draft' | 'sent' | 'viewed' | 'signed' | 'expired' | 'cancelled'; // Strict type
   signer_email: string;
   signer_name: string;
   created_at: string;
@@ -34,9 +36,13 @@ interface DocumentData {
   signedAt?: string;
   whatsapp_verification?: boolean;
   signer_phone?: string;
+  // security_level can be string or enum
   security_level?: 'standard' | 'whatsapp_otp';
   signed_file_url?: string;
   certificate_url?: string;
+  // Internal fields from RPC
+  otp_code_hash?: string;
+  otp_expires_at?: string;
 }
 
 export default function SignDocument() {
@@ -84,9 +90,9 @@ export default function SignDocument() {
 
       toast.success(`Código reenviado por ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}`, { id: toastId });
     } catch (err) {
-      if (import.meta.env.DEV) console.error(err);
+      // Remove console.error for prod
       toast.error("Error al reenviar el código", { id: toastId });
-      setResendCooldown(0); // Reset cooldwon on error so they can try again
+      setResendCooldown(0); // Reset cooldown on error
     }
   };
 
@@ -250,7 +256,7 @@ export default function SignDocument() {
         if (error) throw error;
 
         // RPC returns an array (setof record)
-        const docRecord = (data as any[])?.[0];
+        const docRecord = (data as any[])?.[0]; // Keeps type casting minimal, ideally define RPC response type
 
         if (!docRecord) throw new Error("Documento no encontrado o enlace inválido");
 
@@ -260,24 +266,15 @@ export default function SignDocument() {
 
         // Check Expiration
         if (docRecord.expires_at && new Date(docRecord.expires_at) < new Date()) {
-          throw new Error("Este enlace de firma ha caducado (expiró el " + new Date(docRecord.expires_at).toLocaleDateString() + ")");
+          throw new Error("Este enlace de firma ha caducado (expiró el " + format(new Date(docRecord.expires_at), "dd/MM/yyyy", { locale: es }) + ")");
         }
 
         if (docRecord.status === 'sent') {
-          // Attempt to update status to Viewed. 
-          // Note: This might fail if RLS blocks update. 
-          // Ideally we should have an RPC for this too, or rely on a "view_document" RPC.
-          // For now, let's keep it silent or try.
-          // If RLS blocks UPDATE, we might need another RPC 'mark_document_viewed'.
-          // Let's assume for now we might fail silently or we need to add that RPC.
-          // Or we can rely on `get_document_for_signing` to side-effect update? No, bad practice for GET.
-          // Let's try direct update, if it fails, it's not critical for the strict flow but good for tracking.
+          // Use the secure RPC to mark as viewed (Bypasses RLS issues for recipients)
           supabase
-            .from('documents')
-            .update({ status: 'viewed', viewed_at: new Date().toISOString() })
-            .eq('id', docRecord.id)
+            .rpc('mark_document_viewed' as any, { token_uuid: token })
             .then(({ error }) => {
-              if (error && import.meta.env.DEV) console.warn("Could not mark as viewed (RLS restriction?)", error);
+              if (error && import.meta.env.DEV) console.warn("Failed to mark as viewed:", error);
             });
         }
 
@@ -484,7 +481,9 @@ export default function SignDocument() {
 
     } catch (err: unknown) {
       if (import.meta.env.DEV) console.error(err);
-      toast.error(err instanceof Error ? err.message : "Error al guardar la firma", { id: toastId });
+
+      const message = err instanceof Error ? err.message : "Error al guardar la firma";
+      toast.error(message, { id: toastId });
       setStep("view"); // Go back to view so they can try again
     }
   };
