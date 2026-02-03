@@ -63,40 +63,67 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     useEffect(() => {
+        let mounted = true;
+
         // Check active sessions and sets the user
         const initSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setSession(session);
-            const currentUser = session?.user ?? null;
-            setUser(currentUser);
+            try {
+                // Safety timeout: If Supabase takes > 5 seconds, force load completion
+                // This prevents infinite loading screens if the network hangs or config is bad
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("Auth timeout")), 5000)
+                );
 
-            if (currentUser) {
-                const profileData = await fetchProfile(currentUser.id);
-                setProfile(profileData);
+                const sessionPromise = supabase.auth.getSession();
+
+                // Race the session fetch against the timeout
+                const { data } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+
+                if (mounted && data?.session) {
+                    const session = data.session;
+                    setSession(session);
+                    const currentUser = session.user;
+                    setUser(currentUser);
+
+                    if (currentUser) {
+                        try {
+                            const profileData = await fetchProfile(currentUser.id);
+                            if (mounted) setProfile(profileData);
+                        } catch (e) {
+                            console.error("Profile fetch error", e);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Auth initialization error or timeout:", error);
+            } finally {
+                if (mounted) setLoading(false);
             }
-
-            setLoading(false);
         };
 
         initSession();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            if (!mounted) return;
+
             setSession(session);
             const currentUser = session?.user ?? null;
             setUser(currentUser);
 
             if (currentUser) {
-                // If session changed (login/refresh), fetch profile again
                 const profileData = await fetchProfile(currentUser.id);
-                setProfile(profileData);
+                if (mounted) setProfile(profileData);
             } else {
-                setProfile(null);
+                if (mounted) setProfile(null);
             }
 
-            setLoading(false);
+            if (mounted) setLoading(false);
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
 
     const signOut = async () => {
