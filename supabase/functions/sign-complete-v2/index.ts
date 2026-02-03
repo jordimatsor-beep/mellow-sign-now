@@ -200,8 +200,25 @@ serve(async (req: Request) => {
 
         // Embed Signature Image
         const pngImage = await pdfDoc.embedPng(signature_image);
-        // Scale image reasonably
-        const pngDims = pngImage.scale(0.5);
+
+        // Calculate scaling to fit within a bounding box (e.g. 200x80)
+        // This ensures signatures from Retina screens (high DPI) don't appear huge
+        const MAX_SIG_WIDTH = 200;
+        const MAX_SIG_HEIGHT = 80;
+
+        const imgWidth = pngImage.width;
+        const imgHeight = pngImage.height;
+
+        const scaleW = MAX_SIG_WIDTH / imgWidth;
+        const scaleH = MAX_SIG_HEIGHT / imgHeight;
+
+        // Use the smaller scale to fit entirely within the box, but limit max scale to 0.5 to keep regular signatures crisp
+        const scaleFactor = Math.min(scaleW, scaleH, 0.5);
+
+        const pngDims = {
+            width: imgWidth * scaleFactor,
+            height: imgHeight * scaleFactor
+        };
 
         // Get pages array
         const pages = pdfDoc.getPages();

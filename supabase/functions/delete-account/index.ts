@@ -14,15 +14,26 @@ serve(async (req) => {
     try {
         // 1. Create Supabase Client with Admin Rights (Service Role)
         // REQUIRED to delete users from Auth
-        const supabaseAdmin = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        )
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+        if (!supabaseUrl || !supabaseServiceRoleKey) {
+            throw new Error('Server configuration error: Missing Supabase credentials');
+        }
+
+        // 1. Create Supabase Client with Admin Rights (Service Role)
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
         // 2. Verify the user (User must be logged in to delete THEMSELVES)
-        // We get the user from the Authorization header of the request
-        const authHeader = req.headers.get('Authorization')!
-        const token = authHeader.replace('Bearer ', '')
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            return new Response(
+                JSON.stringify({ error: 'Missing Authorization header' }),
+                { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+        }
+
+        const token = authHeader.replace('Bearer ', '');
         const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
 
         if (userError || !user) {

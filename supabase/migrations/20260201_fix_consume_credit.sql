@@ -20,7 +20,7 @@ BEGIN
   FROM public.credit_packs
   WHERE user_id = v_user_id;
 
-  IF v_current_credits < amount THEN
+  IF v_current_credits IS NULL OR v_current_credits < amount THEN
     RAISE EXCEPTION 'Insufficient credits';
   END IF;
 
