@@ -63,13 +63,22 @@ export default function Documents() {
   const { data: documents, isLoading, error } = useQuery({
     queryKey: ["documents"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("documents")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Safety timeout
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Documents fetch timeout")), 5000)
+      );
 
-      if (error) throw error;
-      return data;
+      const fetchPromise = (async () => {
+        const { data, error } = await supabase
+          .from("documents")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        return data;
+      })();
+
+      return Promise.race([fetchPromise, timeoutPromise]) as Promise<any[]>;
     },
   });
 

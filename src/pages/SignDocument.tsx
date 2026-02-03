@@ -247,18 +247,29 @@ export default function SignDocument() {
       return;
     }
 
-    async function loadDocument() {
+    async function loadDocumentLink() {
       try {
-        // Use the secure RPC instead of direct select
-        const { data, error } = await supabase
-          .rpc('get_document_for_signing', { token_uuid: token });
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Sign link timeout")), 5000)
+        );
 
-        if (error) throw error;
+        const fetchPromise = (async () => {
+          // Use the secure RPC instead of direct select
+          const { data, error } = await supabase
+            .rpc('get_document_for_signing', { token_uuid: token });
 
-        // RPC returns an array (setof record)
-        const docRecord = (data as any[])?.[0]; // Keeps type casting minimal, ideally define RPC response type
+          if (error) throw error;
 
-        if (!docRecord) throw new Error("Documento no encontrado o enlace inválido");
+          // RPC returns an array (setof record)
+          const docRecord = (data as any[])?.[0]; // Keeps type casting minimal, ideally define RPC response type
+
+          if (!docRecord) throw new Error("Documento no encontrado o enlace inválido");
+
+          return docRecord;
+        })();
+
+        // Race
+        const docRecord = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
         if (docRecord.status !== 'sent' && docRecord.status !== 'viewed' && docRecord.status !== 'signed') {
           throw new Error("Este documento no está disponible para firma");
@@ -369,7 +380,7 @@ export default function SignDocument() {
       }
     }
 
-    loadDocument();
+    loadDocumentLink();
   }, [token]);
 
   // Helper: SHA-256 for client-side (still used for prompt, but backend does verification)

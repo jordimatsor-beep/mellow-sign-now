@@ -26,14 +26,23 @@ export default function DocumentDetail() {
     queryKey: ["document", id],
     queryFn: async () => {
       if (!id) throw new Error("No ID provided");
-      const { data, error } = await supabase
-        .from("documents")
-        .select("*")
-        .eq("id", id)
-        .single();
 
-      if (error) throw error;
-      return data;
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Document fetch timeout")), 5000)
+      );
+
+      const fetchPromise = (async () => {
+        const { data, error } = await supabase
+          .from("documents")
+          .select("*")
+          .eq("id", id)
+          .single();
+
+        if (error) throw error;
+        return data;
+      })();
+
+      return Promise.race([fetchPromise, timeoutPromise]) as Promise<any>;
     },
     enabled: !!id,
   });

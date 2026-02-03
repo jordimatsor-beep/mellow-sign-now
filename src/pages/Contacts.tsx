@@ -73,16 +73,26 @@ export default function Contacts() {
     const fetchContacts = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase
+
+            // Safety timeout
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Contacts fetch timeout")), 5000)
+            );
+
+            const fetchPromise = supabase
                 .from('contacts')
                 .select('*')
                 .order('name');
+
+            // Race
+            const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
             if (error) throw error;
             setContacts(data || []);
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : "desconocido";
-            toast.error("Error al cargar contactos: " + message);
+            if (import.meta.env.DEV) console.error("Error fetching contacts:", error);
+            // toast.error("Error al cargar contactos: " + message); // Optional: don't spam user if it's just a timeout/glitch
         } finally {
             setLoading(false);
         }

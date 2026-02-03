@@ -30,41 +30,53 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     const fetchData = async () => {
       if (!user) return;
 
       try {
         setLoading(true);
 
-        // 1. Fetch Documents (RLS filtered)
-        const { data: docsData, error: docsError } = await supabase
-          .from('documents')
-          .select('id, title, signer_email, status, created_at, sent_at, signed_at')
-          .order('created_at', { ascending: false });
+        const fetchPromise = (async () => {
+          // 1. Fetch Documents (RLS filtered)
+          const { data: docsData, error: docsError } = await supabase
+            .from('documents')
+            .select('id, title, signer_email, status, created_at, sent_at, signed_at')
+            .order('created_at', { ascending: false });
 
-        if (docsError) throw docsError;
-        setDocuments(docsData as unknown as Document[]);
+          if (docsError) throw docsError;
+          if (mounted) setDocuments(docsData as unknown as Document[]);
 
-        // 2. Fetch Credits (via RPC or View)
-        // Using RPC for simplicity and security
-        const { data: creditsData, error: creditsError } = await supabase
-          .rpc('get_available_credits');
+          // 2. Fetch Credits (via RPC or View)
+          const { data: creditsData, error: creditsError } = await supabase
+            .rpc('get_available_credits');
 
-        if (creditsError) {
-          if (import.meta.env.DEV) console.error("Error fetching credits:", creditsError);
-          setCredits(0);
-        } else {
-          setCredits(creditsData as number);
-        }
+          if (creditsError) {
+            if (import.meta.env.DEV) console.error("Error fetching credits:", creditsError);
+            if (mounted) setCredits(0);
+          } else {
+            if (mounted) setCredits(creditsData as number);
+          }
+        })();
+
+        // Safety timeout
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Dashboard data timeout")), 5000)
+        );
+
+        await Promise.race([fetchPromise, timeoutPromise]);
 
       } catch (error) {
-        if (import.meta.env.DEV) console.error("Failed to fetch dashboard data", error);
+        if (import.meta.env.DEV) console.error("Failed to fetch dashboard data or timeout", error);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
 
     fetchData();
+
+    return () => { mounted = false; };
   }, [user]);
 
   // Calculate stats
