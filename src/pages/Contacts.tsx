@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Plus, Search, Trash2, Edit2, Phone, Mail, MapPin, User, Loader2, Contact } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useProfile } from "@/context/ProfileContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +40,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-interface Contact {
+interface ContactType {
     id: string;
     name: string;
     email: string;
@@ -50,14 +52,12 @@ interface Contact {
 
 export default function Contacts() {
     const { profile } = useProfile();
-    const [contacts, setContacts] = useState<Contact[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Form State
-    const [editingContact, setEditingContact] = useState<Contact | null>(null);
+    const [editingContact, setEditingContact] = useState<ContactType | null>(null);
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -66,38 +66,66 @@ export default function Contacts() {
         address: ""
     });
 
-    useEffect(() => {
-        fetchContacts();
-    }, []);
-
-    const fetchContacts = async () => {
-        try {
-            setLoading(true);
-
-            // Safety timeout
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Contacts fetch timeout")), 5000)
-            );
-
-            const fetchPromise = supabase
+    // Fetch contacts with React Query - cached
+    const { data: contacts = [], isLoading: loading } = useQuery({
+        queryKey: queryKeys.contacts.all,
+        queryFn: async () => {
+            const { data, error } = await supabase
                 .from('contacts')
                 .select('*')
                 .order('name');
-
-            // Race - type the result properly
-            const result = await Promise.race([fetchPromise, timeoutPromise]);
-            const { data, error } = result as { data: Contact[] | null; error: Error | null };
-
             if (error) throw error;
-            setContacts(data || []);
-        } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : "desconocido";
-            if (import.meta.env.DEV) console.error("Error fetching contacts:", error);
-            // toast.error("Error al cargar contactos: " + message); // Optional: don't spam user if it's just a timeout/glitch
-        } finally {
-            setLoading(false);
-        }
-    };
+            return (data as ContactType[]) || [];
+        },
+    });
+
+    // Delete mutation with cache invalidation
+    const deleteMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase.from('contacts').delete().eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
+            toast.success("Contacto eliminado");
+        },
+        onError: (error: Error) => {
+            toast.error("Error al eliminar: " + error.message);
+        },
+    });
+
+    // Save mutation (create/update) with cache invalidation
+    const saveMutation = useMutation({
+        mutationFn: async (data: {
+            isUpdate: boolean;
+            contactId?: string;
+            payload: {
+                user_id: string;
+                name: string;
+                email: string;
+                phone: string | null;
+                nif: string | null;
+                address: string | null;
+            }
+        }) => {
+            if (data.isUpdate && data.contactId) {
+                const { error } = await supabase.from('contacts').update(data.payload).eq('id', data.contactId);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('contacts').insert(data.payload);
+                if (error) throw error;
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
+            toast.success(variables.isUpdate ? "Contacto actualizado" : "Contacto creado");
+            setIsDialogOpen(false);
+            resetForm();
+        },
+        onError: (error: Error) => {
+            toast.error("Error al guardar: " + error.message);
+        },
+    });
 
     const filteredContacts = contacts.filter(contact =>
         contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -106,71 +134,34 @@ export default function Contacts() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsSubmitting(true);
 
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error("No autenticado");
-
-            const payload = {
-                user_id: user.id,
-                name: formData.name,
-                email: formData.email,
-                phone: formData.phone || null,
-                nif: formData.nif || null,
-                address: formData.address || null
-            };
-
-            let error;
-
-            if (editingContact) {
-                // Update
-                const { error: updateError } = await supabase
-                    .from('contacts')
-                    .update(payload)
-                    .eq('id', editingContact.id);
-                error = updateError;
-            } else {
-                // Insert
-                const { error: insertError } = await supabase
-                    .from('contacts')
-                    .insert(payload);
-                error = insertError;
-            }
-
-            if (error) throw error;
-
-            toast.success(editingContact ? "Contacto actualizado" : "Contacto creado");
-            setIsDialogOpen(false);
-            resetForm();
-            fetchContacts();
-
-        } catch (error: unknown) {
-            const err = error as Error;
-            toast.error("Error al guardar: " + err.message);
-        } finally {
-            setIsSubmitting(false);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            toast.error("No autenticado");
+            return;
         }
+
+        const payload = {
+            user_id: user.id,
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone || null,
+            nif: formData.nif || null,
+            address: formData.address || null
+        };
+
+        saveMutation.mutate({
+            isUpdate: !!editingContact,
+            contactId: editingContact?.id,
+            payload
+        });
     };
 
-    const handleDelete = async (id: string) => {
-        try {
-            const { error } = await supabase
-                .from('contacts')
-                .delete()
-                .eq('id', id);
-
-            if (error) throw error;
-
-            toast.success("Contacto eliminado");
-            setContacts(contacts.filter(c => c.id !== id));
-        } catch (error: unknown) {
-            const err = error as Error;
-            toast.error("Error al eliminar: " + err.message);
-        }
+    const handleDelete = (id: string) => {
+        deleteMutation.mutate(id);
     };
 
-    const openEdit = (contact: Contact) => {
+    const openEdit = (contact: ContactType) => {
         setEditingContact(contact);
         setFormData({
             name: contact.name,
@@ -357,8 +348,8 @@ export default function Contacts() {
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            <Button type="submit" disabled={saveMutation.isPending}>
+                                {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 {editingContact ? "Guardar Cambios" : "Crear Contacto"}
                             </Button>
                         </DialogFooter>

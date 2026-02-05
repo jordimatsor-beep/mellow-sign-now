@@ -3,12 +3,13 @@ import { ArrowLeft, Coins, Plus, Minus, Gift, CreditCard, Loader2, RefreshCw } f
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 
 interface CreditTransaction {
   id: string;
@@ -21,18 +22,11 @@ interface CreditTransaction {
 
 export default function Credits() {
   const { t } = useTranslation();
-  const [availableCredits, setAvailableCredits] = useState<number | null>(null);
-  const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingHistory, setLoadingHistory] = useState(true);
 
-  useEffect(() => {
-    fetchCredits();
-    fetchTransactions();
-  }, []);
-
-  async function fetchCredits() {
-    try {
+  // Fetch available credits - cached
+  const { data: availableCredits, isLoading: loading } = useQuery({
+    queryKey: queryKeys.credits.packs,
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('credit_packs')
         .select('credits_total, credits_used');
@@ -40,33 +34,23 @@ export default function Credits() {
       if (error) throw error;
 
       if (data) {
-        const total = data.reduce((acc, pack) => {
+        return data.reduce((acc, pack) => {
           return acc + (pack.credits_total || 0) - (pack.credits_used || 0);
         }, 0);
-        setAvailableCredits(total);
       }
-    } catch (e) {
-      if (import.meta.env.DEV) console.error("Error fetching credits:", e);
-      toast.error(t('credits.error_fetch'));
-    } finally {
-      setLoading(false);
-    }
-  }
+      return 0;
+    },
+  });
 
-  async function fetchTransactions() {
-    try {
+  // Fetch transactions - cached
+  const { data: transactions = [], isLoading: loadingHistory } = useQuery({
+    queryKey: queryKeys.credits.transactions,
+    queryFn: async () => {
       const { data, error } = await supabase.rpc('get_credit_transactions', { p_limit: 20 });
-
       if (error) throw error;
-
-      setTransactions((data as CreditTransaction[]) || []);
-    } catch (e) {
-      if (import.meta.env.DEV) console.error("Error fetching transactions:", e);
-      // Don't show error toast for transactions - just show empty state
-    } finally {
-      setLoadingHistory(false);
-    }
-  }
+      return (data as CreditTransaction[]) || [];
+    },
+  });
 
   const formatDate = (dateString: string) => {
     try {

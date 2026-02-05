@@ -57,11 +57,13 @@ function DocumentCard({ doc }: { doc: Document }) {
   );
 }
 
+import { queryKeys } from "@/lib/queryKeys";
+
 export default function Documents() {
   const [search, setSearch] = useState("");
 
   const { data: documents, isLoading, error } = useQuery({
-    queryKey: ["documents"],
+    queryKey: queryKeys.documents.all,
     queryFn: async () => {
       // Safety timeout
       const timeoutPromise = new Promise((_, reject) =>

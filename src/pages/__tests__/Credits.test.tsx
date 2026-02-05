@@ -13,7 +13,10 @@ vi.mock('@/context/AuthContext', () => ({
 
 vi.mock('@/lib/supabase', () => ({
     supabase: {
-        rpc: () => Promise.resolve({ data: 15, error: null }),
+        rpc: (fn: string) => {
+            if (fn === 'get_credit_transactions') return Promise.resolve({ data: [], error: null });
+            return Promise.resolve({ data: 15, error: null });
+        },
         functions: {
             invoke: () => Promise.resolve({ data: { url: 'https://test.com' }, error: null })
         }
@@ -26,11 +29,23 @@ vi.mock('react-i18next', () => ({
     })
 }));
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            retry: false,
+        },
+    },
+});
+
 const renderWithRouter = (component: React.ReactElement) => {
     return render(
-        <MemoryRouter initialEntries={['/credits']}>
-            {component}
-        </MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+            <MemoryRouter initialEntries={['/credits']}>
+                {component}
+            </MemoryRouter>
+        </QueryClientProvider>
     );
 };
 

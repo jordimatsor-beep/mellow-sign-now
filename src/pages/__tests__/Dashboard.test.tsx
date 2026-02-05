@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Dashboard from '../Dashboard';
 
 // Mock all dependencies upfront
@@ -33,10 +34,20 @@ vi.mock('react-i18next', () => ({
 }));
 
 const renderWithRouter = (component: React.ReactElement) => {
+    const queryClient = new QueryClient({
+        defaultOptions: {
+            queries: {
+                retry: false,
+            },
+        },
+    });
+
     return render(
-        <BrowserRouter>
-            {component}
-        </BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+            <BrowserRouter>
+                {component}
+            </BrowserRouter>
+        </QueryClientProvider>
     );
 };
 

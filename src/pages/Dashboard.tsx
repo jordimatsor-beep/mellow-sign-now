@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Plus, Sparkles, FileText, Clock, Check, Loader2, File } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,8 @@ import { es } from 'date-fns/locale';
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useTranslation } from 'react-i18next';
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 
 interface Document {
   id: string;
@@ -25,66 +26,43 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const userName = profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuario";
 
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [credits, setCredits] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Fetch documents with React Query - cached for 5 minutes
+  const { data: documents = [], isLoading: loadingDocs } = useQuery({
+    queryKey: queryKeys.documents.dashboard,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('id, title, signer_email, status, created_at, sent_at, signed_at')
+        .order('created_at', { ascending: false });
 
-  useEffect(() => {
-    let mounted = true;
+      if (error) throw error;
+      return (data as unknown as Document[]) || [];
+    },
+    enabled: !!user,
+  });
 
-    const fetchData = async () => {
-      if (!user) return;
-
-      try {
-        setLoading(true);
-
-        const fetchPromise = (async () => {
-          // 1. Fetch Documents (RLS filtered)
-          const { data: docsData, error: docsError } = await supabase
-            .from('documents')
-            .select('id, title, signer_email, status, created_at, sent_at, signed_at')
-            .order('created_at', { ascending: false });
-
-          if (docsError) throw docsError;
-          if (mounted) setDocuments(docsData as unknown as Document[]);
-
-          // 2. Fetch Credits (via RPC or View)
-          const { data: creditsData, error: creditsError } = await supabase
-            .rpc('get_available_credits');
-
-          if (creditsError) {
-            if (import.meta.env.DEV) console.error("Error fetching credits:", creditsError);
-            if (mounted) setCredits(0);
-          } else {
-            if (mounted) setCredits(creditsData as number);
-          }
-        })();
-
-        // Safety timeout
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Dashboard data timeout")), 5000)
-        );
-
-        await Promise.race([fetchPromise, timeoutPromise]);
-
-      } catch (error) {
-        if (import.meta.env.DEV) console.error("Failed to fetch dashboard data or timeout", error);
-      } finally {
-        if (mounted) setLoading(false);
+  // Fetch credits with React Query - cached for 5 minutes
+  const { data: credits = 0, isLoading: loadingCredits } = useQuery({
+    queryKey: queryKeys.credits.available,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_available_credits');
+      if (error) {
+        if (import.meta.env.DEV) console.error("Error fetching credits:", error);
+        return 0;
       }
-    };
+      return (data as number) ?? 0;
+    },
+    enabled: !!user,
+  });
 
-    fetchData();
-
-    return () => { mounted = false; };
-  }, [user]);
+  const loading = loadingDocs || loadingCredits;
 
   // Calculate stats
   const stats = {
     pending: documents.filter(d => ['sent', 'viewed'].includes(d.status)).length,
     signed: documents.filter(d => d.status === 'signed').length,
     total: documents.length,
-    credits: credits ?? 0
+    credits: credits
   };
 
   const recentDocuments = documents.slice(0, 5);

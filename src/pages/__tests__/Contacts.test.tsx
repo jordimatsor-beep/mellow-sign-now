@@ -36,11 +36,23 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 // Helper to wrap with Router
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            retry: false,
+        },
+    },
+});
+
 const renderWithRouter = (component: React.ReactElement) => {
     return render(
-        <BrowserRouter>
-            {component}
-        </BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+            <BrowserRouter>
+                {component}
+            </BrowserRouter>
+        </QueryClientProvider>
     );
 };
 

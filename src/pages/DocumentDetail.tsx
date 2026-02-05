@@ -17,13 +17,15 @@ type TimelineEvent = {
   isCertificate?: boolean;
 };
 
+import { queryKeys } from "@/lib/queryKeys";
+
 export default function DocumentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [resending, setResending] = useState(false);
 
   const { data: doc, isLoading, error } = useQuery({
-    queryKey: ["document", id],
+    queryKey: queryKeys.documents.detail(id!),
     queryFn: async () => {
       if (!id) throw new Error("No ID provided");
 
