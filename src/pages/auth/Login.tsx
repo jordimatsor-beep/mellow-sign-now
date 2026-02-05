@@ -9,6 +9,10 @@ import { Loader2 } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { useAuth } from "@/context/AuthContext";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import {
     Dialog,
     DialogContent,
@@ -18,15 +22,34 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 
+const createLoginSchema = (t: (key: string) => string) => z.object({
+    email: z.string().email(t('auth.invalid_email') || "Email inválido"),
+    password: z.string().min(1, t('auth.password_required') || "La contraseña es requerida"),
+});
+
+type LoginFormValues = z.infer<ReturnType<typeof createLoginSchema>>;
+
 export default function Login() {
     const { t } = useTranslation();
     const navigate = useNavigate();
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
 
     // Auto-redirect if already logged in (Fixes Google Login redirecting back to login)
-    const { session } = useAuth(); // Assuming useAuth is exported from AuthContext, importing it below
+    const { session } = useAuth();
+
+    // Password Reset State
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+    const [resetEmail, setResetEmail] = useState("");
+    const [resetLoading, setResetLoading] = useState(false);
+
+    const loginSchema = createLoginSchema(t);
+    const form = useForm<LoginFormValues>({
+        resolver: zodResolver(loginSchema),
+        defaultValues: {
+            email: "",
+            password: "",
+        },
+    });
 
     useEffect(() => {
         if (session) {
@@ -34,19 +57,13 @@ export default function Login() {
         }
     }, [session, navigate]);
 
-    // Password Reset State
-    const [showForgotPassword, setShowForgotPassword] = useState(false);
-    const [resetEmail, setResetEmail] = useState("");
-    const [resetLoading, setResetLoading] = useState(false);
-
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleLogin = async (data: LoginFormValues) => {
         setLoading(true);
 
         try {
             const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
+                email: data.email,
+                password: data.password,
             });
             if (error) throw error;
             navigate("/dashboard");
@@ -97,45 +114,61 @@ export default function Login() {
             mode="login"
         >
             <div className="space-y-6">
-                <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="email">{t('auth.email')}</Label>
-                        <Input
-                            id="email"
-                            type="email"
-                            placeholder="hola@ejemplo.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            className="h-11"
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="email"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('auth.email')}</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            placeholder="hola@ejemplo.com"
+                                            type="email"
+                                            className="h-11"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
                         />
-                    </div>
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <Label htmlFor="password">{t('auth.password')}</Label>
-                            <Button
-                                variant="link"
-                                className="p-0 h-auto font-normal text-xs"
-                                type="button"
-                                onClick={() => setShowForgotPassword(true)}
-                            >
-                                {t('auth.forgot_password')}
-                            </Button>
-                        </div>
-                        <Input
-                            id="password"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            className="h-11"
+
+                        <FormField
+                            control={form.control}
+                            name="password"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="flex items-center justify-between">
+                                        <FormLabel>{t('auth.password')}</FormLabel>
+                                        <Button
+                                            variant="link"
+                                            className="p-0 h-auto font-normal text-xs"
+                                            type="button"
+                                            onClick={() => setShowForgotPassword(true)}
+                                        >
+                                            {t('auth.forgot_password')}
+                                        </Button>
+                                    </div>
+                                    <FormControl>
+                                        <Input
+                                            type="password"
+                                            className="h-11"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
                         />
-                    </div>
-                    <Button className="w-full h-11 text-base" type="submit" disabled={loading}>
-                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {t('auth.sign_in')}
-                    </Button>
-                </form>
+
+                        <Button className="w-full h-11 text-base" type="submit" disabled={loading}>
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {t('auth.sign_in')}
+                        </Button>
+                    </form>
+                </Form>
 
                 <div className="relative my-6">
                     <div className="absolute inset-0 flex items-center">

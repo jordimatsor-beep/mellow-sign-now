@@ -73,9 +73,13 @@ describe('NIF Validation (Spanish Personal ID)', () => {
 
 describe('NIE Validation (Spanish Foreigner ID)', () => {
   it('should validate correct NIEs', () => {
+    // These are mathematically valid NIEs (X/Y/Z + 7 digits + control letter)
+    // X0000000T: X=0, number = 0, 0 % 23 = 0, controlLetters[0] = 'T' ✓
     expect(isValidNIE('X0000000T')).toBe(true);
-    expect(isValidNIE('Y0000001R')).toBe(true);
-    expect(isValidNIE('Z0000002W')).toBe(true);
+    // Y1234567X: Y=1, number = 11234567, 11234567 % 23 = 10, controlLetters[10] = 'X' 
+    expect(isValidNIE('Y1234567X')).toBe(true);
+    // Z5678901W: Z=2, number = 25678901, 25678901 % 23 = 22, controlLetters[22] = 'E'
+    expect(isValidNIE('Z5678901E')).toBe(true);
   });
 
   it('should reject NIEs with wrong control letter', () => {
@@ -85,10 +89,13 @@ describe('NIE Validation (Spanish Foreigner ID)', () => {
 
 describe('CIF Validation (Spanish Company ID)', () => {
   it('should validate correct CIFs', () => {
-    // CIF with letter control (K, P, Q, R, S)
+    // Q-type CIFs use letter control (K, P, Q, R, S, N, W)
+    // The algorithm calculates sum of odd positions (doubled) + sum of even positions
+    // Control = (10 - (total % 10)) % 10, then mapped to JABCDEFGHI
     expect(isValidCIF('Q2826000H')).toBe(true);
-    // CIF with digit control (A, B, E, H)
-    expect(isValidCIF('A28000012')).toBe(true);
+    // A-type CIFs use digit control (A, B, E, H)
+    // A28000000: Let's calculate: A 2 8 0 0 0 0 0 [control]
+    expect(isValidCIF('A58818501')).toBe(true);
   });
 
   it('should reject CIFs with wrong control', () => {

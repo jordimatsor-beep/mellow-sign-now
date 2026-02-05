@@ -59,9 +59,9 @@ export default function Settings() {
   };
 
   useEffect(() => {
-    if (profile) {
-      setFullName(profile.name || user?.user_metadata?.full_name || "");
-      setCompany(profile.company_name || user?.user_metadata?.company || "");
+    if (user) {
+      setFullName(profile?.name || user.user_metadata?.full_name || "");
+      setCompany(profile?.company_name || user.user_metadata?.company || "");
     }
   }, [profile, user]);
 
@@ -81,6 +81,13 @@ export default function Settings() {
         .eq('id', user.id);
 
       if (error) throw error;
+
+      // Sync Auth Metadata so it doesn't revert if database fetch fails (and for sidebar consistency)
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { full_name: fullName, company: company }
+      });
+
+      if (authError && import.meta.env.DEV) console.warn("Failed to sync auth metadata", authError);
 
       await refreshProfile(); // Refresh context to update UI globally
 

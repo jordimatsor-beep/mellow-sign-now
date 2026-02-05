@@ -84,8 +84,9 @@ export default function Contacts() {
                 .select('*')
                 .order('name');
 
-            // Race
-            const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+            // Race - type the result properly
+            const result = await Promise.race([fetchPromise, timeoutPromise]);
+            const { data, error } = result as { data: Contact[] | null; error: Error | null };
 
             if (error) throw error;
             setContacts(data || []);
@@ -144,8 +145,9 @@ export default function Contacts() {
             resetForm();
             fetchContacts();
 
-        } catch (error: any) {
-            toast.error("Error al guardar: " + error.message);
+        } catch (error: unknown) {
+            const err = error as Error;
+            toast.error("Error al guardar: " + err.message);
         } finally {
             setIsSubmitting(false);
         }
@@ -162,8 +164,9 @@ export default function Contacts() {
 
             toast.success("Contacto eliminado");
             setContacts(contacts.filter(c => c.id !== id));
-        } catch (error: any) {
-            toast.error("Error al eliminar: " + error.message);
+        } catch (error: unknown) {
+            const err = error as Error;
+            toast.error("Error al eliminar: " + err.message);
         }
     };
 

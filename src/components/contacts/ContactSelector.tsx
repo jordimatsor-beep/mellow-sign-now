@@ -13,11 +13,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Contact {
     id: string;
-    name: string;
+    name: string | null;
     email: string;
-    phone?: string;
-    nif?: string;
-    address?: string;
+    phone?: string | null;
+    nif?: string | null;
+    address?: string | null;
 }
 
 interface ContactSelectorProps {
@@ -55,7 +55,7 @@ export function ContactSelector({ isOpen, onClose, onSelect }: ContactSelectorPr
     };
 
     const filteredContacts = contacts.filter(contact =>
-        contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (contact.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         contact.email.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -98,10 +98,10 @@ export function ContactSelector({ isOpen, onClose, onSelect }: ContactSelectorPr
                                     }}
                                 >
                                     <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0">
-                                        {contact.name.substring(0, 2).toUpperCase()}
+                                        {(contact.name ?? 'NN').substring(0, 2).toUpperCase()}
                                     </div>
                                     <div className="overflow-hidden">
-                                        <p className="font-medium text-sm truncate">{contact.name}</p>
+                                        <p className="font-medium text-sm truncate">{contact.name || 'Sin nombre'}</p>
                                         <p className="text-xs text-muted-foreground truncate">{contact.email}</p>
                                     </div>
                                 </button>

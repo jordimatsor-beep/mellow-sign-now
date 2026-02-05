@@ -657,6 +657,10 @@ export type Database = {
         }[]
       }
       mark_expired_documents: { Args: never; Returns: number }
+      mark_document_viewed: {
+        Args: { token_uuid: string }
+        Returns: undefined
+      }
       submit_signature:
       | {
         Args: {

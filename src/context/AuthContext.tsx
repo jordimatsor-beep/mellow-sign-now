@@ -77,7 +77,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const sessionPromise = supabase.auth.getSession();
 
                 // Race the session fetch against the timeout
-                const { data } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+                const result = await Promise.race([sessionPromise, timeoutPromise]);
+                const { data } = result as { data: { session: Session | null } };
 
                 if (mounted && data?.session) {
                     const session = data.session;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -8,18 +8,39 @@ import { toast } from "sonner";
 import { Loader2, MailCheck, ArrowLeft } from "lucide-react";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { useAuth } from "@/context/AuthContext";
-import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+
+const registerSchema = z.object({
+    email: z.string().email("Email inválido"),
+    password: z
+        .string()
+        .min(12, "Mínimo 12 caracteres")
+        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Debe contener mayúscula, minúscula y número"),
+    confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+    message: "Las contraseñas no coinciden",
+    path: ["confirmPassword"],
+});
+
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function Register() {
     const navigate = useNavigate();
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
-
-    // Auto-redirect if already logged in
     const { session } = useAuth();
+
+    const form = useForm<RegisterFormValues>({
+        resolver: zodResolver(registerSchema),
+        defaultValues: {
+            email: "",
+            password: "",
+            confirmPassword: "",
+        },
+    });
 
     useEffect(() => {
         if (session) {
@@ -27,23 +48,15 @@ export default function Register() {
         }
     }, [session, navigate]);
 
-    const handleRegister = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (password !== confirmPassword) {
-            toast.error("Las contraseñas no coinciden");
-            return;
-        }
-
+    const onSubmit = async (data: RegisterFormValues) => {
         setLoading(true);
-
         try {
             const { error } = await supabase.auth.signUp({
-                email,
-                password,
+                email: data.email,
+                password: data.password,
                 options: {
                     data: {
-                        full_name: email.split('@')[0],
+                        full_name: data.email.split('@')[0],
                     }
                 }
             });
@@ -69,7 +82,7 @@ export default function Register() {
                     </div>
                     <div className="space-y-2">
                         <p className="text-muted-foreground">
-                            Hemos enviado un enlace de confirmación a <span className="font-medium text-foreground">{email}</span>.
+                            Hemos enviado un enlace de confirmación a <span className="font-medium text-foreground">{form.getValues("email")}</span>.
                             Revisa tu bandeja de entrada para activar tu cuenta.
                         </p>
                     </div>
@@ -92,55 +105,63 @@ export default function Register() {
             subtitle="Empieza a firmar documentos digitalmente"
             mode="register"
         >
-            <form onSubmit={handleRegister} className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                        id="email"
-                        type="email"
-                        placeholder="hola@ejemplo.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="h-11"
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Email</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="hola@ejemplo.com" type="email" className="h-11" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
                     />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="password">Contraseña</Label>
-                    <Input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="h-11"
-                        minLength={12}
-                        pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{12,}$"
-                        title="Mínimo 12 caracteres, incluyendo mayúscula, minúscula y número"
+
+                    <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Contraseña</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        type="password"
+                                        className="h-11"
+                                        {...field}
+                                    />
+                                </FormControl>
+                                <p className="text-xs text-muted-foreground">
+                                    Mínimo 12 caracteres, con mayúscula, minúscula y número
+                                </p>
+                                <FormMessage />
+                            </FormItem>
+                        )}
                     />
-                    <p className="text-xs text-muted-foreground">
-                        Mínimo 12 caracteres, con mayúscula, minúscula y número
-                    </p>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
-                    <Input
-                        id="confirmPassword"
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        className="h-11"
+
+                    <FormField
+                        control={form.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Confirmar Contraseña</FormLabel>
+                                <FormControl>
+                                    <Input type="password" className="h-11" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
                     />
-                    {confirmPassword && password !== confirmPassword && (
-                        <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
-                    )}
-                </div>
-                <Button className="w-full h-11 text-base" type="submit" disabled={loading || password !== confirmPassword}>
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Registrarse
-                </Button>
-            </form>
+
+                    <Button className="w-full h-11 text-base" type="submit" disabled={loading}>
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Registrarse
+                    </Button>
+                </form>
+            </Form>
 
             <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">

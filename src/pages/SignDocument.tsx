@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 import { supabase } from "@/lib/supabase";
+import type { DocumentForSigning } from "@/integrations/supabase/helpers";
 
 type SigningStep = "loading" | "error" | "view" | "signing" | "otp" | "complete";
 
@@ -256,12 +257,13 @@ export default function SignDocument() {
         const fetchPromise = (async () => {
           // Use the secure RPC instead of direct select
           const { data, error } = await supabase
-            .rpc('get_document_for_signing', { token_uuid: token });
+            .rpc('get_document_for_signing', { token_uuid: token as string });
 
           if (error) throw error;
 
           // RPC returns an array (setof record)
-          const docRecord = (data as any[])?.[0]; // Keeps type casting minimal, ideally define RPC response type
+          const rpcResult = data as DocumentForSigning[] | null;
+          const docRecord = rpcResult?.[0];
 
           if (!docRecord) throw new Error("Documento no encontrado o enlace inválido");
 
@@ -269,7 +271,7 @@ export default function SignDocument() {
         })();
 
         // Race
-        const docRecord = await Promise.race([fetchPromise, timeoutPromise]) as any;
+        const docRecord = await Promise.race([fetchPromise, timeoutPromise]) as DocumentForSigning;
 
         if (docRecord.status !== 'sent' && docRecord.status !== 'viewed' && docRecord.status !== 'signed') {
           throw new Error("Este documento no está disponible para firma");
@@ -283,7 +285,7 @@ export default function SignDocument() {
         if (docRecord.status === 'sent') {
           // Use the secure RPC to mark as viewed (Bypasses RLS issues for recipients)
           supabase
-            .rpc('mark_document_viewed' as any, { token_uuid: token })
+            .rpc('mark_document_viewed', { token_uuid: token as string })
             .then(({ error }) => {
               if (error && import.meta.env.DEV) console.warn("Failed to mark as viewed:", error);
             });
@@ -351,7 +353,7 @@ export default function SignDocument() {
           signer_name: docRecord.signer_name || '',
           signer_phone: docRecord.signer_phone,
           created_at: docRecord.created_at || '',
-          security_level: docRecord.security_level || 'standard',
+          security_level: (docRecord.security_level as 'standard' | 'whatsapp_otp') || 'standard',
           whatsapp_verification: docRecord.whatsapp_verification,
           issuer_data: {
             name: docRecord.issuer_company || docRecord.issuer_name || "Emisor",
@@ -371,11 +373,12 @@ export default function SignDocument() {
           setStep("view");
         }
 
-      } catch (err: any) {
-        if (import.meta.env.DEV) console.error("Error loading document:", err);
+      } catch (err: unknown) {
+        const error = err as Error & { error_description?: string };
+        if (import.meta.env.DEV) console.error("Error loading document:", error);
         setStep("error");
         // Handle Supabase errors (which are not always Error instances)
-        const message = err?.message || err?.error_description || (typeof err === 'string' ? err : "Error al cargar el documento");
+        const message = error?.message || error?.error_description || (typeof err === 'string' ? err : "Error al cargar el documento");
         setErrorMsg(message);
       }
     }
@@ -397,7 +400,7 @@ export default function SignDocument() {
     // Check if WhatsApp verification is required (security_level or legacy flag)
     // Assuming backend returns security_level in docData (we need to fetch it)
     // If docData was updated to include security_level check:
-    const requiresOtp = docData.whatsapp_verification || (docData as any).security_level === 'whatsapp_otp';
+    const requiresOtp = docData.whatsapp_verification || docData.security_level === 'whatsapp_otp';
 
     if (requiresOtp) {
       if (!docData.signer_phone) {
@@ -419,9 +422,10 @@ export default function SignDocument() {
         toast.dismiss(toastId);
         setStep("otp");
         toast.info("Código enviado por SMS a tu móvil");
-      } catch (err: any) {
-        if (import.meta.env.DEV) console.error(err);
-        toast.error(err.message, { id: toastId });
+      } catch (err: unknown) {
+        const error = err as Error;
+        if (import.meta.env.DEV) console.error(error);
+        toast.error(error.message, { id: toastId });
       }
       return;
     }
@@ -468,10 +472,10 @@ export default function SignDocument() {
         // Try to extract the real error message from the response body
         let backendErrorMessage = "";
         try {
-          const context = (error as any).context;
+          const context = (error as { context?: { json?: () => Promise<{ error?: string; message?: string }> } }).context;
           if (context && typeof context.json === 'function') {
             const body = await context.json();
-            backendErrorMessage = body.error || body.message;
+            backendErrorMessage = body?.error || body?.message || '';
           }
         } catch (e) {
           // Ignore parsing errors
@@ -588,7 +592,7 @@ export default function SignDocument() {
                 Hemos enviado una copia del documento firmado a tu correo electrónico <strong>{docData?.signer_email}</strong>.
               </p>
               <Button
-                onClick={() => window.open(docData?.signed_file_url || docData.file_url, '_blank')}
+                onClick={() => window.open(docData?.signed_file_url || docData?.file_url, '_blank')}
                 variant="outline"
                 className="w-full gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary"
               >

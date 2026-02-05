@@ -44,6 +44,48 @@ serve(async (req: Request) => {
         const body = await req.json()
         const { messages, documentId } = body
 
+        // Security: Validate input
+        if (!messages || !Array.isArray(messages) || messages.length === 0) {
+            return new Response(
+                JSON.stringify({ error: 'Invalid messages format' }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
+        // Security: Limit message history length to prevent payload manipulation
+        const MAX_MESSAGES = 50;
+        if (messages.length > MAX_MESSAGES) {
+            return new Response(
+                JSON.stringify({ error: 'Too many messages in history' }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
+        // Security: Validate each message structure
+        for (const msg of messages) {
+            if (typeof msg.role !== 'string' || typeof msg.content !== 'string') {
+                return new Response(
+                    JSON.stringify({ error: 'Invalid message structure' }),
+                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+            }
+            // Limit individual message length
+            if (msg.content.length > 10000) {
+                return new Response(
+                    JSON.stringify({ error: 'Message content too long' }),
+                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+            }
+        }
+
+        // Security: Validate documentId if provided
+        if (documentId !== null && documentId !== undefined && typeof documentId !== 'string') {
+            return new Response(
+                JSON.stringify({ error: 'Invalid documentId format' }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
         // 4. Forward to n8n
         // We inject the user_id so n8n knows who is talking (for memory/context)
         const n8nPayload = {

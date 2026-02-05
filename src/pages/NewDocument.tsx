@@ -56,8 +56,8 @@ export default function NewDocument() {
   // Fields are optional for "presupuesto" type
   const isPresupuesto = docType === "presupuesto";
 
-  const handleContactSelect = (contact: any) => {
-    setSignerName(contact.name);
+  const handleContactSelect = (contact: { name: string | null; email: string; phone?: string | null; nif?: string | null; address?: string | null }) => {
+    setSignerName(contact.name || '');
     setSignerEmail(contact.email);
     if (contact.phone) setSignerPhone(contact.phone);
     if (contact.nif) setSignerNif(contact.nif);
@@ -179,7 +179,7 @@ export default function NewDocument() {
       if (insertError) throw insertError;
 
       if (doc?.id) {
-        await handleSendDocument(doc.id, user.id, doc.sign_token);
+        await handleSendDocument(doc.id, user.id, doc.sign_token!);
       }
 
     } catch (error: unknown) {
@@ -245,7 +245,8 @@ export default function NewDocument() {
       // Manejo de errores de red (Supabase client throw)
       if (fnError) {
         console.error("Error sending email (Network/Client):", fnError);
-        const status = (fnError as any).status || (fnError as any).code || (fnError as any).context?.status || 'Unknown';
+        const typedError = fnError as { status?: number | string; code?: string; context?: { status?: number } };
+        const status = typedError.status || typedError.code || typedError.context?.status || 'Unknown';
         toast.error(`Error de conexión (Code: ${status}): ${fnError.message}. El documento se ha guardado.`, { duration: 10000 });
         setTimeout(() => navigate('/dashboard'), 4000);
         return;
@@ -262,8 +263,9 @@ export default function NewDocument() {
       toast.success("Documento enviado correctamente");
       navigate('/dashboard');
 
-    } catch (error: any) {
-      toast.error("Error al enviar: " + error.message);
+    } catch (error: unknown) {
+      const err = error as Error;
+      toast.error("Error al enviar: " + err.message);
       navigate('/dashboard');
     }
   };
