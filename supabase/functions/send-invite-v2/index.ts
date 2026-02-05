@@ -54,7 +54,7 @@ interface RequestBody {
   title?: string;
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
 
   // Handle CORS preflight

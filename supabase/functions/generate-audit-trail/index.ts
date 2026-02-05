@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1"
 import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib@1.17.1'
 import { getCorsHeaders, handleCorsPreflightRequest, sanitizeErrorMessage } from '../_shared/cors.ts'
 
-serve(async (req) => {
+serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
 
     const preflightResponse = handleCorsPreflightRequest(req);

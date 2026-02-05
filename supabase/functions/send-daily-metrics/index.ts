@@ -5,7 +5,7 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-serve(async (req) => {
+serve(async (req: Request) => {
     try {
         if (!RESEND_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
             throw new Error("Missing configuration")
@@ -73,7 +73,7 @@ serve(async (req) => {
 
         if (creditsData) {
             packsSold = creditsData.length;
-            creditsData.forEach(p => {
+            creditsData.forEach((p: { credits_total?: number; price_paid?: number }) => {
                 totalCreditsSold += (p.credits_total || 0);
                 totalRevenue += (p.price_paid || 0);
             })
