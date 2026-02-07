@@ -316,14 +316,24 @@ export default function DocumentDetail() {
 
                 if (updateError) throw updateError;
 
-                // Re-invoke send-document-invitation
-                const { error: sendError } = await supabase.functions.invoke('send-document-invitation', {
+                const { data: { user } } = await supabase.auth.getUser();
+
+                // Get sender name safely
+                let senderName = 'Usuario';
+                if (user) {
+                  const { data: userProfile } = await supabase.from('users').select('name').eq('id', user.id).single();
+                  if (userProfile?.name) senderName = userProfile.name;
+                  else if (user.user_metadata?.full_name) senderName = user.user_metadata.full_name;
+                }
+
+                // Re-invoke send-invite-v2 (Fix: was send-document-invitation stub)
+                const { error: sendError } = await supabase.functions.invoke('send-invite-v2', {
                   body: {
                     document_id: doc.id,
                     signer_email: doc.signer_email,
                     signer_name: doc.signer_name,
                     sign_token: newToken,
-                    sender_name: 'Usuario',
+                    sender_name: senderName,
                     title: doc.title
                   }
                 });

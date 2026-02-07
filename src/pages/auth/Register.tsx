@@ -160,6 +160,9 @@ export default function Register() {
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Registrarse
                     </Button>
+                    <p className="text-xs text-center text-muted-foreground mt-4">
+                        Al registrarte, aceptas nuestros <Link to="/terms" className="underline hover:text-primary">Términos</Link> y <Link to="/privacy" className="underline hover:text-primary">Política de Privacidad</Link>.
+                    </p>
                 </form>
             </Form>
 

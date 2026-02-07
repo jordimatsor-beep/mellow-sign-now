@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Bell, Shield, LogOut, ChevronRight, Loader2, Download, Trash2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, User, Bell, Shield, LogOut, ChevronRight, Loader2, Download, Trash2, AlertTriangle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -16,6 +16,7 @@ const settingsItems = [
   { icon: User, label: "Perfil", description: "Nombre, email, empresa", to: "#profile" },
   { icon: Bell, label: "Notificaciones", description: "Email y push", to: "#notifications" },
   { icon: Shield, label: "Seguridad", description: "Contraseña y 2FA", to: "#security" },
+  { icon: FileText, label: "Legal", description: "Términos y Privacidad", to: "#legal" },
 ];
 
 export default function Settings() {
