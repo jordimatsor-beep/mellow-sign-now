@@ -464,8 +464,16 @@ export default function Settings() {
       {/* Logout */}
       <Button
         variant="ghost"
+        type="button"
         className="w-full justify-start gap-3 text-destructive hover:text-destructive"
-        onClick={signOut}
+        onClick={() => {
+          // Fire and forget - no esperamos a Supabase porque a veces se cuelga
+          signOut().catch(console.error);
+
+          // Limpieza manual y redirección inmediata
+          localStorage.removeItem('sb-pmzfwwtgjvlvuawxguiw-auth-token'); // Limpieza preventiva
+          window.location.href = '/login';
+        }}
       >
         <LogOut className="h-5 w-5" />
         Cerrar sesión

@@ -46,7 +46,9 @@
         "google": "Google",
         "apple": "Apple",
         "no_account": "¿No tienes cuenta?",
-        "have_account": "¿Ya tienes cuenta?"
+        "have_account": "¿Ya tienes cuenta?",
+        "invalid_email": "Email inválido",
+        "password_required": "La contraseña es requerida"
     },
     "settings": {
         "title": "Configuración",

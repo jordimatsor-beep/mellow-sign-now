@@ -50,6 +50,44 @@ serve(async (req: Request) => {
             .eq('document_id', document_id)
             .single()
 
+        let tsaData = null;
+        let tsaTimestamp = null;
+
+        // 1.5 REQUEST TIME STAMP (TSA)
+        if (signature && signature.hash_sha256) {
+            try {
+                console.log("Solicitando sello de tiempo para hash:", signature.hash_sha256);
+
+                // Call request-tsa function
+                const tsaRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/request-tsa`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ hash: signature.hash_sha256 })
+                });
+
+                if (tsaRes.ok) {
+                    const tsaResult = await tsaRes.json();
+                    tsaData = tsaResult.tsr; // Base64 TSR
+                    tsaTimestamp = tsaResult.timestamp;
+
+                    // Update signature with TSA info
+                    await supabase.from('signatures').update({
+                        tsa_response: tsaData,
+                        tsa_timestamp: tsaTimestamp
+                    }).eq('id', signature.id);
+
+                    console.log("TSA obtenido y guardado exitosamente");
+                } else {
+                    console.error("Error llamando a request-tsa:", await tsaRes.text());
+                }
+            } catch (e) {
+                console.error("Excepción al solicitar TSA:", e);
+            }
+        }
+
 
         // 2. Create PDF
         const pdfDoc = await PDFDocument.create()
@@ -106,9 +144,24 @@ serve(async (req: Request) => {
         // --- TECHNICAL EVIDENCE (From Signature table) ---
         if (signature) {
             drawText('EVIDENCIA TECNICA DE FIRMA', { bold: true })
-            drawText(`Fecha Firma (UTC): ${new Date(signature.signed_at).toUTCString()}`)
+            drawText(`Fecha Firma (Servidor): ${new Date(signature.signed_at).toUTCString()}`)
             drawText(`Dirección IP: ${signature.ip_address || 'N/A'}`)
             drawText(`Navegador (User Agent): ${signature.user_agent ? signature.user_agent.substring(0, 60) + '...' : 'N/A'}`)
+
+            if (tsaTimestamp) {
+                drawText(`SELLADO DE TIEMPO (TSA): SI`, { bold: true, color: rgb(0, 0.5, 0) });
+                drawText(`Autoridad: FreeTSA.org (RFC 3161)`);
+                drawText(`Timestamp Certificado: ${new Date(tsaTimestamp).toUTCString()}`);
+                drawText(`Token TSR disponible en base de datos (signatures.tsa_response)`);
+            } else if (signature.tsa_timestamp) {
+                // Caso donde ya existía
+                drawText(`SELLADO DE TIEMPO (TSA): SI`, { bold: true, color: rgb(0, 0.5, 0) });
+                drawText(`Autoridad: FreeTSA.org (RFC 3161)`);
+                drawText(`Timestamp Certificado: ${new Date(signature.tsa_timestamp).toUTCString()}`);
+            } else {
+                drawText(`SELLADO DE TIEMPO (TSA): NO DISPONIBLE`, { color: rgb(0.8, 0, 0) });
+            }
+
             if (signature.otp_verified_at) {
                 drawText(`Verificación OTP: SI (WhatsApp/SMS) - ${signature.otp_verified_at}`)
             }
