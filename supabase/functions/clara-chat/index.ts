@@ -9,10 +9,13 @@ serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
 
     // 0. Check if n8n webhook is configured
-    if (!N8N_WEBHOOK_URL) {
-        console.error("N8N_WEBHOOK_URL environment variable not set");
+    if (!N8N_WEBHOOK_URL || N8N_WEBHOOK_URL.includes('CHANGE_ME')) {
+        console.error("N8N_WEBHOOK_URL not set or is placeholder");
         return new Response(
-            JSON.stringify({ error: 'Servicio de IA no configurado' }),
+            JSON.stringify({
+                error: 'Servicio de IA no configurado',
+                details: 'La variable de entorno N8N_WEBHOOK_URL no está configurada correctamente en el archivo .env o en los secretos de Supabase.'
+            }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }
