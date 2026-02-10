@@ -29,41 +29,25 @@ export async function getAvailableCredits(userId: string): Promise<number> {
  * Deducts from the oldest pack that has credits remaining.
  */
 export async function consumeCredit(userId: string): Promise<CreditResult> {
-    // 1. Find the oldest available pack (FIFO)
-    // We need to fetch packs where credits_used < credits_total
-    // Note: Supabase JS filter `.lt('credits_used', 'credits_total')` doesn't work directly comparing two columns easily in simple query.
-    // We might need to fetch all active packs or use a stored procedure if performance is critical.
-    // For now, simpler approach: fetch all non-fully-used packs for user.
-    // Actually, we can't easily do "column A < column B" in standard Postgrest filter without RPC or raw, 
-    // but we can fetch all and filter in app or rely on 'credits_used' being updated correctly.
-
-    // Alternative: Use the RPC function `consume_credit` if we created it in schema.sql.
-    // Checking schema.sql provided earlier... YES, `consume_credit` RPC exists!
-    // It handles locking and logic atomically.
-
     try {
-        const { data, error } = await supabase
-            .rpc('consume_credit', { p_user_id: userId });
+        // userId is handled securely by the RPC via auth.uid()
+        // we just need to pass the amount
+        const { error } = await supabase
+            .rpc('consume_credit', { amount: 1 });
 
         if (error) {
             console.error('Error executing consume_credit RPC:', error);
+            // Check for specific error messages
+            if (error.message.includes('Insufficient credits')) {
+                return { success: false, remaining: 0, message: 'No tienes suficientes créditos' };
+            }
             return { success: false, remaining: 0, message: error.message };
         }
 
-        // RPC returns a table/row signature on setof... checking signature in schema.
-        // RETURNS TABLE(success BOOLEAN, remaining INTEGER)
-        // So data should be an array with 1 object or similar.
-
-        // If RPC returned rows
-        if (data && data.length > 0) {
-            const result = data[0]; // { success: true, remaining: 5 }
-            if (result.success) {
-                return { success: true, remaining: result.remaining };
-            }
-        }
-
-        // If we're here, it means success false or no data
-        return { success: false, remaining: 0, message: 'No credits available' };
+        // If no error, it was successful.
+        // We can fetch the remaining credits to display
+        const remaining = await getAvailableCredits(userId);
+        return { success: true, remaining };
 
     } catch (e: any) {
         console.error('Exception in consumeCredit:', e);

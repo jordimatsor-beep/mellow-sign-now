@@ -28,10 +28,7 @@ export type CreditTransaction = Database['public']['Functions']['get_credit_tran
 /**
  * Response from consume_credit RPC (the version that returns success/remaining)
  */
-export type ConsumeCreditsResult = {
-    remaining: number;
-    success: boolean;
-};
+export type ConsumeCreditsResult = void;
 
 // ============================================================================
 // Table Row Types
