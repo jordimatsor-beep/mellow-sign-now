@@ -1,4 +1,4 @@
-import { Plus, Sparkles, FileText, Clock, Check, Loader2, File } from "lucide-react";
+import { Plus, Sparkles, FileText, Clock, Check, Loader2, File, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -91,6 +91,26 @@ export default function Dashboard() {
           <Link to="/documents/new">{t('dashboard.create_document')}</Link>
         </Button>
       </div>
+
+      {/* Low Credits Warning */}
+      {credits < 3 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-medium text-amber-900">Te quedan pocos créditos ({credits})</h3>
+                <p className="text-sm text-amber-700">Recarga ahora para no interrumpir tus envíos.</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" className="border-amber-200 bg-white text-amber-700 hover:bg-amber-50 hover:border-amber-300" asChild>
+              <Link to="/credits/purchase">Comprar pack</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Grid - Denser */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">

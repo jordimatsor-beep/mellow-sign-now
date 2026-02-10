@@ -2,8 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts'
 
-// Security: Support Chat Webhook URL (Hardcoded as requested)
-const N8N_WEBHOOK_URL = 'https://automatiajordi.app.n8n.cloud/webhook/8a593453-70da-4c3f-8e01-6068e0d0dd7c/chat'
+// Security: Support Chat Webhook URL
+const N8N_WEBHOOK_URL = Deno.env.get('N8N_SUPPORT_WEBHOOK_URL') || 'https://automatiajordi.app.n8n.cloud/webhook/8a593453-70da-4c3f-8e01-6068e0d0dd7c/chat';
 
 serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);

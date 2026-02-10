@@ -1,8 +1,9 @@
-import { Home, FileText, Sparkles, CreditCard, Settings, HelpCircle, LogOut, X } from "lucide-react";
+import { Home, FileText, Sparkles, CreditCard, Settings, HelpCircle, LogOut, X, Plus } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/Logo";
 import { useAuth } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
 
 interface MobileMenuProps {
   onClose: () => void;
@@ -13,6 +14,7 @@ export function MobileMenu({ onClose }: MobileMenuProps) {
   const navigate = useNavigate();
 
   const menuItems = [
+    { to: "/documents/new", icon: Plus, label: "Nuevo Envío", highlight: true },
     { to: "/dashboard", icon: Home, label: "Inicio" },
     { to: "/documents", icon: FileText, label: "Mis documentos" },
     { to: "/clara", icon: Sparkles, label: "Asistente Clara" },
@@ -45,14 +47,19 @@ export function MobileMenu({ onClose }: MobileMenuProps) {
         <ul className="space-y-1">
           {menuItems.map((item) => (
             <li key={item.to}>
-              <Link
-                to={item.to}
-                onClick={onClose}
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              <button
+                onClick={() => {
+                  onClose();
+                  navigate(item.to);
+                }}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left",
+                  item.highlight && "bg-primary/5 text-primary hover:bg-primary/10"
+                )}
               >
-                <item.icon className="h-5 w-5 text-muted-foreground" />
+                <item.icon className={cn("h-5 w-5", item.highlight ? "text-primary" : "text-muted-foreground")} />
                 {item.label}
-              </Link>
+              </button>
             </li>
           ))}
         </ul>

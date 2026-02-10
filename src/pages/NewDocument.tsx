@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Upload, Sparkles, FileText, ArrowRight, Loader2, User, Lock, Unlock, Receipt, Wrench, FileSignature, ClipboardList, MapPin } from "lucide-react";
 import { ContactSelector } from "@/components/contacts/ContactSelector";
 import { useProfile } from "@/context/ProfileContext";
@@ -19,13 +20,18 @@ import { sanitizeFileName } from "@/lib/utils";
 type Step = "source" | "doctype" | "upload" | "signer" | "options" | "confirm";
 type DocType = "presupuesto" | "parte" | "contrato" | "otro";
 
+// ... existing imports ...
+
 export default function NewDocument() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const draftId = searchParams.get('draftId');
   const { profile } = useProfile();
   const [step, setStep] = useState<Step>("source");
   const [source, setSource] = useState<"upload" | "clara" | null>(null);
   const [docType, setDocType] = useState<DocType | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "creating_record" | "sending" | "success" | "error">("idle");
+  const isSubmitting = uploadStatus !== "idle" && uploadStatus !== "error" && uploadStatus !== "success";
 
   // Form Data
   const [file, setFile] = useState<File | null>(null);
@@ -46,6 +52,18 @@ export default function NewDocument() {
   const [expiresInDays, setExpiresInDays] = useState("7");
   const [isContactSelectorOpen, setIsContactSelectorOpen] = useState(false);
 
+  // Fetch credits
+  const { data: credits = 0 } = useQuery({
+    queryKey: ['credits-check'],
+    queryFn: async () => {
+      const { data } = await supabase.from('credit_packs').select('credits_total, credits_used');
+      if (data) {
+        return data.reduce((acc, pack) => acc + (pack.credits_total || 0) - (pack.credits_used || 0), 0);
+      }
+      return 0;
+    }
+  });
+
   // Signature position settings
   const [signaturePosition, setSignaturePosition] = useState<"new_page" | "last_page" | "custom">("last_page");
   const [signaturePage, setSignaturePage] = useState(0);
@@ -62,8 +80,76 @@ export default function NewDocument() {
     if (contact.phone) setSignerPhone(contact.phone);
     if (contact.nif) setSignerNif(contact.nif);
     if (contact.address) setSignerAddress(contact.address);
+    if (contact.address) setSignerAddress(contact.address);
     toast.success("Datos importados de la agenda");
   };
+
+  // Load draft data
+  useEffect(() => {
+    if (!draftId) return;
+
+    const loadDraft = async () => {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('id', draftId)
+        .single();
+
+      if (error) {
+        toast.error("Error al cargar el borrador");
+        console.error(error);
+        return;
+      }
+
+      if (data) {
+        // Cast to any to access properties that might not be in the generated type definition yet
+        const draft = data as any;
+        setTitle(draft.title || '');
+        setSignerName(draft.signer_name || '');
+        setSignerEmail(draft.signer_email || '');
+        setSignerNif(draft.signer_tax_id || ''); // Correct column name
+        setSignerAddress(draft.signer_address || '');
+        setSignerPhone(draft.signer_phone || '');
+        setCustomMessage(draft.custom_message || '');
+
+        // Restore signature position
+        if (draft.signature_page !== undefined) setSignaturePage(draft.signature_page);
+        if (draft.signature_x !== undefined) setSignatureX(draft.signature_x);
+        if (draft.signature_y !== undefined) setSignatureY(draft.signature_y);
+
+        // Restore specific position logic if possible (e.g. preset)
+        if (draft.signature_page === 0) setSignaturePosition("new_page");
+        else if (draft.signature_page === -1) setSignaturePosition("last_page");
+        else setSignaturePosition("custom");
+
+        // Restore security settings
+        if (draft.security_level) {
+          setSecurityLevel(draft.security_level);
+          setWhatsappVerification(draft.security_level === 'whatsapp_otp');
+        }
+
+        if (draft.file_url) {
+          try {
+            const { data: fileData, error: fileError } = await supabase.storage.from('documents').download(draft.file_path || draft.file_url.split('/documents/').pop());
+            if (fileData) {
+              const file = new File([fileData], "documento_guardado.pdf", { type: "application/pdf" });
+              setFile(file);
+            }
+          } catch (e) {
+            console.error("Error loading file content", e);
+          }
+        }
+
+        if (draft.file_url) {
+          setStep('signer');
+          setSource('upload');
+          setDocType('otro');
+        }
+      }
+    };
+
+    loadDraft();
+  }, [draftId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -136,8 +222,30 @@ export default function NewDocument() {
   const handleCreateDocument = async () => {
     if (!file || !title || !signerEmail || !signerName) return;
 
-    setIsSubmitting(true);
+    if (credits <= 0) {
+      toast.error("No tienes créditos suficientes", {
+        description: "Necesitas al menos 1 crédito para enviar un documento.",
+        action: {
+          label: "Comprar créditos",
+          onClick: () => navigate('/credits/purchase')
+        }
+      });
+      return;
+    }
+
+    setUploadStatus("uploading");
     try {
+      setUploadStatus("creating_record");
+
+      let fileUrl = "";
+
+      // Check if it's the dummy file from draft loading (avoid re-upload if possible, or just re-upload it)
+      // If the file is the dummy one, we might want to skip upload if we can retrieve the original URL,
+      // but we don't store the original URL in state easily without another state var.
+      // However, re-uploading the same content is safe. 
+      // Optimization: Check if file name matches our dummy name, if so, assume we can reuse existing URL if we had it, but we don't have it handy in this scope without fetching again or storing it.
+      // So standard upload path is safest for now.
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No estás autenticado");
 
@@ -149,44 +257,87 @@ export default function NewDocument() {
       if (uploadError) throw uploadError;
 
       const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(fileName);
-      const fileUrl = publicUrlData.publicUrl;
+      fileUrl = publicUrlData.publicUrl;
 
-      const { data: doc, error: insertError } = await supabase
-        .from('documents')
-        .insert({
-          user_id: user.id,
-          title,
-          file_url: fileUrl,
-          status: 'draft',
-          signer_name: signerName,
-          signer_email: signerEmail,
-          signer_phone: signerPhone,
-          signer_tax_id: signerNif || null,
-          signer_address: signerAddress || null,
-          custom_message: customMessage,
-          signature_type: signatureType,
-          expires_at: new Date(Date.now() + parseInt(expiresInDays) * 24 * 60 * 60 * 1000).toISOString(),
-          sign_token: crypto.randomUUID(),
-          security_level: securityLevel,
-          // Signature position settings
-          signature_page: signaturePage,
-          signature_x: signatureX,
-          signature_y: signatureY
-        })
-        .select()
-        .single();
+      let doc;
+      let error;
 
-      if (insertError) throw insertError;
+      if (draftId) {
+        // Update existing draft
+        const { data: updatedDoc, error: updateError } = await supabase
+          .from('documents')
+          .update({
+            title,
+            file_url: fileUrl, // Update file URL (new version)
+            status: 'draft', // Keep as draft initially (will optionally switch to sent below)
+            signer_name: signerName,
+            signer_email: signerEmail,
+            signer_phone: signerPhone,
+            signer_tax_id: signerNif || null,
+            signer_address: signerAddress || null,
+            custom_message: customMessage,
+            signature_type: signatureType,
+            expires_at: new Date(Date.now() + parseInt(expiresInDays) * 24 * 60 * 60 * 1000).toISOString(),
+            // Don't update sign_token unless necessary, but safer to keep it or rotate it. 
+            // If status was 'draft', token might be valid.
+            security_level: securityLevel,
+            signature_page: signaturePage,
+            signature_x: signatureX,
+            signature_y: signatureY
+          })
+          .eq('id', draftId)
+          .select()
+          .single();
+
+        doc = updatedDoc;
+        error = updateError;
+      } else {
+        // Create new
+        const { data: newDoc, error: insertError } = await supabase
+          .from('documents')
+          .insert({
+            user_id: user.id,
+            title,
+            file_url: fileUrl,
+            status: 'draft',
+            signer_name: signerName,
+            signer_email: signerEmail,
+            signer_phone: signerPhone,
+            signer_tax_id: signerNif || null,
+            signer_address: signerAddress || null,
+            custom_message: customMessage,
+            signature_type: signatureType,
+            expires_at: new Date(Date.now() + parseInt(expiresInDays) * 24 * 60 * 60 * 1000).toISOString(),
+            sign_token: crypto.randomUUID(),
+            security_level: securityLevel,
+            signature_page: signaturePage,
+            signature_x: signatureX,
+            signature_y: signatureY
+          })
+          .select()
+          .single();
+
+        doc = newDoc;
+        error = insertError;
+      }
+
+      if (error) throw error;
 
       if (doc?.id) {
+        setUploadStatus("sending");
+        // Always pass sign_token. If it was a draft, it should have one. If we updated, we fetched it.
+        // Wait, update().select() returns the object.
         await handleSendDocument(doc.id, user.id, doc.sign_token!);
+      } else {
+        setUploadStatus("error");
       }
+
 
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error(error);
       const message = error instanceof Error ? error.message : "Error al enviar documento";
       toast.error(message);
-      setIsSubmitting(false);
+      setUploadStatus("error");
     }
   };
 
@@ -223,7 +374,8 @@ export default function NewDocument() {
         signer_name: signerName,
         sign_token: signToken,
         sender_name: profile?.name || profile?.email || 'Usuario',
-        title: title
+        title: title,
+        custom_message: customMessage
       };
 
       const { data: fnData, error: fnError } = await supabase.functions.invoke('send-invite-v2', {
@@ -747,9 +899,21 @@ export default function NewDocument() {
             <Button
               className="w-full"
               onClick={() => setStep("confirm")}
+              disabled={isSubmitting}
             >
-              Revisar y enviar
-              <ArrowRight className="ml-2 h-4 w-4" />
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {uploadStatus === 'uploading' && "Subiendo archivo..."}
+                  {uploadStatus === 'creating_record' && "Guardando datos..."}
+                  {uploadStatus === 'sending' && "Enviando invitación..."}
+                </>
+              ) : (
+                <>
+                  Revisar y enviar
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
             </Button>
           </div>
         );

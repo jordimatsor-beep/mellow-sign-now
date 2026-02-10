@@ -32,7 +32,7 @@ function DocumentCard({ doc }: { doc: Document }) {
 
   return (
     <Link
-      to={`/documents/${doc.id}`}
+      to={status === 'draft' ? `/documents/new?draftId=${doc.id}` : `/documents/${doc.id}`}
       className="group block rounded-xl border bg-white p-4 shadow-sm transition-all hover:border-primary/20 hover:shadow-md"
     >
       <div className="flex items-center justify-between gap-4">

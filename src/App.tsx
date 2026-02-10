@@ -34,6 +34,7 @@ import NotFound from "@/pages/NotFound";
 import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
 import UpdatePassword from "@/pages/auth/UpdatePassword";
+import AccountConfirmed from "@/pages/auth/AccountConfirmed";
 import Contacts from "@/pages/Contacts";
 import Legal from "@/pages/Legal";
 import Terms from "@/pages/Terms";
@@ -67,6 +68,7 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/update-password" element={<UpdatePassword />} />
+                <Route path="/account-confirmed" element={<AccountConfirmed />} />
 
                 {/* Public signing page & Content pages */}
                 <Route element={<PublicLayout />}>

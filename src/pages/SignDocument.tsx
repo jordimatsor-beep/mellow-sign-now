@@ -44,6 +44,7 @@ interface DocumentData {
   // Internal fields from RPC
   otp_code_hash?: string;
   otp_expires_at?: string;
+  message?: string;
 }
 
 export default function SignDocument() {
@@ -361,7 +362,8 @@ export default function SignDocument() {
             email: docRecord.issuer_email,
           },
           signed_file_url: finalSignedFileUrl,
-          certificate_url: finalCertificateUrl
+          certificate_url: finalCertificateUrl,
+          message: (docRecord as any).message || (docRecord as any).custom_message
         };
 
         setDocData(doc);
@@ -650,6 +652,25 @@ export default function SignDocument() {
               )}
             </div>
           </div>
+        )}
+
+        {/* Sender Message */}
+        {docData?.message && (
+          <Alert className="bg-blue-50 border-blue-100">
+            <div className="flex gap-3">
+              <div className="flex-shrink-0">
+                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-lg">💬</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <AlertTitle className="text-blue-900 font-medium">Mensaje de {docData.sender_name || 'Remitente'}</AlertTitle>
+                <AlertDescription className="text-blue-800">
+                  "{docData.message}"
+                </AlertDescription>
+              </div>
+            </div>
+          </Alert>
         )}
 
 

@@ -83,8 +83,17 @@ export function ContactSelector({ isOpen, onClose, onSelect }: ContactSelectorPr
                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
                         </div>
                     ) : filteredContacts.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground text-sm">
-                            No se encontraron contactos.
+                        <div className="flex flex-col items-center justify-center py-8 text-center space-y-3">
+                            <User className="h-10 w-10 text-slate-200" />
+                            <div>
+                                <p className="text-sm font-medium text-slate-900">No se encontraron contactos</p>
+                                <p className="text-xs text-slate-500 max-w-[200px] mx-auto mt-1">
+                                    {searchQuery ? "Intenta con otro nombre" : "Añade contactos frecuentes desde la sección Agenda"}
+                                </p>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={onClose}>
+                                Introducir manualmente
+                            </Button>
                         </div>
                     ) : (
                         <div className="space-y-1">

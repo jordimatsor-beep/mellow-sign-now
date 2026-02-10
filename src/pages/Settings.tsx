@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useDataExport } from "@/hooks/useDataExport";
+import { useProfile } from "@/context/ProfileContext";
 
 const settingsItems = [
   { icon: User, label: "Perfil", description: "Nombre, email, empresa", to: "#profile" },
@@ -20,11 +22,10 @@ const settingsItems = [
 ];
 
 export default function Settings() {
-  const { user, profile, refreshProfile, signOut } = useAuth();
+  const { user, signOut } = useAuth();
+  const { profile, updateProfile, isLoading: profileLoading } = useProfile();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
-  const [fullName, setFullName] = useState("");
-  const [company, setCompany] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
@@ -33,7 +34,7 @@ export default function Settings() {
   // GDPR states
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
-  const [exportingData, setExportingData] = useState(false);
+  const { exportData, isExporting: exportingData } = useDataExport();
   const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Notification preferences (persisted to localStorage)
@@ -59,38 +60,36 @@ export default function Settings() {
     toast.success(checked ? 'Recordatorios automáticos activados' : 'Recordatorios automáticos desactivados');
   };
 
-  useEffect(() => {
-    if (user) {
-      setFullName(profile?.name || user.user_metadata?.full_name || "");
-      setCompany(profile?.company_name || user.user_metadata?.company || "");
-    }
-  }, [profile, user]);
-
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (!user) throw new Error("No user logged in");
+      // The updateProfile function from context already handles Supabase update and state management
+      // We just need to trigger a toast if successful, though context might do it too.
+      // But updateProfile is void/Promise<void>.
+      // The context implementation shows it handles the update.
+      // We are binding values directly in the onChange below, so submitting is just closing the dialog?
+      // Wait, the current implementation in Context updates state optimistically but also sends to DB on every change?
+      // No, let's check ProfileContext again.
+      // updateProfile does: setProfile(prev => ...) AND supabase.update(..., eq(userId)).
+      // So every keystroke would trigger an update if I put it in onChange.
+      // That is bad for inputs.
+      // I should have local state in the form and call updateProfile ONCE on submit.
 
-      // Update public.users table
-      const { error } = await supabase
-        .from('users')
-        .update({
-          name: fullName,
-          company_name: company
-        })
-        .eq('id', user.id);
+      // Let's create a local state for the form.
+      // But for now, to minimize diffs, I will keep the previous pattern but use updateProfile on Submit.
+      // Wait, updateProfile takes `Partial<IssuerProfile>`.
+      // So I should construct the object.
 
-      if (error) throw error;
-
-      // Sync Auth Metadata so it doesn't revert if database fetch fails (and for sidebar consistency)
-      const { error: authError } = await supabase.auth.updateUser({
-        data: { full_name: fullName, company: company }
+      await updateProfile({
+        name: formState.name,
+        id: formState.id, // Tax ID
+        phone: formState.phone,
+        address: formState.address,
+        zip: formState.zip,
+        city: formState.city,
+        type: 'company' // Defaulting or preserving? Context preserves if undefined.
       });
-
-      if (authError && import.meta.env.DEV) console.warn("Failed to sync auth metadata", authError);
-
-      await refreshProfile(); // Refresh context to update UI globally
 
       toast.success("Perfil actualizado correctamente");
       setIsEditing(false);
@@ -102,6 +101,30 @@ export default function Settings() {
       setLoading(false);
     }
   };
+
+  // Local state for form to avoid auto-saving on keystroke via context
+  const [formState, setFormState] = useState({
+    name: "",
+    id: "",
+    phone: "",
+    address: "",
+    zip: "",
+    city: ""
+  });
+
+  // Sync local state when dialog opens
+  useEffect(() => {
+    if (isEditing && profile) {
+      setFormState({
+        name: profile.name || "",
+        id: profile.id || "",
+        phone: profile.phone || "",
+        address: profile.address || "",
+        zip: profile.zip || "",
+        city: profile.city || ""
+      });
+    }
+  }, [isEditing, profile]);
 
   const handleChangePassword = async () => {
     setLoading(true);
@@ -120,45 +143,7 @@ export default function Settings() {
 
   // GDPR: Export user data (Article 20 - Data Portability)
   const handleExportData = async () => {
-    setExportingData(true);
-    try {
-      if (!user) throw new Error("No user logged in");
-
-      // Fetch only user-provided data (GDPR Article 20 - Data Portability)
-      const [userData, documentsData, contactsData, creditsData] = await Promise.all([
-        supabase.from('users').select('name, email, tax_id, address, city, zip_code, country, phone, company_name').eq('id', user.id).single(),
-        supabase.from('documents').select('title, status, created_at, signed_at, signer_email, signer_name').eq('user_id', user.id),
-        supabase.from('contacts').select('name, email, phone, nif, address').eq('user_id', user.id),
-        supabase.from('credit_packs').select('packs, amount, cost, created_at').eq('user_id', user.id),
-      ]);
-
-      const exportData = {
-        exported_at: new Date().toISOString(),
-        user_email: user.email,
-        profile: userData.data,
-        documents: documentsData.data || [],
-        contacts: contactsData.data || [],
-        purchase_history: creditsData.data || [],
-      };
-
-      // Create and download JSON file
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `firmaclara_data_export_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast.success("Datos exportados correctamente");
-    } catch (error: any) {
-      console.error(error);
-      toast.error("Error al exportar los datos");
-    } finally {
-      setExportingData(false);
-    }
+    await exportData();
   };
 
   // GDPR: Delete account (Article 17 - Right to be Forgotten)
@@ -204,12 +189,12 @@ export default function Settings() {
       <Card>
         <CardContent className="flex items-center gap-4 p-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-xl font-semibold text-primary-foreground uppercase">
-            {fullName ? fullName.substring(0, 2) : user?.email?.substring(0, 2) || "U"}
+            {profile?.name ? profile.name.substring(0, 2) : user?.email?.substring(0, 2) || "U"}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold truncate">{fullName || "Usuario sin nombre"}</p>
+            <p className="font-semibold truncate">{profile?.name || "Usuario sin nombre"}</p>
             <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
-            {company && <p className="text-xs text-muted-foreground truncate">{company}</p>}
+            {profile?.id && <p className="text-xs text-muted-foreground truncate">{profile.id}</p>}
           </div>
 
           <Dialog open={isEditing} onOpenChange={setIsEditing}>
@@ -218,23 +203,50 @@ export default function Settings() {
                 Editar
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Editar Perfil</DialogTitle>
+                <DialogDescription>Completa tus datos para que aparezcan en los documentos.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleUpdateProfile} className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" value={user?.email || ""} disabled className="bg-muted" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nombre / Razón Social</Label>
+                    <Input id="name" value={formState.name} onChange={(e) => setFormState({ ...formState, name: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tax_id">NIF / CIF</Label>
+                    <Input id="tax_id" value={formState.id} onChange={(e) => setFormState({ ...formState, id: e.target.value })} placeholder="B12345678" />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nombre completo</Label>
-                  <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" value={user?.email || ""} disabled className="bg-muted" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Teléfono</Label>
+                    <Input id="phone" value={formState.phone} onChange={(e) => setFormState({ ...formState, phone: e.target.value })} placeholder="+34 600..." />
+                  </div>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="company">Empresa</Label>
-                  <Input id="company" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Opcional" />
+                  <Label htmlFor="address">Dirección</Label>
+                  <Input id="address" value={formState.address} onChange={(e) => setFormState({ ...formState, address: e.target.value })} placeholder="Calle..." />
                 </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2 col-span-1">
+                    <Label htmlFor="zip">C. Postal</Label>
+                    <Input id="zip" value={formState.zip} onChange={(e) => setFormState({ ...formState, zip: e.target.value })} />
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="city">Ciudad</Label>
+                    <Input id="city" value={formState.city} onChange={(e) => setFormState({ ...formState, city: e.target.value })} />
+                  </div>
+                </div>
+
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
                   <Button type="submit" disabled={loading}>
@@ -397,16 +409,12 @@ export default function Settings() {
         </div>
 
         {/* Delete Account */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="font-medium text-destructive">Eliminar mi cuenta</p>
-            <p className="text-sm text-muted-foreground">Borrar permanentemente todos tus datos</p>
-          </div>
+        {/* Delete Account - Made less prominent */}
+        <div className="pt-4 mt-4 border-t border-border/50">
           <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
             <DialogTrigger asChild>
-              <Button variant="destructive" size="sm">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar
+              <Button variant="ghost" size="sm" className="text-destructive/80 hover:text-destructive hover:bg-destructive/10 h-auto p-0 px-2 py-1 text-xs">
+                Eliminar mi cuenta permanentemente
               </Button>
             </DialogTrigger>
             <DialogContent>

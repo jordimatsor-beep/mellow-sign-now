@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { triggerN8n } from '../_shared/n8n.ts'
 
 // --- INLINED _shared/cors.ts START ---
 const ALLOWED_ORIGINS = [
@@ -52,6 +53,7 @@ interface RequestBody {
   sign_token: string;
   sender_name?: string;
   title?: string;
+  custom_message?: string;
 }
 
 serve(async (req: Request) => {
@@ -90,7 +92,7 @@ serve(async (req: Request) => {
       throw new Error('Invalid JSON body');
     }
 
-    const { document_id, signer_email, signer_name, sign_token, sender_name, title } = body;
+    const { document_id, signer_email, signer_name, sign_token, sender_name, title, custom_message } = body;
 
     if (!signer_email || !sign_token || !document_id) {
       console.error("Missing fields:", body);
@@ -113,7 +115,6 @@ serve(async (req: Request) => {
       throw new Error('Unauthorized: You do not own this document')
     }
 
-    // URL Configuration
     const siteUrl = Deno.env.get('SITE_URL') || 'https://firmaclara.es';
     const signUrl = `${siteUrl}/sign/${sign_token}`
 
@@ -122,7 +123,42 @@ serve(async (req: Request) => {
     const sender = escapeHtml(sender_name) || 'FirmaClara'
     const safeSignerName = escapeHtml(signer_name)
 
+    // --- N8N / RESEND LOGIC START ---
+
+    // 1. Try to trigger n8n
+    const n8nPayload = {
+      document_title: docTitle,
+      sender_name: sender,
+      signer_name: safeSignerName,
+      signer_email: signer_email,
+      sign_url: signUrl,
+      // Default expiration 7 days from now if not present
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      custom_message: "Documento enviado desde FirmaClara"
+    };
+
+    const n8nSuccess = await triggerN8n('document.sent', n8nPayload);
+
+    if (n8nSuccess) {
+      console.log('n8n triggered successfully. Email responsibility delegated to n8n.');
+      return new Response(
+        JSON.stringify({ success: true, method: 'n8n' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('n8n not configured or failed. Falling back to internal Resend logic.');
+
+    // --- RESEND FALLBACK START ---
+
     // Premium HTML Email Template
+    const messageHtml = custom_message ? `
+      <div style="background-color: #eef2ff; border-left: 4px solid #6366f1; padding: 16px; margin: 20px 0; border-radius: 4px;">
+        <p style="margin: 0; color: #4338ca; font-weight: 500;">Mensaje de ${sender}:</p>
+        <p style="margin: 8px 0 0 0; color: #3730a3; font-style: italic;">"${escapeHtml(custom_message)}"</p>
+      </div>
+    ` : '';
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -252,12 +288,14 @@ serve(async (req: Request) => {
               <div class="header">
                 <a href="${siteUrl}" class="logo">Firma<span>Clara</span></a>
               </div>
-              
+
               <div class="content">
                 <h1>Solicitud de Firma</h1>
                 <p>Hola <strong>${safeSignerName}</strong>,</p>
                 <p><strong>${sender}</strong> te ha enviado un documento y requiere tu firma electrónica.</p>
-                
+
+                ${messageHtml}
+
                 <div class="highlight-box">
                   <span class="doc-name">📄 ${docTitle}</span>
                   <span class="sender-name">De: ${sender}</span>

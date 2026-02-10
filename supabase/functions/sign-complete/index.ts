@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib@1.17.1'
 import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
+import { triggerN8n } from '../_shared/n8n.ts'
 
 // --- INLINED CORS LOGIC (No external dependencies) ---
 const ALLOWED_ORIGINS = [
@@ -312,6 +313,40 @@ serve(async (req: Request) => {
             });
         } catch (e) {
             console.error("Trigger audit error:", e);
+        }
+
+        // 10. Trigger n8n Webhook (Document Signed)
+        try {
+            // Construct payload for n8n
+            const n8nPayload = {
+                document_title: doc.title || "Documento sin título",
+                sender_email: doc.sender_email || "unknown", // Might need to fetch user email if not in doc
+                sender_name: "Usuario FirmaClara", // ideally fetch from users table but keeping it simple for now or fetch below
+                signer_name: doc.signer_name,
+                signed_at: signedAt.toISOString(),
+                download_url: publicUrlData.publicUrl
+            };
+
+            // We might want to fetch the real sender email/name
+            if (doc.user_id) {
+                const { data: userData } = await supabase.from('users').select('name, email').eq('id', doc.user_id).single();
+                if (userData) {
+                    n8nPayload.sender_name = userData.name || n8nPayload.sender_name;
+                    n8nPayload.sender_email = userData.email || n8nPayload.sender_email;
+                } else {
+                    // Try auth.users (admin only usually, but we have service key)
+                    const { data: authUser } = await supabase.auth.admin.getUserById(doc.user_id);
+                    if (authUser?.user) {
+                        n8nPayload.sender_email = authUser.user.email || n8nPayload.sender_email;
+                        n8nPayload.sender_name = authUser.user.user_metadata?.full_name || n8nPayload.sender_name;
+                    }
+                }
+            }
+
+            await triggerN8n('document.signed', n8nPayload);
+
+        } catch (e) {
+            console.error("Trigger n8n error:", e);
         }
 
         // 11. Log event

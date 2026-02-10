@@ -28,7 +28,7 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Logo - FirmaClara */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center h-14 py-1">
+          <div className="flex items-center h-10 md:h-14 py-1">
             <Logo className="h-full w-auto object-contain" />
           </div>
         </div>

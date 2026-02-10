@@ -10,25 +10,6 @@ const CheckoutSchema = z.object({
     returnUrl: z.string().url().optional()
 });
 
-// Pack Details (matching pack_types table in database)
-const PACK_DETAILS: Record<string, { name: string; credits: number; amount: number }> = {
-    basic: {
-        name: 'Básico',
-        credits: 10,
-        amount: 1200  // €12.00 in cents
-    },
-    pro: {
-        name: 'Profesional',
-        credits: 30,
-        amount: 2900  // €29.00 in cents
-    },
-    business: {
-        name: 'Business',
-        credits: 100,
-        amount: 6900  // €69.00 in cents
-    }
-};
-
 const ALLOWED_ORIGINS = [
     'https://firmaclara.com',
     'https://mellow-sign-now.lovable.app',
@@ -42,6 +23,7 @@ const ALLOWED_RETURN_URLS = [
     'http://localhost:8080',
     'http://localhost:3000'
 ];
+
 serve(async (req) => {
     // CORS Hardening
     const origin = req.headers.get('Origin');
@@ -101,6 +83,28 @@ serve(async (req) => {
 
         const { priceId, returnUrl } = parseResult.data;
 
+        // Fetch pack details from database
+        const { data: pack, error: packError } = await supabaseClient
+            .from('credit_packs')
+            .select('*')
+            .eq('slug', priceId)
+            .single();
+
+        if (packError || !pack) {
+            console.error('Error fetching pack:', packError);
+            return new Response(
+                JSON.stringify({ error: 'Invalid pack selected' }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+        }
+
+        if (!pack.is_active) {
+            return new Response(
+                JSON.stringify({ error: 'This pack is no longer available' }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+        }
+
         // Return URL Security Check
         let finalReturnUrl = req.headers.get('origin');
         if (returnUrl) {
@@ -114,8 +118,6 @@ serve(async (req) => {
             finalReturnUrl = returnUrl;
         }
 
-        const pack = PACK_DETAILS[priceId];
-
         // 3. Create Session
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
@@ -125,9 +127,9 @@ serve(async (req) => {
                         currency: 'eur',
                         product_data: {
                             name: pack.name,
-                            description: `Recarga de ${pack.credits} créditos para envíos.`,
+                            description: pack.description || `Recarga de ${pack.credits} créditos`,
                         },
-                        unit_amount: pack.amount,
+                        unit_amount: pack.price, // Database uses cents
                     },
                     quantity: 1,
                 },
@@ -148,12 +150,13 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
+        // Note: Using pack.price (which is amount in cents) for event_log
         await supabaseAdmin.from('event_logs').insert({
             user_id: user.id,
             event_type: 'checkout_started',
             event_data: {
                 pack: priceId,
-                amount: pack.amount
+                amount: pack.price
             }
         })
 
@@ -163,7 +166,7 @@ serve(async (req) => {
         )
 
     } catch (error: unknown) {
-        console.error('Error:', error)
+        if (import.meta.env.DEV) console.error('Error:', error)
         const message = error instanceof Error ? error.message : 'Unknown error'
         return new Response(
             JSON.stringify({ error: message }),

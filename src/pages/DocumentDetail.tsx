@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 type TimelineEvent = {
   date: string;
@@ -181,44 +182,57 @@ export default function DocumentDetail() {
 
       <Separator />
 
-      {/* Timeline */}
+      {/* Timeline / Audit Trail */}
       <div className="space-y-3">
-        <h3 className="font-medium">Cronología</h3>
-        <div className="space-y-6 pl-2">
-          {timeline.map((item, index) => (
-            <div key={index} className="flex gap-4 relative">
-              {/* Connector line */}
-              {index < timeline.length - 1 && (
-                <div className="absolute left-[11px] top-8 bottom-0 w-0.5 bg-slate-200 -z-10" />
-              )}
+        <h3 className="font-medium flex items-center gap-2">
+          <Award className="h-4 w-4 text-purple-600" />
+          Trazabilidad y Evidencias
+        </h3>
+        <Card className="bg-slate-50/50 border-slate-200">
+          <CardContent className="p-6">
+            <div className="space-y-6 relative ml-2">
+              <div className="absolute left-[11px] top-2 bottom-4 w-0.5 bg-slate-200 -z-10" />
 
-              {/* Icon Status */}
-              <div
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${item.completed
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-slate-300 bg-white"
-                  }`}
-              >
-                {item.completed && <Check className="h-3 w-3" />}
-              </div>
-
-              {/* Content */}
-              <div className="pb-2">
-                <p className={`text-sm font-medium ${item.completed ? "text-slate-900" : "text-slate-500"}`}>
-                  {item.event}
-                </p>
-                <p className="text-xs text-muted-foreground">{item.date}</p>
-                {/* Visual extra for "Certified" */}
-                {item.isCertificate && (
-                  <div className="mt-2 flex items-center gap-2 rounded-md bg-purple-50 p-2 text-xs text-purple-700 border border-purple-100">
-                    <Award className="h-3 w-3" />
-                    <span>Evidencia digital generada y sellada con TSA</span>
+              {timeline.map((item, index) => (
+                <div key={index} className="flex gap-4 relative">
+                  {/* Icon Status */}
+                  <div
+                    className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 bg-white z-10",
+                      item.completed ? "border-primary text-primary" : "border-slate-300 text-slate-300",
+                      item.isCertificate ? "border-purple-500 text-purple-600 bg-purple-50" : ""
+                    )}
+                  >
+                    {item.isCertificate ? <Award className="h-3 w-3" /> : <Check className="h-3 w-3" />}
                   </div>
-                )}
-              </div>
+
+                  {/* Content */}
+                  <div className="pb-1">
+                    <p className={cn("text-sm font-medium", item.completed ? "text-slate-900" : "text-slate-500")}>
+                      {item.event}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                      {item.date}
+                    </p>
+
+                    {/* Visual extra for "Certified" */}
+                    {item.isCertificate && (
+                      <p className="text-[10px] text-purple-600 mt-1 bg-purple-50 inline-block px-1.5 py-0.5 rounded border border-purple-100">
+                        Sellado de Tiempo (TSA) + Firma Digital
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-200/60 text-center">
+              <p className="text-xs text-muted-foreground">
+                ID del Documento: <span className="font-mono text-slate-500 select-all">{doc.id}</span>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Separator />
@@ -326,8 +340,8 @@ export default function DocumentDetail() {
                   else if (user.user_metadata?.full_name) senderName = user.user_metadata.full_name;
                 }
 
-                // Re-invoke send-invite-v2 (Fix: was send-document-invitation stub)
-                const { error: sendError } = await supabase.functions.invoke('send-invite-v2', {
+                // Re-invoke send-invite-v2
+                const { data: fnData, error: sendError } = await supabase.functions.invoke('send-invite-v2', {
                   body: {
                     document_id: doc.id,
                     signer_email: doc.signer_email,
@@ -339,6 +353,9 @@ export default function DocumentDetail() {
                 });
 
                 if (sendError) throw sendError;
+                if (fnData && (fnData.error || fnData.success === false)) {
+                  throw new Error(fnData.error || "Error al enviar invitación");
+                }
 
                 toast.success('Documento reenviado correctamente');
                 // Refresh page
