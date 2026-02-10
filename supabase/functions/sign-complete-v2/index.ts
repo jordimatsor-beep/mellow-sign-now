@@ -333,7 +333,7 @@ serve(async (req: Request) => {
             otp_code_hash: null,
             otp_expires_at: null,
             whatsapp_verification_status: otpVerified ? 'verified' : null
-        })
+        }, { count: 'exact' })
             .eq('id', doc.id)
             .neq('status', 'signed'); // Ensure we don't overwrite if race condition occur
 

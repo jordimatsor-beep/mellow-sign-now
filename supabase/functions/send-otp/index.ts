@@ -34,7 +34,6 @@ serve(async (req) => {
         return new Response('ok', { headers: corsHeaders })
     }
 
-    let supabaseC: any = null; // Scope for catch block
     let ipAddress = 'unknown';
     let docId: string | null = null;
     let userAgent = req.headers.get('user-agent') || 'unknown';
@@ -44,7 +43,6 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
-        supabaseC = supabase;
 
         // Parse body
         let body;

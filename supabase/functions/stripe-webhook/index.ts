@@ -48,7 +48,7 @@ serve(async (req: Request) => {
             httpClient: Stripe.createFetchHttpClient(),
         })
 
-        let event;
+        let event: any;
         try {
             event = stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET)
         } catch (err: unknown) {
