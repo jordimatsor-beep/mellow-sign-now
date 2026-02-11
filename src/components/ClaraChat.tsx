@@ -80,7 +80,7 @@ export function ClaraChat({
     const { data: credits = 0 } = useQuery({
         queryKey: ['credits-check'], // Simple key for now specific to this component or reuse global if available
         queryFn: async () => {
-            const { data } = await supabase.from('credit_packs').select('credits_total, credits_used');
+            const { data } = await supabase.from('user_credit_purchases').select('credits_total, credits_used');
             if (data) {
                 return data.reduce((acc, pack) => acc + (pack.credits_total || 0) - (pack.credits_used || 0), 0);
             }

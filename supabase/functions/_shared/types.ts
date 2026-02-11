@@ -141,6 +141,45 @@ export type Database = {
             }
             credit_packs: {
                 Row: {
+                    id: string
+                    slug: string
+                    name: string
+                    credits: number
+                    price: number
+                    description: string | null
+                    popular: boolean
+                    is_active: boolean
+                    created_at: string | null
+                    updated_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    slug: string
+                    name: string
+                    credits: number
+                    price: number
+                    description?: string | null
+                    popular?: boolean
+                    is_active?: boolean
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    slug?: string
+                    name?: string
+                    credits?: number
+                    price?: number
+                    description?: string | null
+                    popular?: boolean
+                    is_active?: boolean
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Relationships: []
+            }
+            user_credit_purchases: {
+                Row: {
                     created_at: string | null
                     credits_total: number
                     credits_used: number | null
@@ -151,6 +190,7 @@ export type Database = {
                     purchased_at: string | null
                     stripe_payment_id: string | null
                     stripe_session_id: string | null
+                    updated_at: string | null
                     user_id: string
                 }
                 Insert: {
@@ -164,6 +204,7 @@ export type Database = {
                     purchased_at?: string | null
                     stripe_payment_id?: string | null
                     stripe_session_id?: string | null
+                    updated_at?: string | null
                     user_id: string
                 }
                 Update: {
@@ -177,11 +218,12 @@ export type Database = {
                     purchased_at?: string | null
                     stripe_payment_id?: string | null
                     stripe_session_id?: string | null
+                    updated_at?: string | null
                     user_id?: string
                 }
                 Relationships: [
                     {
-                        foreignKeyName: "credit_packs_user_id_fkey"
+                        foreignKeyName: "user_credit_purchases_user_id_fkey"
                         columns: ["user_id"]
                         isOneToOne: false
                         referencedRelation: "users"
@@ -579,7 +621,7 @@ export type Database = {
                 }
                 Relationships: [
                     {
-                        foreignKeyName: "credit_packs_user_id_fkey"
+                        foreignKeyName: "user_credit_purchases_user_id_fkey"
                         columns: ["user_id"]
                         isOneToOne: false
                         referencedRelation: "users"

@@ -68,7 +68,7 @@ serve(async (req: Request) => {
                 )
 
                 // Try Insert. If conflict (duplicate payment_id), Ignore.
-                const { error } = await supabaseAdmin.from('credit_packs').upsert({
+                const { error } = await supabaseAdmin.from('user_credit_purchases').upsert({
                     user_id: user_id,
                     pack_type: pack_id,
                     credits_total: parseInt(credits),

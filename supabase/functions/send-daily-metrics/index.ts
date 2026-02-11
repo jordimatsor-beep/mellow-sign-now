@@ -60,9 +60,9 @@ serve(async (req: Request) => {
             .lte('signed_at', endIso)
 
         // 4. Credits Sold
-        // credit_packs created_at
+        // user_credit_purchases created_at
         const { data: creditsData, error: creditsError } = await supabase
-            .from('credit_packs')
+            .from('user_credit_purchases')
             .select('credits_total, price_paid')
             .gte('created_at', startIso)
             .lte('created_at', endIso)

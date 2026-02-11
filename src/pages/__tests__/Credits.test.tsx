@@ -13,6 +13,12 @@ vi.mock('@/context/AuthContext', () => ({
 
 vi.mock('@/lib/supabase', () => ({
     supabase: {
+        from: (table: string) => ({
+            select: () => Promise.resolve({ data: [{ credits_total: 10, credits_used: 5 }], error: null }),
+            insert: () => Promise.resolve({ data: null, error: null }),
+            update: () => Promise.resolve({ data: null, error: null }),
+            eq: () => ({ select: () => Promise.resolve({ data: { credits_total: 10, credits_used: 5 }, error: null }) }),
+        }),
         rpc: (fn: string) => {
             if (fn === 'get_credit_transactions') return Promise.resolve({ data: [], error: null });
             return Promise.resolve({ data: 15, error: null });

@@ -28,7 +28,7 @@ export default function Credits() {
     queryKey: queryKeys.credits.packs,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('credit_packs')
+        .from('user_credit_purchases')
         .select('credits_total, credits_used');
 
       if (error) throw error;
