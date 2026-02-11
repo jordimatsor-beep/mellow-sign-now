@@ -88,7 +88,7 @@ export default function Settings() {
         address: formState.address,
         zip: formState.zip,
         city: formState.city,
-        type: 'company' // Defaulting or preserving? Context preserves if undefined.
+        type: profile?.type || 'company' // Preserve existing type
       });
 
       toast.success("Perfil actualizado correctamente");
@@ -479,7 +479,6 @@ export default function Settings() {
           signOut().catch(console.error);
 
           // Limpieza manual y redirección inmediata
-          localStorage.removeItem('sb-pmzfwwtgjvlvuawxguiw-auth-token'); // Limpieza preventiva
           window.location.href = '/login';
         }}
       >

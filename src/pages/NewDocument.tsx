@@ -80,7 +80,6 @@ export default function NewDocument() {
     if (contact.phone) setSignerPhone(contact.phone);
     if (contact.nif) setSignerNif(contact.nif);
     if (contact.address) setSignerAddress(contact.address);
-    if (contact.address) setSignerAddress(contact.address);
     toast.success("Datos importados de la agenda");
   };
 
@@ -1014,9 +1013,6 @@ export default function NewDocument() {
   };
 
   const getSteps = () => {
-    if (source === "upload") {
-      return ["source", "doctype", "upload", "signer", "options", "confirm"];
-    }
     return ["source", "doctype", "upload", "signer", "options", "confirm"];
   };
 

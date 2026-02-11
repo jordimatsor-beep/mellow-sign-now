@@ -101,14 +101,11 @@ export function ClaraChat({
         setMessages((prev) => [...prev, userMessage]);
         setInput("");
 
-        // Trigger send logic (need to extract it or call handleSend with param? handleSend uses 'input' state)
-        // Refactoring handleSend to accept optional text would be better.
-        // For now, let's just use effect or refactor handleSend.
-        // Let's refactor handleSend signature slightly.
-        processMessage(prompt);
+        // Trigger send logic with the updated history
+        processMessage(prompt, [...messages, userMessage]);
     };
 
-    const processMessage = async (messageText: string) => {
+    const processMessage = async (messageText: string, currentHistory: Message[]) => {
         setIsTyping(true);
 
         // Intent check
@@ -133,9 +130,7 @@ export function ClaraChat({
         try {
             const { data, error } = await supabase.functions.invoke(endpoint, {
                 body: {
-                    messages: [...messages, { role: 'user', content: messageText }], // Note: messages state might not be updated yet if called immediately after setMessages. 
-                    // Better to pass the new history explicitly.
-                    // Actually, setMessages is async. We should reconstruct history here.
+                    messages: currentHistory.map(m => ({ role: m.role === 'clara' ? 'assistant' : m.role, content: m.content })),
                     documentId
                 }
             });
@@ -188,7 +183,7 @@ export function ClaraChat({
         setMessages((prev) => [...prev, userMessage]);
         setInput("");
 
-        await processMessage(cleanInput);
+        await processMessage(cleanInput, [...messages, userMessage]);
     };
 
     return (

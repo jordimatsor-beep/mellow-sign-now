@@ -114,7 +114,7 @@ export default function Index() {
               </div>
 
               <p className="text-sm text-muted-foreground">
-                Sin tarjeta de crédito · 3 documentos gratis
+                Sin tarjeta de crédito · 2 créditos gratis
               </p>
             </div>
 
@@ -542,7 +542,7 @@ export default function Index() {
             Empieza a firmar documentos hoy
           </h2>
           <p className="text-background/70 mb-8 max-w-xl mx-auto">
-            Sin compromisos. Sin tarjeta de crédito. 3 documentos gratis para probar.
+            Sin compromisos. Sin tarjeta de crédito. 2 créditos gratis para probar.
           </p>
           <Button size="lg" asChild className="bg-background text-foreground hover:bg-background/90 shadow-xl shadow-black/10 hover:shadow-black/20 transition-all duration-300 hover:scale-105 active:scale-95">
             <Link to="/register">
@@ -577,8 +577,8 @@ export default function Index() {
               <h4 className="mb-4 font-semibold text-background">Producto</h4>
               <ul className="space-y-2 text-sm">
                 <li><Link to="/how-it-works" className="text-background/50 hover:text-background transition-colors">Cómo funciona</Link></li>
-                <li><Link to="/credits/purchase" className="text-background/50 hover:text-background transition-colors">Precios</Link></li>
-                <li><Link to="/clara" className="text-background/50 hover:text-background transition-colors">Clara IA</Link></li>
+                <li><Link to="/register" className="text-background/50 hover:text-background transition-colors">Precios</Link></li>
+                <li><Link to="/register" className="text-background/50 hover:text-background transition-colors">Clara IA</Link></li>
               </ul>
             </div>
 
