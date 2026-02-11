@@ -8,6 +8,10 @@ const N8N_WEBHOOK_URL = Deno.env.get('N8N_WEBHOOK_URL') || ''
 serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
 
+    // 1. CORS Preflight (MUST be first to ensure OPTIONS always gets proper headers)
+    const preflightResponse = handleCorsPreflightRequest(req);
+    if (preflightResponse) return preflightResponse;
+
     // 0. Check if n8n webhook is configured
     if (!N8N_WEBHOOK_URL || N8N_WEBHOOK_URL.includes('CHANGE_ME')) {
         console.error("N8N_WEBHOOK_URL not set or is placeholder");
@@ -19,10 +23,6 @@ serve(async (req: Request) => {
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }
-
-    // 1. CORS Preflight
-    const preflightResponse = handleCorsPreflightRequest(req);
-    if (preflightResponse) return preflightResponse;
 
     try {
         // 2. Auth Check (Supabase)

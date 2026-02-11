@@ -37,7 +37,8 @@ serve(async (req) => {
     // 2. Prepare Email Content
     const signerEmail = doc.signer_email
     const issuerEmail = doc.users?.email
-    const docTitle = doc.title || 'Documento Firmado'
+    const docTitleRaw = doc.title || 'Documento Firmado'
+    const docTitle = escapeHtml(docTitleRaw)
 
     // STRICT: Only use SIGNED url. If missing, it's a bug or race condition that shouldn't happen with new flow.
     const signedFileUrl = doc.signed_file_url;

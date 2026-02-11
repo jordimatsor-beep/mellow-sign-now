@@ -12,16 +12,24 @@ const CheckoutSchema = z.object({
 
 const ALLOWED_ORIGINS = [
     'https://firmaclara.com',
+    'https://firmaclara.es',
+    'https://www.firmaclara.com',
+    'https://www.firmaclara.es',
     'https://mellow-sign-now.lovable.app',
     'http://localhost:8080',
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'http://localhost:5173',
 ];
 
 const ALLOWED_RETURN_URLS = [
     'https://firmaclara.com',
+    'https://firmaclara.es',
+    'https://www.firmaclara.com',
+    'https://www.firmaclara.es',
     'https://mellow-sign-now.lovable.app',
     'http://localhost:8080',
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'http://localhost:5173',
 ];
 
 serve(async (req) => {
@@ -166,7 +174,7 @@ serve(async (req) => {
         )
 
     } catch (error: unknown) {
-        if (import.meta.env.DEV) console.error('Error:', error)
+        console.error('Error:', error)
         const message = error instanceof Error ? error.message : 'Unknown error'
         return new Response(
             JSON.stringify({ error: message }),

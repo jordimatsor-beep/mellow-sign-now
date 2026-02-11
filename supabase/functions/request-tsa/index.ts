@@ -45,7 +45,7 @@ serve(async (req: Request) => {
   const origin = req.headers.get('Origin');
   const isAllowed = origin && ALLOWED_ORIGINS.includes(origin);
   const corsHeaders = {
-    'Access-Control-Allow-Origin': isAllowed ? origin : '*',
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'null',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Vary': 'Origin'
   };

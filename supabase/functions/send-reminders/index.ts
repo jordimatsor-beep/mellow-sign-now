@@ -49,14 +49,16 @@ serve(async (req: Request) => {
                 continue;
             }
 
-            const senderName = doc.users?.company_name || doc.users?.name || 'FirmaClara';
+            const senderName = escapeHtml(doc.users?.company_name || doc.users?.name || 'FirmaClara');
+            const safeSignerName = escapeHtml(doc.signer_name);
+            const safeTitle = escapeHtml(doc.title);
             const signUrl = `${req.headers.get('origin') || 'https://firmaclara.com'}/sign/${doc.sign_token}`;
 
             const html = `
                 <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2>Recordatorio de Firma pendiente</h2>
-                    <p>Hola ${doc.signer_name},</p>
-                    <p>${senderName} está esperando tu firma en el documento <strong>"${doc.title}"</strong>.</p>
+                    <p>Hola ${safeSignerName},</p>
+                    <p>${senderName} está esperando tu firma en el documento <strong>"${safeTitle}"</strong>.</p>
                     <p>Por favor, completa el proceso lo antes posible:</p>
                     <div style="text-align: center; margin: 30px 0;">
                         <a href="${signUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Firmar Documento Ahora</a>

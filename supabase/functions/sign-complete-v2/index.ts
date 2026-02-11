@@ -344,11 +344,9 @@ serve(async (req: Request) => {
             throw new Error('Este documento ya ha sido firmado por otra petición concurrente.');
         }
 
-        if (updateError) console.error("Doc update error:", updateError);
-
         // 9. Trigger Audit Trail
         try {
-            fetch(`${supabaseUrl}/functions/v1/generate-audit-trail`, {
+            await fetch(`${supabaseUrl}/functions/v1/generate-audit-trail`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${supabaseKey}`,
@@ -409,8 +407,7 @@ serve(async (req: Request) => {
         return new Response(
             JSON.stringify({
                 success: false,
-                error: error.message || 'Error desconocido al procesar la firma',
-                details: JSON.stringify(error)
+                error: error.message || 'Error desconocido al procesar la firma'
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );

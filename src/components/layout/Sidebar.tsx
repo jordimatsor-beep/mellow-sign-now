@@ -4,27 +4,13 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from 'react-i18next';
 import { useAuth } from "@/context/AuthContext";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { Logo } from "@/components/brand/Logo";
+import { useCredits } from "@/hooks/useCredits";
 
 export function Sidebar() {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
-  const [credits, setCredits] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (user) {
-      const fetchCredits = async () => {
-        const { data, error } = await supabase.rpc('get_available_credits');
-        if (!error && data !== null) {
-          setCredits(data as number);
-        }
-      };
-
-      fetchCredits();
-    }
-  }, [user]);
+  const { credits } = useCredits();
 
   const userName = profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuario";
 

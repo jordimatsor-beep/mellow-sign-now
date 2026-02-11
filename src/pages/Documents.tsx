@@ -73,7 +73,7 @@ export default function Documents() {
       const fetchPromise = (async () => {
         const { data, error } = await supabase
           .from("documents")
-          .select("*")
+          .select("id, title, signer_name, signer_email, status, created_at")
           .order("created_at", { ascending: false });
 
         if (error) throw error;

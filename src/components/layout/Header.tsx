@@ -1,27 +1,16 @@
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditsBadge } from "@/components/shared/CreditsBadge";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { MobileMenu } from "./MobileMenu";
 import { Logo } from "@/components/brand/Logo";
 import { Separator } from "@/components/ui/separator";
-import { supabase } from "@/lib/supabase";
+import { useCredits } from "@/hooks/useCredits";
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
-  const [credits, setCredits] = useState<number | null>(null);
-
-  // Fetch credits on mount
-  useEffect(() => {
-    const fetchCredits = async () => {
-      const { data, error } = await supabase.rpc('get_available_credits');
-      if (!error && data !== null) {
-        setCredits(data as number);
-      }
-    };
-    fetchCredits();
-  }, []);
+  const { credits } = useCredits();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

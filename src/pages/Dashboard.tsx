@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { useTranslation } from 'react-i18next';
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { useCredits } from "@/hooks/useCredits";
 
 interface Document {
   id: string;
@@ -41,19 +42,8 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  // Fetch credits with React Query - cached for 5 minutes
-  const { data: credits = 0, isLoading: loadingCredits } = useQuery({
-    queryKey: queryKeys.credits.available,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_available_credits');
-      if (error) {
-        if (import.meta.env.DEV) console.error("Error fetching credits:", error);
-        return 0;
-      }
-      return (data as number) ?? 0;
-    },
-    enabled: !!user,
-  });
+  // Fetch credits with shared hook - cached for 5 minutes
+  const { credits, isLoading: loadingCredits } = useCredits();
 
   const loading = loadingDocs || loadingCredits;
 
