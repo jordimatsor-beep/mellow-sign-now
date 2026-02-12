@@ -45,9 +45,7 @@ export default function Dashboard() {
   // Fetch credits with shared hook - cached for 5 minutes
   const { credits, isLoading: loadingCredits } = useCredits();
 
-  const loading = loadingDocs || loadingCredits;
-
-  // Calculate stats
+  // Calculate stats — safe even when data is still loading (defaults to 0/[])
   const stats = {
     pending: documents.filter(d => ['sent', 'viewed'].includes(d.status)).length,
     signed: documents.filter(d => d.status === 'signed').length,
@@ -56,14 +54,6 @@ export default function Dashboard() {
   };
 
   const recentDocuments = documents.slice(0, 5);
-
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-50/50">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-6 space-y-6">
@@ -74,7 +64,7 @@ export default function Dashboard() {
             {t('dashboard.greeting')}, {userName}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            <span className="font-semibold text-foreground">{stats.credits}</span> {t('dashboard.credits_available')}
+            {loadingCredits ? <Loader2 className="inline h-3 w-3 animate-spin" /> : <span className="font-semibold text-foreground">{stats.credits}</span>} {t('dashboard.credits_available')}
           </p>
         </div>
         <Button size="sm" asChild>
@@ -83,7 +73,7 @@ export default function Dashboard() {
       </div>
 
       {/* Low Credits Warning */}
-      {credits < 3 && (
+      {!loadingCredits && credits < 3 && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -111,7 +101,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.pending')}</p>
-              <p className="text-xl font-bold text-slate-900">{stats.pending}</p>
+              <p className="text-xl font-bold text-slate-900">{loadingDocs ? <span className="inline-block h-5 w-8 animate-pulse rounded bg-slate-200" /> : stats.pending}</p>
             </div>
           </CardContent>
         </Card>
@@ -123,7 +113,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.signed')}</p>
-              <p className="text-xl font-bold text-slate-900">{stats.signed}</p>
+              <p className="text-xl font-bold text-slate-900">{loadingDocs ? <span className="inline-block h-5 w-8 animate-pulse rounded bg-slate-200" /> : stats.signed}</p>
             </div>
           </CardContent>
         </Card>
@@ -135,7 +125,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.total')}</p>
-              <p className="text-xl font-bold text-slate-900">{stats.total}</p>
+              <p className="text-xl font-bold text-slate-900">{loadingDocs ? <span className="inline-block h-5 w-8 animate-pulse rounded bg-slate-200" /> : stats.total}</p>
             </div>
           </CardContent>
         </Card>
@@ -152,7 +142,11 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-3">
-            {recentDocuments.length === 0 ? (
+            {loadingDocs ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : recentDocuments.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
                 <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
                   <File className="h-6 w-6 text-slate-400" />

@@ -70,12 +70,20 @@ export default function Contacts() {
     const { data: contacts = [], isLoading: loading } = useQuery({
         queryKey: queryKeys.contacts.all,
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('contacts')
-                .select('*')
-                .order('name');
-            if (error) throw error;
-            return (data as ContactType[]) || [];
+            const timeoutPromise = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("Contacts fetch timeout")), 5000)
+            );
+
+            const fetchPromise = (async () => {
+                const { data, error } = await supabase
+                    .from('contacts')
+                    .select('*')
+                    .order('name');
+                if (error) throw error;
+                return (data as ContactType[]) || [];
+            })();
+
+            return Promise.race([fetchPromise, timeoutPromise]);
         },
     });
 

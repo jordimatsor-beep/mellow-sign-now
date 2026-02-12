@@ -84,15 +84,6 @@ export default function Documents() {
     },
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin mr-2" />
-        Cargando documentos...
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="flex h-64 flex-col items-center justify-center text-red-500">
@@ -163,7 +154,12 @@ export default function Documents() {
         </TabsList>
 
         <TabsContent value="all" className="mt-4 space-y-2">
-          {filteredDocs.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              Cargando documentos...
+            </div>
+          ) : filteredDocs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
               <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
                 <FileText className="h-6 w-6 text-slate-400" />
