@@ -1,4 +1,4 @@
-import { Home, FileText, Sparkles, CreditCard, Settings, HelpCircle, Plus, User } from "lucide-react";
+import { Home, FileText, Sparkles, CreditCard, Settings, HelpCircle, Plus, User, LifeBuoy } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ export function Sidebar() {
     { to: "/contacts", icon: User, label: t('nav.contacts') },
     { to: "/clara", icon: Sparkles, label: t('nav.clara') },
     { to: "/credits", icon: CreditCard, label: t('nav.credits'), badge: credits },
+    { to: "/support", icon: LifeBuoy, label: t('nav.support') },
   ];
 
   const bottomItems = [

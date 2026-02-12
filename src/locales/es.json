@@ -9,7 +9,8 @@
         "clara": "Asistente",
         "credits": "Créditos",
         "settings": "Configuración",
-        "help": "Ayuda"
+        "help": "Ayuda",
+        "support": "Soporte"
     },
     "dashboard": {
         "greeting": "Hola",
