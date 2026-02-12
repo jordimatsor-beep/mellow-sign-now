@@ -258,9 +258,10 @@ export default function NewDocument() {
       if (!user) throw new Error("No estás autenticado");
 
       const fileName = `${user.id}/${Date.now()}_${sanitizeFileName(file.name)}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(fileName, file);
+      const { data: uploadData, error: uploadError } = await withTimeout(
+        supabase.storage.from('documents').upload(fileName, file),
+        10000, "File upload"
+      );
 
       if (uploadError) throw uploadError;
 
@@ -358,24 +359,22 @@ export default function NewDocument() {
 
       if (creditError) {
         console.error("Credit Error Details:", creditError);
-        // Show exact error from backend
         toast.error(`Error de créditos: ${creditError.message || creditError.details || 'Desconocido'}`);
 
         if (creditError.message && creditError.message.includes('Insufficient credits')) {
-          // Give them a moment to read the error before redirecting, or don't redirect if we want them to see the toast?
-          // Let's redirect after a delay so they see the toast.
           setTimeout(() => navigate('/credits/purchase'), 2000);
         }
+        setUploadStatus("error");
         return;
       }
 
-      const { error: updateError } = await supabase
-        .from('documents')
-        .update({
+      const { error: updateError } = await withTimeout(
+        supabase.from('documents').update({
           status: 'sent',
           sent_at: new Date().toISOString()
-        })
-        .eq('id', docId);
+        }).eq('id', docId),
+        3000, "Document status update"
+      );
 
       if (updateError) throw updateError;
 
@@ -393,20 +392,27 @@ export default function NewDocument() {
         supabase.functions.invoke('send-invite-v2', {
           body: payload
         }),
-        3000, "Send invite"
+        10000, "Send invite"
       );
 
-      // Registrar el evento
-      await supabase.from('event_logs').insert({
-        user_id: userId,
-        event_type: 'document.sent',
-        event_data: {
-          credits_consumed: 1,
-          email_sent: !fnError && fnData?.success !== false, // Check both
-          document_id: docId,
-          signer_email: signerEmail
-        }
-      });
+      // Registrar el evento (non-blocking, don't let it fail the send)
+      try {
+        await withTimeout(
+          supabase.from('event_logs').insert({
+            user_id: userId,
+            event_type: 'document.sent',
+            event_data: {
+              credits_consumed: 1,
+              email_sent: !fnError && fnData?.success !== false,
+              document_id: docId,
+              signer_email: signerEmail
+            }
+          }),
+          3000, "Event log"
+        );
+      } catch (logErr) {
+        console.warn("Event log failed (non-critical):", logErr);
+      }
 
       // Manejo de errores de red (Supabase client throw)
       if (fnError) {
@@ -414,6 +420,7 @@ export default function NewDocument() {
         const typedError = fnError as { status?: number | string; code?: string; context?: { status?: number } };
         const status = typedError.status || typedError.code || typedError.context?.status || 'Unknown';
         toast.error(`Error de conexión (Code: ${status}): ${fnError.message}. El documento se ha guardado.`, { duration: 10000 });
+        setUploadStatus("error");
         setTimeout(() => navigate('/dashboard'), 4000);
         return;
       }
@@ -422,16 +429,19 @@ export default function NewDocument() {
       if (fnData && (fnData.error || fnData.success === false)) {
         console.error("Error sending email (Backend Logic):", fnData);
         toast.error(`Error del servidor: ${fnData.error}. El documento se ha guardado.`, { duration: 10000 });
+        setUploadStatus("error");
         setTimeout(() => navigate('/dashboard'), 4000);
         return;
       }
 
+      setUploadStatus("success");
       toast.success("Documento enviado correctamente");
       navigate('/dashboard');
 
     } catch (error: unknown) {
       const err = error as Error;
       toast.error("Error al enviar: " + err.message);
+      setUploadStatus("error");
       navigate('/dashboard');
     }
   };
