@@ -1,4 +1,4 @@
-import { Home, Users, CreditCard, LayoutDashboard, LogOut } from "lucide-react";
+import { Home, Users, CreditCard, LayoutDashboard, LogOut, ScrollText } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/brand/Logo";
@@ -12,6 +12,7 @@ export function AdminSidebar() {
         { to: "/shobdgohs/dashboard", icon: LayoutDashboard, label: "Dashboard", end: true },
         { to: "/shobdgohs/users", icon: Users, label: "Usuarios" },
         { to: "/shobdgohs/credits", icon: CreditCard, label: "Créditos" },
+        { to: "/shobdgohs/logs", icon: ScrollText, label: "Logs" },
     ];
 
     return (

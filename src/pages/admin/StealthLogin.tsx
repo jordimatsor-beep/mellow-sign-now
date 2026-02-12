@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { Apple, Banana, Cherry, Citrus, ShoppingBasket } from "lucide-react";
+import { Apple, Banana, Cherry } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export default function StealthLogin() {
@@ -13,7 +12,6 @@ export default function StealthLogin() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const { profile } = useAuth();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -742,6 +742,14 @@ export type Database = {
           created_at: string
         }[]
       }
+      admin_add_credits: {
+        Args: {
+          p_target_user_id: string
+          p_credits: number
+          p_note?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       security_level_enum: "standard" | "whatsapp_otp"
