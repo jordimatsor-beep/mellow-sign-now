@@ -1,5 +1,6 @@
 import { loadStripe } from '@stripe/stripe-js';
 import { supabase } from "@/lib/supabase";
+import { withTimeout } from "@/lib/withTimeout";
 import { toast } from 'sonner';
 
 const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
@@ -19,9 +20,12 @@ export async function buyCredits(priceId: string) {
     }
 
     try {
-        const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-            body: { priceId, returnUrl: window.location.origin }
-        });
+        const { data, error } = await withTimeout(
+            supabase.functions.invoke('create-checkout-session', {
+                body: { priceId, returnUrl: window.location.origin }
+            }),
+            3000, "Checkout session"
+        );
 
         if (error) throw error;
 

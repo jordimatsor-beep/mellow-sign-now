@@ -3,6 +3,7 @@ import { Plus, Search, Trash2, Edit2, Phone, Mail, MapPin, User, Loader2, Contac
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { withTimeout } from "@/lib/withTimeout";
 import { useProfile } from "@/context/ProfileContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
@@ -70,27 +71,27 @@ export default function Contacts() {
     const { data: contacts = [], isLoading: loading } = useQuery({
         queryKey: queryKeys.contacts.all,
         queryFn: async () => {
-            const timeoutPromise = new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error("Contacts fetch timeout")), 5000)
+            return withTimeout(
+                (async () => {
+                    const { data, error } = await supabase
+                        .from('contacts')
+                        .select('*')
+                        .order('name');
+                    if (error) throw error;
+                    return (data as ContactType[]) || [];
+                })(),
+                3000, "Contacts fetch"
             );
-
-            const fetchPromise = (async () => {
-                const { data, error } = await supabase
-                    .from('contacts')
-                    .select('*')
-                    .order('name');
-                if (error) throw error;
-                return (data as ContactType[]) || [];
-            })();
-
-            return Promise.race([fetchPromise, timeoutPromise]);
         },
     });
 
     // Delete mutation with cache invalidation
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase.from('contacts').delete().eq('id', id);
+            const { error } = await withTimeout(
+                supabase.from('contacts').delete().eq('id', id),
+                3000, "Contact delete"
+            );
             if (error) throw error;
         },
         onSuccess: () => {
@@ -117,10 +118,16 @@ export default function Contacts() {
             }
         }) => {
             if (data.isUpdate && data.contactId) {
-                const { error } = await supabase.from('contacts').update(data.payload).eq('id', data.contactId);
+                const { error } = await withTimeout(
+                    supabase.from('contacts').update(data.payload).eq('id', data.contactId),
+                    3000, "Contact update"
+                );
                 if (error) throw error;
             } else {
-                const { error } = await supabase.from('contacts').insert(data.payload);
+                const { error } = await withTimeout(
+                    supabase.from('contacts').insert(data.payload),
+                    3000, "Contact create"
+                );
                 if (error) throw error;
             }
         },

@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
+import { withTimeout } from "@/lib/withTimeout";
 import { sanitizeFileName } from "@/lib/utils";
 
 type Step = "source" | "doctype" | "upload" | "signer" | "options" | "confirm";
@@ -56,11 +57,16 @@ export default function NewDocument() {
   const { data: credits = 0 } = useQuery({
     queryKey: ['credits-check'],
     queryFn: async () => {
-      const { data } = await supabase.from('user_credit_purchases').select('credits_total, credits_used');
-      if (data) {
-        return data.reduce((acc, pack) => acc + (pack.credits_total || 0) - (pack.credits_used || 0), 0);
-      }
-      return 0;
+      return withTimeout(
+        (async () => {
+          const { data } = await supabase.from('user_credit_purchases').select('credits_total, credits_used');
+          if (data) {
+            return data.reduce((acc, pack) => acc + (pack.credits_total || 0) - (pack.credits_used || 0), 0);
+          }
+          return 0;
+        })(),
+        3000, "Credits check"
+      );
     }
   });
 
@@ -245,7 +251,10 @@ export default function NewDocument() {
       // Optimization: Check if file name matches our dummy name, if so, assume we can reuse existing URL if we had it, but we don't have it handy in this scope without fetching again or storing it.
       // So standard upload path is safest for now.
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await withTimeout(
+        supabase.auth.getUser(),
+        3000, "Auth user"
+      );
       if (!user) throw new Error("No estás autenticado");
 
       const fileName = `${user.id}/${Date.now()}_${sanitizeFileName(file.name)}`;
@@ -342,7 +351,10 @@ export default function NewDocument() {
 
   const handleSendDocument = async (docId: string, userId: string, signToken: string) => {
     try {
-      const { error: creditError } = await supabase.rpc('consume_credit', { amount: 1 });
+      const { error: creditError } = await withTimeout(
+        supabase.rpc('consume_credit', { amount: 1 }),
+        3000, "Credit consume"
+      );
 
       if (creditError) {
         console.error("Credit Error Details:", creditError);
@@ -377,9 +389,12 @@ export default function NewDocument() {
         custom_message: customMessage
       };
 
-      const { data: fnData, error: fnError } = await supabase.functions.invoke('send-invite-v2', {
-        body: payload
-      });
+      const { data: fnData, error: fnError } = await withTimeout(
+        supabase.functions.invoke('send-invite-v2', {
+          body: payload
+        }),
+        3000, "Send invite"
+      );
 
       // Registrar el evento
       await supabase.from('event_logs').insert({

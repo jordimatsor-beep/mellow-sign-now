@@ -7,6 +7,7 @@ import { StatusBadge, DocumentStatus } from "@/components/shared/StatusBadge";
 import { FileText } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { withTimeout } from "@/lib/withTimeout";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
@@ -65,22 +66,17 @@ export default function Documents() {
   const { data: documents, isLoading, error } = useQuery({
     queryKey: queryKeys.documents.all,
     queryFn: async () => {
-      // Safety timeout
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Documents fetch timeout")), 5000)
+      return withTimeout(
+        (async () => {
+          const { data, error } = await supabase
+            .from("documents")
+            .select("id, title, signer_name, signer_email, status, created_at")
+            .order("created_at", { ascending: false });
+          if (error) throw error;
+          return data;
+        })(),
+        3000, "Documents fetch"
       );
-
-      const fetchPromise = (async () => {
-        const { data, error } = await supabase
-          .from("documents")
-          .select("id, title, signer_name, signer_email, status, created_at")
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        return data;
-      })();
-
-      return Promise.race([fetchPromise, timeoutPromise]) as Promise<any[]>;
     },
   });
 

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from "@/lib/supabase";
+import { withTimeout } from "@/lib/withTimeout";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
@@ -42,11 +43,13 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         const fetchProfile = async () => {
             setIsLoading(true);
             try {
-                const { data, error } = await supabase
-                    .from('users')
-                    .select('tax_id, address, city, zip_code, country, issuer_type, name, email, phone, company_name')
-                    .eq('id', user.id)
-                    .single();
+                const { data, error } = await withTimeout(
+                    supabase.from('users')
+                        .select('tax_id, address, city, zip_code, country, issuer_type, name, email, phone, company_name')
+                        .eq('id', user.id)
+                        .single(),
+                    3000, "Profile fetch"
+                );
 
                 if (error) {
                     if (import.meta.env.DEV) console.error("Error fetching profile:", error);
@@ -88,10 +91,11 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
             return { ...prev, ...data };
         });
 
-        const updates = {
+        // Build update payload — only include defined values (undefined causes Supabase issues)
+        const rawUpdates: Record<string, unknown> = {
             issuer_type: data.type,
             name: data.name,
-            company_name: data.type === 'company' ? data.name : undefined, // Keep company_name in sync if it's a company
+            company_name: data.type === 'company' ? data.name : null,
             tax_id: data.id,
             address: data.address,
             city: data.city,
@@ -102,14 +106,18 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
             updated_at: new Date().toISOString(),
         };
 
+        // Filter out undefined keys to avoid sending them to Supabase
+        const updates = Object.fromEntries(
+            Object.entries(rawUpdates).filter(([, v]) => v !== undefined)
+        );
+
         try {
-            const { error } = await supabase
-                .from('users')
-                .update(updates)
-                .eq('id', user.id);
+            const { error } = await withTimeout(
+                supabase.from('users').update(updates).eq('id', user.id),
+                3000, "Profile save"
+            );
 
             if (error) throw error;
-            // toast.success("Perfil guardado en la nube"); // Handled by the form usually
         } catch (error) {
             if (import.meta.env.DEV) console.error("Error updating profile:", error);
             toast.error("Error al guardar en la nube");

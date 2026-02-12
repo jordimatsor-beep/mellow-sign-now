@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 import { supabase } from "@/lib/supabase";
+import { withTimeout } from "@/lib/withTimeout";
 import type { DocumentForSigning } from "@/integrations/supabase/helpers";
 
 type SigningStep = "loading" | "error" | "view" | "signing" | "otp" | "complete";
@@ -251,28 +252,18 @@ export default function SignDocument() {
 
     async function loadDocumentLink() {
       try {
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Sign link timeout")), 5000)
+        const docRecord = await withTimeout(
+          (async () => {
+            const { data, error } = await supabase
+              .rpc('get_document_for_signing', { token_uuid: token as string });
+            if (error) throw error;
+            const rpcResult = data as DocumentForSigning[] | null;
+            const doc = rpcResult?.[0];
+            if (!doc) throw new Error("Documento no encontrado o enlace inválido");
+            return doc;
+          })(),
+          3000, "Document fetch"
         );
-
-        const fetchPromise = (async () => {
-          // Use the secure RPC instead of direct select
-          const { data, error } = await supabase
-            .rpc('get_document_for_signing', { token_uuid: token as string });
-
-          if (error) throw error;
-
-          // RPC returns an array (setof record)
-          const rpcResult = data as DocumentForSigning[] | null;
-          const docRecord = rpcResult?.[0];
-
-          if (!docRecord) throw new Error("Documento no encontrado o enlace inválido");
-
-          return docRecord;
-        })();
-
-        // Race
-        const docRecord = await Promise.race([fetchPromise, timeoutPromise]) as DocumentForSigning;
 
         if (docRecord.status !== 'sent' && docRecord.status !== 'viewed' && docRecord.status !== 'signed') {
           throw new Error("Este documento no está disponible para firma");

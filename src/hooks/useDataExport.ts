@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import JSZip from 'jszip';
 import { supabase } from '@/lib/supabase';
+import { withTimeout } from '@/lib/withTimeout';
 import { toast } from 'sonner';
 
 export function useDataExport() {
@@ -11,37 +12,39 @@ export function useDataExport() {
         const toastId = toast.loading('Preparando tus datos...');
 
         try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await withTimeout(
+                supabase.auth.getUser(),
+                3000, "Auth user"
+            );
             if (!user) throw new Error('No usuario autenticado');
 
             const zip = new JSZip();
 
             // 1. Perfil
-            const { data: profile } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', user.id)
-                .single();
+            const { data: profile } = await withTimeout(
+                supabase.from('users').select('*').eq('id', user.id).single(),
+                3000, "Profile export"
+            );
 
             if (profile) {
                 zip.file('perfil.json', JSON.stringify(profile, null, 2));
             }
 
             // 2. Contactos
-            const { data: contacts } = await supabase
-                .from('contacts')
-                .select('*')
-                .eq('user_id', user.id);
+            const { data: contacts } = await withTimeout(
+                supabase.from('contacts').select('*').eq('user_id', user.id),
+                3000, "Contacts export"
+            );
 
             if (contacts) {
                 zip.file('contactos.json', JSON.stringify(contacts, null, 2));
             }
 
             // 3. Documentos (Metadata)
-            const { data: documents } = await supabase
-                .from('documents')
-                .select('*')
-                .eq('user_id', user.id);
+            const { data: documents } = await withTimeout(
+                supabase.from('documents').select('*').eq('user_id', user.id),
+                3000, "Documents export"
+            );
 
             if (documents) {
                 zip.file('documentos.json', JSON.stringify(documents, null, 2));

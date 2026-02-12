@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { withTimeout } from "@/lib/withTimeout";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
@@ -30,22 +31,18 @@ export default function DocumentDetail() {
     queryFn: async () => {
       if (!id) throw new Error("No ID provided");
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Document fetch timeout")), 5000)
+      return withTimeout(
+        (async () => {
+          const { data, error } = await supabase
+            .from("documents")
+            .select("*")
+            .eq("id", id)
+            .single();
+          if (error) throw error;
+          return data;
+        })(),
+        3000, "Document detail fetch"
       );
-
-      const fetchPromise = (async () => {
-        const { data, error } = await supabase
-          .from("documents")
-          .select("*")
-          .eq("id", id)
-          .single();
-
-        if (error) throw error;
-        return data;
-      })();
-
-      return Promise.race([fetchPromise, timeoutPromise]) as Promise<any>;
     },
     enabled: !!id,
   });
@@ -330,27 +327,36 @@ export default function DocumentDetail() {
 
                 if (updateError) throw updateError;
 
-                const { data: { user } } = await supabase.auth.getUser();
+                const { data: { user } } = await withTimeout(
+                  supabase.auth.getUser(),
+                  3000, "Auth user"
+                );
 
                 // Get sender name safely
                 let senderName = 'Usuario';
                 if (user) {
-                  const { data: userProfile } = await supabase.from('users').select('name').eq('id', user.id).single();
+                  const { data: userProfile } = await withTimeout(
+                    supabase.from('users').select('name').eq('id', user.id).single(),
+                    3000, "User profile"
+                  );
                   if (userProfile?.name) senderName = userProfile.name;
                   else if (user.user_metadata?.full_name) senderName = user.user_metadata.full_name;
                 }
 
                 // Re-invoke send-invite-v2
-                const { data: fnData, error: sendError } = await supabase.functions.invoke('send-invite-v2', {
-                  body: {
-                    document_id: doc.id,
-                    signer_email: doc.signer_email,
-                    signer_name: doc.signer_name,
-                    sign_token: newToken,
-                    sender_name: senderName,
-                    title: doc.title
-                  }
-                });
+                const { data: fnData, error: sendError } = await withTimeout(
+                  supabase.functions.invoke('send-invite-v2', {
+                    body: {
+                      document_id: doc.id,
+                      signer_email: doc.signer_email,
+                      signer_name: doc.signer_name,
+                      sign_token: newToken,
+                      sender_name: senderName,
+                      title: doc.title
+                    }
+                  }),
+                  3000, "Resend invite"
+                );
 
                 if (sendError) throw sendError;
                 if (fnData && (fnData.error || fnData.success === false)) {

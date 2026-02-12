@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProfile } from "@/context/ProfileContext";
 import { supabase } from "@/lib/supabase";
+import { withTimeout } from "@/lib/withTimeout";
 import { Send, Sparkles, User, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,13 +79,18 @@ export function ClaraChat({
 
     // Fetch credits for INC-013
     const { data: credits = 0 } = useQuery({
-        queryKey: ['credits-check'], // Simple key for now specific to this component or reuse global if available
+        queryKey: ['credits-check'],
         queryFn: async () => {
-            const { data } = await supabase.from('user_credit_purchases').select('credits_total, credits_used');
-            if (data) {
-                return data.reduce((acc, pack) => acc + (pack.credits_total || 0) - (pack.credits_used || 0), 0);
-            }
-            return 0;
+            return withTimeout(
+                (async () => {
+                    const { data } = await supabase.from('user_credit_purchases').select('credits_total, credits_used');
+                    if (data) {
+                        return data.reduce((acc, pack) => acc + (pack.credits_total || 0) - (pack.credits_used || 0), 0);
+                    }
+                    return 0;
+                })(),
+                3000, "Credits check"
+            );
         }
     });
 

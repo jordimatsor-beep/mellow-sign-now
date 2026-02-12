@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
+import { withTimeout } from "@/lib/withTimeout";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
@@ -27,26 +28,19 @@ export default function Credits() {
   const { data: availableCredits, isLoading: loading } = useQuery({
     queryKey: queryKeys.credits.packs,
     queryFn: async () => {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Credits fetch timeout")), 5000)
+      return withTimeout(
+        (async () => {
+          const { data, error } = await supabase
+            .from('user_credit_purchases')
+            .select('credits_total, credits_used');
+          if (error) throw error;
+          if (data) {
+            return data.reduce((acc, pack) => acc + (pack.credits_total || 0) - (pack.credits_used || 0), 0);
+          }
+          return 0;
+        })(),
+        3000, "Credits fetch"
       );
-
-      const fetchPromise = (async () => {
-        const { data, error } = await supabase
-          .from('user_credit_purchases')
-          .select('credits_total, credits_used');
-
-        if (error) throw error;
-
-        if (data) {
-          return data.reduce((acc, pack) => {
-            return acc + (pack.credits_total || 0) - (pack.credits_used || 0);
-          }, 0);
-        }
-        return 0;
-      })();
-
-      return Promise.race([fetchPromise, timeoutPromise]);
     },
   });
 
@@ -54,17 +48,14 @@ export default function Credits() {
   const { data: transactions = [], isLoading: loadingHistory } = useQuery({
     queryKey: queryKeys.credits.transactions,
     queryFn: async () => {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Transactions fetch timeout")), 5000)
+      return withTimeout(
+        (async () => {
+          const { data, error } = await supabase.rpc('get_credit_transactions', { p_limit: 20 });
+          if (error) throw error;
+          return (data as CreditTransaction[]) || [];
+        })(),
+        3000, "Transactions fetch"
       );
-
-      const fetchPromise = (async () => {
-        const { data, error } = await supabase.rpc('get_credit_transactions', { p_limit: 20 });
-        if (error) throw error;
-        return (data as CreditTransaction[]) || [];
-      })();
-
-      return Promise.race([fetchPromise, timeoutPromise]);
     },
   });
 

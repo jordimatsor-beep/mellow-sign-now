@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { withTimeout } from "@/lib/withTimeout";
 import { toast } from "sonner";
 import { useDataExport } from "@/hooks/useDataExport";
 import { useProfile } from "@/context/ProfileContext";
@@ -129,7 +130,10 @@ export default function Settings() {
   const handleChangePassword = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      const { error } = await withTimeout(
+        supabase.auth.updateUser({ password: newPassword }),
+        3000, "Password update"
+      );
       if (error) throw error;
       toast.success("Contraseña actualizada correctamente");
       setShowPasswordDialog(false);
@@ -157,7 +161,10 @@ export default function Settings() {
       // We call the Edge Function which runs with Service Role to delete the Auth User.
       // Database data will cascade delete based on Foreign Keys if configured,
       // or the function handles it.
-      const { error } = await supabase.functions.invoke('delete-account');
+      const { error } = await withTimeout(
+        supabase.functions.invoke('delete-account'),
+        3000, "Account deletion"
+      );
 
       if (error) throw error;
 

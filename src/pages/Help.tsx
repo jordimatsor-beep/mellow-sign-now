@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { withTimeout } from "@/lib/withTimeout";
 import { toast } from "sonner";
 import {
   Accordion,
@@ -80,13 +81,16 @@ export default function Help() {
 
     setIsSending(true);
     try {
-      const { error } = await supabase.functions.invoke('contact-support', {
-        body: {
-          email: supportEmail,
-          message: supportMessage,
-          user_email: user?.email
-        }
-      });
+      const { error } = await withTimeout(
+        supabase.functions.invoke('contact-support', {
+          body: {
+            email: supportEmail,
+            message: supportMessage,
+            user_email: user?.email
+          }
+        }),
+        3000, "Contact support"
+      );
 
       if (error) throw error;
 

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { withTimeout } from "@/lib/withTimeout";
 
 // Define Profile interface
 export interface Profile {
@@ -39,16 +40,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const fetchProfile = async (userId: string) => {
         try {
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Profile fetch timeout")), 5000)
+            const { data, error } = await withTimeout(
+                supabase.from('users').select('*').eq('id', userId).single(),
+                3000, "Profile fetch"
             );
-            const fetchPromise = supabase
-                .from('users')
-                .select('*')
-                .eq('id', userId)
-                .single();
-
-            const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
             if (error) {
                 console.error("Error fetching profile:", error);
@@ -73,16 +68,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Check active sessions and sets the user
         const initSession = async () => {
             try {
-                // Safety timeout: If Supabase takes > 5 seconds, force load completion
-                // This prevents infinite loading screens if the network hangs or config is bad
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error("Auth timeout")), 5000)
+                // Safety timeout: force load completion if Supabase hangs
+                const result = await withTimeout(
+                    supabase.auth.getSession(),
+                    3000, "Auth session"
                 );
-
-                const sessionPromise = supabase.auth.getSession();
-
-                // Race the session fetch against the timeout
-                const result = await Promise.race([sessionPromise, timeoutPromise]);
                 const { data } = result as { data: { session: Session | null } };
 
                 if (mounted && data?.session) {
