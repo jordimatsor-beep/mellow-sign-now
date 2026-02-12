@@ -189,10 +189,10 @@ export default function Settings() {
       <Card>
         <CardContent className="flex items-center gap-4 p-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-xl font-semibold text-primary-foreground uppercase">
-            {profile?.name ? profile.name.substring(0, 2) : user?.email?.substring(0, 2) || "U"}
+            {(profile?.name || user?.user_metadata?.full_name || user?.email || "U").substring(0, 2).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold truncate">{profile?.name || "Usuario sin nombre"}</p>
+            <p className="font-semibold truncate">{profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuario"}</p>
             <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
             {profile?.id && <p className="text-xs text-muted-foreground truncate">{profile.id}</p>}
           </div>

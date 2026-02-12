@@ -55,9 +55,11 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
 
                 if (data) {
                     // Map DB columns to IssuerProfile interface
+                    // Fallback chain: DB name → DB company_name → Auth user_metadata.full_name
+                    const resolvedName = data.name || data.company_name || user.user_metadata?.full_name || "";
                     setProfile({
                         type: (data.issuer_type as IssuerType) || 'company',
-                        name: data.name || data.company_name || "",
+                        name: resolvedName,
                         id: data.tax_id || "",
                         address: data.address || "",
                         city: data.city || "",
