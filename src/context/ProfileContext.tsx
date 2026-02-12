@@ -43,13 +43,17 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         const fetchProfile = async () => {
             setIsLoading(true);
             try {
-                const { data, error } = await withTimeout(
-                    supabase.from('users')
-                        .select('tax_id, address, city, zip_code, country, issuer_type, name, email, phone, company_name')
-                        .eq('id', user.id)
-                        .single(),
-                    3000, "Profile fetch"
-                );
+                const { data, error } = await supabase.from('users')
+                    .select('tax_id, address, city, zip_code, country, issuer_type, name, email, phone, company_name')
+                    .eq('id', user.id)
+                    .single();
+                /*
+                // Removed withTimeout
+                await withTimeout(
+                supabase.from('users')
+                    ...
+                3000, "Profile fetch"
+            ); */
 
                 if (error) {
                     if (import.meta.env.DEV) console.error("Error fetching profile:", error);

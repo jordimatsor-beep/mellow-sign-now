@@ -9,6 +9,7 @@ export interface Profile {
     name: string | null;
     email: string | null;
     company_name: string | null;
+    role: 'user' | 'admin' | null;
     // Add other fields from public.users as needed
 }
 
@@ -42,16 +43,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             const { data, error } = await withTimeout(
                 supabase.from('users').select('*').eq('id', userId).single(),
-                3000, "Profile fetch"
+                10000, "Profile fetch"
             );
 
             if (error) {
                 console.error("Error fetching profile:", error);
                 return null;
             }
-            return data as Profile;
+
+            // Map DB response to Profile, handling missing role column gracefully
+            const profile: Profile = {
+                id: data.id,
+                name: data.name,
+                email: data.email,
+                company_name: data.company_name,
+                role: (data.role as any) || 'user' // Default to 'user' if role is missing/null
+            };
+
+            return profile;
         } catch (error) {
-            console.error("Error fetching profile:", error);
+            console.error("Error fetching profile (timeout/catch):", error);
+            // If timeout or error, return null so we don't crash or hang
             return null;
         }
     };
@@ -65,13 +77,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         let mounted = true;
 
+        // Failsafe: if everything hangs, force stop loading after 15s
+        const safetyTimer = setTimeout(() => {
+            if (mounted && loading) {
+                console.warn("Auth load safety timeout triggered");
+                setLoading(false);
+            }
+        }, 15000);
+
         // Check active sessions and sets the user
         const initSession = async () => {
             try {
-                // Safety timeout: force load completion if Supabase hangs
                 const result = await withTimeout(
                     supabase.auth.getSession(),
-                    3000, "Auth session"
+                    10000, "Auth session"
                 );
                 const { data } = result as { data: { session: Session | null } };
 
@@ -93,7 +112,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             } catch (error) {
                 console.error("Auth initialization error or timeout:", error);
             } finally {
-                if (mounted) setLoading(false);
+                if (mounted) {
+                    setLoading(false);
+                    clearTimeout(safetyTimer);
+                }
             }
         };
 

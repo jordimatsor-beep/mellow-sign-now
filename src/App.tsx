@@ -16,6 +16,8 @@ import { CookieConsent } from "@/components/CookieConsent";
 // Layouts
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
+import { AdminLayout } from "@/components/layout/AdminLayout";
+import { AdminRoute } from "@/components/layout/AdminRoute";
 
 // Pages
 import Dashboard from "@/pages/Dashboard";
@@ -32,6 +34,9 @@ import Onboarding from "@/pages/Onboarding";
 import SignDocument from "@/pages/SignDocument";
 import NotFound from "@/pages/NotFound";
 import Login from "@/pages/auth/Login";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import UsersManager from "@/pages/admin/UsersManager";
+import CreditsManager from "@/pages/admin/CreditsManager";
 import Register from "@/pages/auth/Register";
 import UpdatePassword from "@/pages/auth/UpdatePassword";
 import AccountConfirmed from "@/pages/auth/AccountConfirmed";
@@ -93,6 +98,17 @@ const App = () => (
                     <Route path="/credits/purchase" element={<CreditsPurchase />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/help" element={<Help />} />
+                  </Route>
+                </Route>
+
+
+                {/* Admin Routes (Stealth Mode) */}
+                <Route path="/shobdgohs" element={<AdminRoute />}>
+                  <Route element={<AdminLayout />}>
+                    <Route index element={<Navigate to="/shobdgohs/dashboard" replace />} />
+                    <Route path="dashboard" element={<AdminDashboard />} />
+                    <Route path="users" element={<UsersManager />} />
+                    <Route path="credits" element={<CreditsManager />} />
                   </Route>
                 </Route>
 
