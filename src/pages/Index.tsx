@@ -26,12 +26,12 @@ export default function Index() {
   const { session } = useAuth();
   const navigate = useNavigate();
 
-  // Removed auto-redirect to allow viewing landing page and pricing
-  // useEffect(() => {
-  //   if (session) {
-  //     navigate("/dashboard");
-  //   }
-  // }, [session, navigate]);
+  // Auto-redirect to dashboard if logged in
+  useEffect(() => {
+    if (session) {
+      navigate("/dashboard");
+    }
+  }, [session, navigate]);
 
   return (
     <div className="min-h-screen bg-background selection:bg-primary/20">
@@ -65,12 +65,21 @@ export default function Index() {
             <span className="hidden lg:inline-flex text-[10px] text-muted-foreground/60 uppercase tracking-wider">
               Powered by <span className="font-semibold ml-1">OPERIA</span>
             </span>
-            <Button variant="outline" asChild className="border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all duration-300">
-              <Link to="/login">Acceso</Link>
-            </Button>
-            <Button asChild className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-300 hover:scale-105 active:scale-95">
-              <Link to="/register">Empezar Gratis</Link>
-            </Button>
+
+            {session ? (
+              <Button asChild className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-300 hover:scale-105 active:scale-95">
+                <Link to="/dashboard">Ir al Dashboard</Link>
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" asChild className="border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all duration-300">
+                  <Link to="/login">Acceso</Link>
+                </Button>
+                <Button asChild className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-300 hover:scale-105 active:scale-95">
+                  <Link to="/register">Empezar Gratis</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>

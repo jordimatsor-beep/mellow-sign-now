@@ -24,10 +24,8 @@ export function MobileMenu({ onClose }: MobileMenuProps) {
   ];
 
   const handleLogout = () => {
-    // Fire and forget
-    signOut().catch(console.error);
     onClose();
-    window.location.href = '/login';
+    signOut().catch(console.error);
   };
 
   return (

@@ -482,11 +482,7 @@ export default function Settings() {
         type="button"
         className="w-full justify-start gap-3 text-destructive hover:text-destructive"
         onClick={() => {
-          // Fire and forget - no esperamos a Supabase porque a veces se cuelga
           signOut().catch(console.error);
-
-          // Limpieza manual y redirección inmediata
-          window.location.href = '/login';
         }}
       >
         <LogOut className="h-5 w-5" />

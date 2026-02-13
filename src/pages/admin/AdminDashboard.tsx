@@ -1,234 +1,259 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, FileText, CreditCard, Activity, TrendingUp, CheckCircle, Clock, AlertTriangle } from "lucide-react";
+import { Users, FileText, CreditCard, Activity, TrendingUp, CheckCircle, Clock, AlertTriangle, Euro, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface DashboardMetrics {
-    totalUsers: number;
-    totalDocuments: number;
-    documentsSigned: number;
-    documentsPending: number;
-    documentsExpired: number;
-    totalCreditsIssued: number;
-    totalCreditsUsed: number;
-    recentUsers: { id: string; email: string; name: string | null; created_at: string | null }[];
-    recentDocuments: { id: string; title: string; status: string | null; created_at: string | null; signer_email: string | null }[];
+interface AdminStats {
+    revenue: number;
+    revenue_growth: number;
+    active_users: number;
+    credits_sold: number;
+    docs_signed: number;
+    chart_data: { date: string; revenue: number; credits: number }[];
+    top_customers: { email: string; company_name: string; total_spend: number; total_credits: number }[];
 }
 
 export default function AdminDashboard() {
-    const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+    const [stats, setStats] = useState<AdminStats | null>(null);
+    const [period, setPeriod] = useState("30d");
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchMetrics();
-    }, []);
+        fetchStats();
+    }, [period]);
 
-    const fetchMetrics = async () => {
+    const fetchStats = async () => {
+        setLoading(true);
         try {
-            // Parallel queries for speed
-            const [usersRes, docsRes, creditsRes] = await Promise.all([
-                supabase.from("users").select("id, email, name, created_at, role").order("created_at", { ascending: false }).limit(1000),
-                supabase.from("documents").select("id, title, status, created_at, signer_email").order("created_at", { ascending: false }).limit(1000),
-                supabase.from("user_credit_purchases").select("credits_total, credits_used").limit(5000),
-            ]);
-
-            const users = usersRes.data || [];
-            const docs = docsRes.data || [];
-            const credits = creditsRes.data || [];
-
-            const totalCreditsIssued = credits.reduce((sum, c) => sum + (c.credits_total || 0), 0);
-            const totalCreditsUsed = credits.reduce((sum, c) => sum + (c.credits_used || 0), 0);
-
-            setMetrics({
-                totalUsers: users.length,
-                totalDocuments: docs.length,
-                documentsSigned: docs.filter(d => d.status === "signed").length,
-                documentsPending: docs.filter(d => d.status === "sent" || d.status === "pending").length,
-                documentsExpired: docs.filter(d => d.status === "expired").length,
-                totalCreditsIssued,
-                totalCreditsUsed,
-                recentUsers: users.slice(0, 5),
-                recentDocuments: docs.slice(0, 8),
-            });
+            const { data, error } = await supabase.rpc('get_admin_stats', { p_period: period });
+            if (error) throw error;
+            console.log("Admin Stats:", data);
+            setStats(data as AdminStats);
         } catch (error) {
-            console.error("Error fetching admin metrics:", error);
+            console.error("Error fetching admin stats:", error);
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading) {
+    if (loading && !stats) {
         return (
-            <div className="flex items-center justify-center p-12">
-                <div className="animate-spin h-8 w-8 border-4 border-red-500 border-t-transparent rounded-full" />
+            <div className="space-y-8 p-8">
+                <div className="flex justify-between items-center">
+                    <Skeleton className="h-10 w-48" />
+                    <Skeleton className="h-10 w-32" />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
+                </div>
+                <Skeleton className="h-96 w-full" />
             </div>
         );
     }
 
-    if (!metrics) return <p className="p-8 text-muted-foreground">Error cargando métricas.</p>;
-
-    const creditsAvailable = metrics.totalCreditsIssued - metrics.totalCreditsUsed;
+    if (!stats) return <p className="p-8 text-muted-foreground">Error cargando métricas.</p>;
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex justify-between items-center">
+        <div className="space-y-8 animate-in fade-in duration-500">
+            {/* Header & Controls */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-                    <p className="text-muted-foreground">Vista general de FirmaClara</p>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">Dashboard General</h2>
+                    <p className="text-muted-foreground">Vista comercial y operativa de FirmaClara</p>
                 </div>
-                <div className="text-xs text-muted-foreground bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium flex items-center gap-1">
-                    <Activity className="h-3 w-3" /> Sistema Activo
+                <div className="flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium flex items-center gap-1">
+                        <Activity className="h-3 w-3" /> Sistema Activo
+                    </div>
+                    <Select value={period} onValueChange={setPeriod}>
+                        <SelectTrigger className="w-[180px]">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            <SelectValue placeholder="Periodo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="today">Hoy</SelectItem>
+                            <SelectItem value="30d">Últimos 30 días</SelectItem>
+                            <SelectItem value="year">Este Año</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
-            {/* KPI Cards */}
+            {/* Business KPI Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card className="hover:shadow-lg transition-all border-l-4 border-l-emerald-500 bg-gradient-to-br from-white to-emerald-50/50">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Ingresos Totales</CardTitle>
+                        <Euro className="h-5 w-5 text-emerald-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-3xl font-bold text-emerald-700">
+                            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(stats.revenue)}
+                        </div>
+                        <p className={`text-xs mt-1 font-medium ${stats.revenue_growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {stats.revenue_growth > 0 ? '+' : ''}{stats.revenue_growth}% vs periodo anterior
+                        </p>
+                    </CardContent>
+                </Card>
+
                 <Link to="/shobdgohs/users">
-                    <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-blue-500">
+                    <Card className="hover:shadow-lg transition-all cursor-pointer border-l-4 border-l-blue-500 bg-gradient-to-br from-white to-blue-50/50">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">Total Usuarios</CardTitle>
-                            <Users className="h-5 w-5 text-blue-500" />
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Usuarios Activos</CardTitle>
+                            <Users className="h-5 w-5 text-blue-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold">{metrics.totalUsers}</div>
-                            <p className="text-xs text-muted-foreground mt-1">Registrados en la plataforma</p>
+                            <div className="text-3xl font-bold text-blue-700">{stats.active_users}</div>
+                            <p className="text-xs text-muted-foreground mt-1">Han interactuado en este periodo</p>
                         </CardContent>
                     </Card>
                 </Link>
 
-                <Card className="border-l-4 border-l-purple-500">
+                <Card className="hover:shadow-lg transition-all border-l-4 border-l-purple-500 bg-gradient-to-br from-white to-purple-50/50">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Total Documentos</CardTitle>
-                        <FileText className="h-5 w-5 text-purple-500" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Documentos Firmados</CardTitle>
+                        <CheckCircle className="h-5 w-5 text-purple-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold">{metrics.totalDocuments}</div>
-                        <p className="text-xs text-muted-foreground mt-1">Creados en FirmaClara</p>
+                        <div className="text-3xl font-bold text-purple-700">{stats.docs_signed}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Completados en este periodo</p>
                     </CardContent>
                 </Card>
 
                 <Link to="/shobdgohs/credits">
-                    <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-green-500">
+                    <Card className="hover:shadow-lg transition-all cursor-pointer border-l-4 border-l-amber-500 bg-gradient-to-br from-white to-amber-50/50">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">Créditos Disponibles</CardTitle>
-                            <CreditCard className="h-5 w-5 text-green-500" />
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Créditos Vendidos</CardTitle>
+                            <CreditCard className="h-5 w-5 text-amber-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold">{creditsAvailable}</div>
-                            <p className="text-xs text-muted-foreground mt-1">{metrics.totalCreditsUsed} usados de {metrics.totalCreditsIssued} emitidos</p>
+                            <div className="text-3xl font-bold text-amber-700">{stats.credits_sold}</div>
+                            <p className="text-xs text-muted-foreground mt-1">Unidades compradas</p>
                         </CardContent>
                     </Card>
                 </Link>
+            </div>
 
-                <Card className="border-l-4 border-l-amber-500">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Tasa de Firma</CardTitle>
-                        <TrendingUp className="h-5 w-5 text-amber-500" />
+            {/* Charts Section */}
+            <div className="grid gap-6 md:grid-cols-7">
+                {/* Revenue Chart (Main - 4 cols) */}
+                <Card className="md:col-span-4 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-emerald-500" /> Evolución de Ingresos
+                        </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold">
-                            {metrics.totalDocuments > 0
-                                ? Math.round((metrics.documentsSigned / metrics.totalDocuments) * 100)
-                                : 0}%
+                    <CardContent className="pl-0">
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={stats.chart_data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis
+                                        dataKey="date"
+                                        tickFormatter={(str) => format(new Date(str), period === 'today' ? 'HH:mm' : 'dd MMM', { locale: es })}
+                                        tick={{ fontSize: 12 }}
+                                        tickLine={false}
+                                        axisLine={false}
+                                    />
+                                    <YAxis
+                                        tickFormatter={(value) => `€${value}`}
+                                        tick={{ fontSize: 12 }}
+                                        tickLine={false}
+                                        axisLine={false}
+                                    />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                    <Tooltip
+                                        formatter={(value: number) => [new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value), 'Ingresos']}
+                                        labelFormatter={(label) => format(new Date(label), "d MMMM yyyy, HH:mm", { locale: es })}
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">{metrics.documentsSigned} firmados</p>
+                    </CardContent>
+                </Card>
+
+                {/* Credits Sold Chart (Side - 3 cols) */}
+                <Card className="md:col-span-3 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <CreditCard className="h-5 w-5 text-amber-500" /> Venta de Créditos
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={stats.chart_data}>
+                                    <XAxis
+                                        dataKey="date"
+                                        tickFormatter={(str) => format(new Date(str), period === 'today' ? 'HH:mm' : 'dd', { locale: es })}
+                                        tick={{ fontSize: 12 }}
+                                        tickLine={false}
+                                        axisLine={false}
+                                    />
+                                    <Tooltip
+                                        cursor={{ fill: '#f3f4f6' }}
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Bar dataKey="credits" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Créditos" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Document Status Breakdown */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-500" /> Firmados
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-green-600">{metrics.documentsSigned}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-yellow-500" /> Pendientes
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-yellow-600">{metrics.documentsPending}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4 text-red-500" /> Expirados
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-red-600">{metrics.documentsExpired}</div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Recent Activity Panels */}
+            {/* Top Customers Panel */}
             <div className="grid gap-6 md:grid-cols-2">
-                {/* Recent Users */}
-                <Card>
+                <Card className="md:col-span-2 shadow-sm">
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
-                            <Users className="h-5 w-5" /> Últimos Registros
+                            <Users className="h-5 w-5 text-blue-500" /> Mejores Clientes (Top Spenders)
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-3">
-                            {metrics.recentUsers.map(u => (
-                                <div key={u.id} className="flex items-center justify-between border-b pb-2 last:border-0">
-                                    <div>
-                                        <p className="text-sm font-medium">{u.name || "Sin nombre"}</p>
-                                        <p className="text-xs text-muted-foreground">{u.email}</p>
+                        <div className="space-y-4">
+                            {stats.top_customers.length === 0 ? (
+                                <p className="text-sm text-gray-500 text-center py-4">No hay datos de ventas en este periodo.</p>
+                            ) : (
+                                stats.top_customers.map((c, i) => (
+                                    <div key={i} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`
+                                                flex h-9 w-9 items-center justify-center rounded-full font-bold text-sm
+                                                ${i === 0 ? 'bg-yellow-100 text-yellow-700' :
+                                                    i === 1 ? 'bg-gray-100 text-gray-700' :
+                                                        i === 2 ? 'bg-orange-100 text-orange-700' :
+                                                            'bg-blue-50 text-blue-700'}
+                                            `}>
+                                                {i + 1}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium">{c.company_name || "Particular"}</p>
+                                                <p className="text-xs text-muted-foreground">{c.email}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-bold text-emerald-600">
+                                                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(c.total_spend)}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">{c.total_credits} créditos</p>
+                                        </div>
                                     </div>
-                                    <span className="text-xs text-muted-foreground">
-                                        {u.created_at ? format(new Date(u.created_at), "dd MMM", { locale: es }) : "-"}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Recent Documents */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <FileText className="h-5 w-5" /> Documentos Recientes
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-3">
-                            {metrics.recentDocuments.map(d => (
-                                <div key={d.id} className="flex items-center justify-between border-b pb-2 last:border-0">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{d.title}</p>
-                                        <p className="text-xs text-muted-foreground">{d.signer_email || "—"}</p>
-                                    </div>
-                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${d.status === "signed" ? "bg-green-100 text-green-700" :
-                                        d.status === "sent" || d.status === "pending" ? "bg-yellow-100 text-yellow-700" :
-                                            d.status === "expired" ? "bg-red-100 text-red-700" :
-                                                "bg-gray-100 text-gray-600"
-                                        }`}>
-                                        {d.status === "signed" ? "Firmado" :
-                                            d.status === "sent" ? "Enviado" :
-                                                d.status === "pending" ? "Pendiente" :
-                                                    d.status === "expired" ? "Expirado" :
-                                                        d.status === "draft" ? "Borrador" :
-                                                            d.status || "—"}
-                                    </span>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     </CardContent>
                 </Card>

@@ -352,6 +352,7 @@ export default function NewDocument() {
 
   const handleSendDocument = async (docId: string, userId: string, signToken: string) => {
     try {
+      // 1. Consumir crédito
       const { error: creditError } = await withTimeout(
         supabase.rpc('consume_credit', { amount: 1 }),
         3000, "Credit consume"
@@ -368,16 +369,7 @@ export default function NewDocument() {
         return;
       }
 
-      const { error: updateError } = await withTimeout(
-        supabase.from('documents').update({
-          status: 'sent',
-          sent_at: new Date().toISOString()
-        }).eq('id', docId),
-        3000, "Document status update"
-      );
-
-      if (updateError) throw updateError;
-
+      // 2. Intentar enviar el email (CRITICO: Si falla, devolvemos el crédito)
       const payload = {
         document_id: docId,
         signer_email: signerEmail,
@@ -392,10 +384,48 @@ export default function NewDocument() {
         supabase.functions.invoke('send-invite-v2', {
           body: payload
         }),
-        10000, "Send invite"
+        15000, "Send invite" // Aumentado timeout para email
       );
 
-      // Registrar el evento (non-blocking, don't let it fail the send)
+      // Verificación estricta del envío
+      const emailSent = !fnError && fnData?.success !== false;
+
+      if (!emailSent) {
+        console.error("Error sending email:", fnError || fnData);
+
+        // 2.1 ROLLBACK: Devolver el crédito si el email falló
+        await supabase.rpc('consume_credit', { amount: -1, description: 'Reembolso por fallo de envío' });
+
+        const errorMsg = fnError?.message || fnData?.error || "Error desconocido al enviar email";
+        toast.error(`No se pudo enviar el email: ${errorMsg}. El crédito ha sido devuelto.`);
+        toast.info("El documento se ha guardado como borrador. Inténtalo de nuevo.");
+
+        setUploadStatus("error");
+        // No actualizamos a 'sent', se queda en 'draft'
+        setTimeout(() => navigate('/dashboard'), 4000);
+        return;
+      }
+
+      // 3. Email enviado correctamente -> Actualizar estado a 'sent'
+      const { error: updateError } = await withTimeout(
+        supabase.from('documents').update({
+          status: 'sent',
+          sent_at: new Date().toISOString()
+        }).eq('id', docId),
+        3000, "Document status update"
+      );
+
+      if (updateError) {
+        // Edge case: Email se envió pero falló actualizar la BBDD. 
+        // En este caso NO devolvemos crédito porque el email sí salió.
+        // El usuario verá el documento como 'draft' pero el firmante recibió el correo.
+        // Es un estado inconsistente pero preferible a que el firmante firme y no valga, 
+        // o que enviemos 2 emails.
+        console.error("Error updating document status after sending email:", updateError);
+        toast.error("El email se envió pero hubo un error actualizando el estado. Contacta con soporte.");
+      }
+
+      // Registrar el evento
       try {
         await withTimeout(
           supabase.from('event_logs').insert({
@@ -403,7 +433,7 @@ export default function NewDocument() {
             event_type: 'document.sent',
             event_data: {
               credits_consumed: 1,
-              email_sent: !fnError && fnData?.success !== false,
+              email_sent: true,
               document_id: docId,
               signer_email: signerEmail
             }
@@ -414,33 +444,21 @@ export default function NewDocument() {
         console.warn("Event log failed (non-critical):", logErr);
       }
 
-      // Manejo de errores de red (Supabase client throw)
-      if (fnError) {
-        console.error("Error sending email (Network/Client):", fnError);
-        const typedError = fnError as { status?: number | string; code?: string; context?: { status?: number } };
-        const status = typedError.status || typedError.code || typedError.context?.status || 'Unknown';
-        toast.error(`Error de conexión (Code: ${status}): ${fnError.message}. El documento se ha guardado.`, { duration: 10000 });
-        setUploadStatus("error");
-        setTimeout(() => navigate('/dashboard'), 4000);
-        return;
-      }
-
-      // Manejo de errores lógicos del backend (Soft Error 200 OK)
-      if (fnData && (fnData.error || fnData.success === false)) {
-        console.error("Error sending email (Backend Logic):", fnData);
-        toast.error(`Error del servidor: ${fnData.error}. El documento se ha guardado.`, { duration: 10000 });
-        setUploadStatus("error");
-        setTimeout(() => navigate('/dashboard'), 4000);
-        return;
-      }
-
       setUploadStatus("success");
       toast.success("Documento enviado correctamente");
       navigate('/dashboard');
 
     } catch (error: unknown) {
       const err = error as Error;
-      toast.error("Error al enviar: " + err.message);
+      console.error("Critical error in handleSendDocument:", err);
+
+      // Intentar devolver crédito si falló algo inesperado después del consumo
+      // Nota: Esto es arriesgado si no sabemos si el email salió, 
+      // pero asumimos que si saltó al catch, el email probablemente falló o es el timeout.
+      // Por seguridad, solo devolvemos si no hemos llegado al punto de "emailSent = true".
+      // Como es complejo saberlo aquí, mejor pedimos al usuario que contacte si ha perdido créditos.
+
+      toast.error("Error crítico al enviar: " + err.message);
       setUploadStatus("error");
       navigate('/dashboard');
     }

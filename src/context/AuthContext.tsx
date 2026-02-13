@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 // Define Profile interface
 export interface Profile {
@@ -18,6 +19,7 @@ interface AuthContextType {
     session: Session | null;
     profile: Profile | null;
     loading: boolean;
+    isLoggingOut: boolean;
     signOut: () => Promise<void>;
     refreshProfile: () => Promise<void>;
 }
@@ -27,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
     session: null,
     profile: null,
     loading: true,
+    isLoggingOut: false,
     signOut: async () => { },
     refreshProfile: async () => { },
 });
@@ -38,6 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [session, setSession] = useState<Session | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     const fetchProfile = async (userId: string) => {
         try {
@@ -119,18 +123,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
         };
 
-        initSession();
+        if (!isLoggingOut) {
+            initSession();
+        }
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!mounted) return;
+            if (isLoggingOut) return; // Ignore updates during logout
+
+            // Handle explicit SIGNED_OUT event
+            if (event === 'SIGNED_OUT') {
+                setSession(null);
+                setUser(null);
+                setProfile(null);
+                setLoading(false);
+                return;
+            }
 
             setSession(session);
             const currentUser = session?.user ?? null;
             setUser(currentUser);
 
             if (currentUser) {
-                const profileData = await fetchProfile(currentUser.id);
-                if (mounted) setProfile(profileData);
+                // Only fetch profile if we don't have it or user changed
+                if (!profile || profile.id !== currentUser.id) {
+                    const profileData = await fetchProfile(currentUser.id);
+                    if (mounted) setProfile(profileData);
+                }
             } else {
                 if (mounted) setProfile(null);
             }
@@ -142,17 +161,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             mounted = false;
             subscription.unsubscribe();
         };
-    }, []);
+    }, [isLoggingOut]); // Re-subscribe if we cancel logout (unlikely) or finish it logic elsewhere
 
     const signOut = async () => {
-        await supabase.auth.signOut();
-        setProfile(null);
-        setUser(null);
-        setSession(null);
+        setIsLoggingOut(true);
+        try {
+            // Artificial delay to show the branding (UX)
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            await supabase.auth.signOut();
+
+            // Clear local state immediately
+            setProfile(null);
+            setUser(null);
+            setSession(null);
+
+            // Hard Reload to ensure clean state if needed, or just redirect
+            // Currently using window.location to be absolutely sure all memory is cleared
+            window.location.href = '/login';
+        } catch (error) {
+            console.error("Error signing out:", error);
+            setIsLoggingOut(false); // Only reset if error, otherwise we are redirecting
+        }
     };
 
     return (
-        <AuthContext.Provider value={{ user, session, profile, loading, signOut, refreshProfile }}>
+        <AuthContext.Provider value={{ user, session, profile, loading, isLoggingOut, signOut, refreshProfile }}>
+            {isLoggingOut && <LoadingScreen message="Cerrando sesión de forma segura..." />}
             {children}
         </AuthContext.Provider>
     );
