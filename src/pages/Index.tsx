@@ -16,7 +16,8 @@ import {
   Briefcase,
   Wrench,
   FileSignature,
-  Sparkles
+  Sparkles,
+  ChevronRight
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { SolutionsModal } from "@/components/SolutionsModal";
@@ -102,12 +103,12 @@ export default function Index() {
               </div>
 
               <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight animate-fade-in [animation-delay:200ms]">
-                Acelera tus ventas y <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80">formaliza acuerdos</span>
+                Firma electrónica simple para <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80">empresas y autónomos</span>
               </h1>
 
               <p className="text-lg text-muted-foreground max-w-lg">
-                La solución de firma electrónica simple (eIDAS) y gestión documental
-                diseñada para empresas ágiles. Sin instalación. Sin cuotas fijas.
+                Firma contratos, presupuestos y documentos online con validez legal.
+                Plataforma de firma digital con cumplimiento eIDAS. Sin instalación. Sin cuotas fijas.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -544,14 +545,58 @@ export default function Index() {
         </div>
       </section>
 
+      {/* FAQ Section - SEO */}
+      <section className="py-16 lg:py-20 bg-secondary/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-foreground mb-3">Preguntas frecuentes sobre firma electrónica</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Resolvemos las dudas más habituales sobre firmar documentos online con validez legal en España.
+            </p>
+          </div>
+          <div className="max-w-3xl mx-auto space-y-4">
+            {[
+              {
+                q: "¿Es legal la firma electrónica en España?",
+                a: "Sí. Según el Reglamento eIDAS (UE Nº 910/2014) y la Ley 6/2020 en España, la firma electrónica tiene plena validez legal. No se pueden denegar efectos jurídicos a una firma por el mero hecho de ser electrónica."
+              },
+              {
+                q: "¿Qué diferencia hay entre firma electrónica y firma digital?",
+                a: "La firma electrónica es el concepto legal amplio que abarca cualquier método de identificación electrónica. La firma digital es un tipo específico que usa criptografía. FirmaClara ofrece firma electrónica simple con validez legal bajo eIDAS."
+              },
+              {
+                q: "¿Cuánto cuesta firmar documentos online con FirmaClara?",
+                a: "FirmaClara ofrece 2 créditos gratis para probar. Los packs empiezan desde 15€ por 10 documentos (1,50€/documento). Sin cuotas mensuales ni compromisos. Los créditos no caducan nunca."
+              },
+              {
+                q: "¿FirmaClara cumple con el RGPD y eIDAS?",
+                a: "Sí. FirmaClara cumple con el Reglamento General de Protección de Datos (RGPD) y opera bajo el marco eIDAS para firma electrónica simple. Los documentos se almacenan con encriptación SSL/TLS y generamos un certificado de auditoría completo."
+              },
+              {
+                q: "¿Puedo firmar presupuestos y contratos desde el móvil?",
+                a: "Sí. FirmaClara funciona desde cualquier dispositivo (móvil, tablet o PC) sin necesidad de instalar ninguna aplicación. El firmante recibe un enlace seguro y firma con un clic o dibujando su rúbrica."
+              }
+            ].map((faq, i) => (
+              <details key={i} className="group rounded-xl border border-border bg-background p-5 transition-shadow hover:shadow-sm">
+                <summary className="flex cursor-pointer items-center justify-between font-semibold text-foreground">
+                  {faq.q}
+                  <ChevronRight className="h-5 w-5 text-muted-foreground transition-transform group-open:rotate-90" />
+                </summary>
+                <p className="mt-3 text-muted-foreground leading-relaxed">{faq.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-16 lg:py-20 bg-foreground">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-background mb-4">
-            Empieza a firmar documentos hoy
+            Empieza a firmar documentos online hoy
           </h2>
           <p className="text-background/70 mb-8 max-w-xl mx-auto">
-            Sin compromisos. Sin tarjeta de crédito. 2 créditos gratis para probar.
+            Prueba nuestra plataforma de firma electrónica gratis. Sin compromisos. Sin tarjeta de crédito. 2 créditos gratis.
           </p>
           <Button size="lg" asChild className="bg-background text-foreground hover:bg-background/90 shadow-xl shadow-black/10 hover:shadow-black/20 transition-all duration-300 hover:scale-105 active:scale-95">
             <Link to="/register">
@@ -576,8 +621,8 @@ export default function Index() {
                 </div>
               </div>
               <p className="text-sm text-background/50 max-w-xs">
-                La solución de firma digital simple, legal y segura
-                para profesionales y empresas.
+                Plataforma de firma electrónica y firma digital con validez legal en España.
+                Solución segura para autónomos, pymes y empresas.
               </p>
             </div>
 

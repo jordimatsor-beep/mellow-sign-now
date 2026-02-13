@@ -30,9 +30,9 @@ export default function HowItWorks() {
         <div className="bg-white">
             <div className="bg-slate-50 py-20 text-center">
                 <div className="container mx-auto px-4">
-                    <h1 className="mb-4 text-4xl font-bold md:text-5xl">Cómo funciona FirmaClara</h1>
+                    <h1 className="mb-4 text-4xl font-bold md:text-5xl">Cómo firmar documentos online con FirmaClara</h1>
                     <p className="mx-auto max-w-2xl text-lg text-slate-600">
-                        Simplificamos el proceso de firma digital para que cierres acuerdos en minutos, no en días.
+                        Nuestra plataforma de firma electrónica simplifica el proceso para que cierres acuerdos y firmes contratos en minutos, no en días. Con validez legal en España y toda la UE.
                     </p>
                 </div>
             </div>
@@ -51,8 +51,8 @@ export default function HowItWorks() {
                 </div>
 
                 <div className="mt-20 rounded-2xl bg-slate-900 p-10 text-center text-white">
-                    <h2 className="mb-4 text-3xl font-bold">¿Listo para empezar?</h2>
-                    <p className="mb-8 text-slate-300">Prueba la plataforma hoy mismo y envía tu primer documento gratis.</p>
+                    <h2 className="mb-4 text-3xl font-bold">¿Listo para firmar documentos online?</h2>
+                    <p className="mb-8 text-slate-300">Prueba nuestra plataforma de firma electrónica hoy mismo. Envía tu primer documento gratis, con validez legal.</p>
                     <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700">
                         <Link to="/register">Crear cuenta gratis</Link>
                     </Button>

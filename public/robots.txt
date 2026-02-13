@@ -1,14 +1,13 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /documents
+Disallow: /contacts
+Disallow: /credits
+Disallow: /settings
+Disallow: /new-document
+Disallow: /onboarding
+Disallow: /shobdgohs
+Disallow: /sign/
+
+Sitemap: https://firmaclara.es/sitemap.xml

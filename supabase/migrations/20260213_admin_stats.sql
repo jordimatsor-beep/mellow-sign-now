@@ -89,16 +89,23 @@ BEGIN
         FROM user_credit_purchases
         WHERE created_at >= v_start_date
         GROUP BY 1
+    ),
+    ordered_data AS (
+        SELECT 
+            ts.date,
+            COALESCE(rd.revenue, 0) as revenue,
+            COALESCE(rd.credits, 0) as credits
+        FROM time_series ts
+        LEFT JOIN revenue_data rd ON ts.date = rd.date
+        ORDER BY ts.date
     )
     SELECT jsonb_agg(jsonb_build_object(
-        'date', ts.date,
-        'revenue', COALESCE(rd.revenue, 0),
-        'credits', COALESCE(rd.credits, 0)
+        'date', date,
+        'revenue', revenue,
+        'credits', credits
     ))
     INTO v_chart_data
-    FROM time_series ts
-    LEFT JOIN revenue_data rd ON ts.date = rd.date
-    ORDER BY ts.date;
+    FROM ordered_data;
 
     -- 6. Top Customers (By spend in period)
     SELECT jsonb_agg(t)

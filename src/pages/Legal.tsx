@@ -8,9 +8,9 @@ export default function Legal() {
             {/* Hero Section */}
             <div className="bg-slate-900 py-20 text-center text-white">
                 <div className="container mx-auto px-4">
-                    <h1 className="mb-4 text-4xl font-bold md:text-5xl">Legalidad y Cumplimiento</h1>
+                    <h1 className="mb-4 text-4xl font-bold md:text-5xl">Validez Legal de la Firma Electrónica en España</h1>
                     <p className="mx-auto max-w-2xl text-lg text-slate-300">
-                        FirmaClara cumple con los estándares europeos eIDAS para garantizar la validez legal de tus documentos firmados.
+                        FirmaClara cumple con el Reglamento eIDAS y la Ley 6/2020 para garantizar que tus documentos firmados digitalmente tengan plena validez jurídica en España y la Unión Europea.
                     </p>
                 </div>
             </div>
@@ -51,7 +51,7 @@ export default function Legal() {
 
                 {/* Deep Dive Section */}
                 <div className="mt-20">
-                    <h2 className="mb-8 text-3xl font-bold text-slate-900">Preguntas Frecuentes sobre Legalidad</h2>
+                    <h2 className="mb-8 text-3xl font-bold text-slate-900">Preguntas frecuentes sobre la validez legal de la firma electrónica</h2>
                     <div className="space-y-6">
                         <div className="rounded-lg bg-slate-50 p-6">
                             <h4 className="mb-2 text-lg font-semibold">¿Es válida una firma electrónica avanzada?</h4>
@@ -63,6 +63,18 @@ export default function Legal() {
                             <h4 className="mb-2 text-lg font-semibold">¿Qué pruebas aportamos?</h4>
                             <p className="text-slate-600">
                                 Aportamos un documento probatorio que vincula al firmante con el documento firmado, incluyendo: hash del documento original, hash del documento firmado, trazabilidad del envío y la apertura, y verificación OTP (si activada).
+                            </p>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-6">
+                            <h4 className="mb-2 text-lg font-semibold">¿Qué tipos de firma electrónica existen según eIDAS?</h4>
+                            <p className="text-slate-600">
+                                El reglamento eIDAS define tres niveles: firma electrónica simple (SES), firma electrónica avanzada (AES) y firma electrónica cualificada (QES). FirmaClara ofrece firma electrónica simple, que es válida legalmente para la mayoría de contratos y acuerdos comerciales entre particulares y empresas.
+                            </p>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-6">
+                            <h4 className="mb-2 text-lg font-semibold">¿FirmaClara es una alternativa a DocuSign en España?</h4>
+                            <p className="text-slate-600">
+                                Sí. FirmaClara está diseñada específicamente para autónomos y pymes en España, con precios más accesibles (desde 1,50€/documento), sin cuotas mensuales, y con soporte en español. Incluye verificación OTP, asistente IA y certificado de auditoría.
                             </p>
                         </div>
                     </div>

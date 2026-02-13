@@ -742,6 +742,10 @@ export type Database = {
           created_at: string
         }[]
       }
+      get_admin_stats: {
+        Args: { p_period?: string }
+        Returns: Json
+      }
       admin_add_credits: {
         Args: {
           p_target_user_id: string

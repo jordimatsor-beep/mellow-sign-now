@@ -24,19 +24,23 @@ export default function AdminDashboard() {
     const [period, setPeriod] = useState("30d");
     const [loading, setLoading] = useState(true);
 
+    const [error, setError] = useState<string | null>(null);
+
     useEffect(() => {
         fetchStats();
     }, [period]);
 
     const fetchStats = async () => {
         setLoading(true);
+        setError(null);
         try {
             const { data, error } = await supabase.rpc('get_admin_stats', { p_period: period });
             if (error) throw error;
             console.log("Admin Stats:", data);
             setStats(data as AdminStats);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error fetching admin stats:", error);
+            setError(error.message || "Error desconocido cargando métricas");
         } finally {
             setLoading(false);
         }
@@ -57,7 +61,32 @@ export default function AdminDashboard() {
         );
     }
 
-    if (!stats) return <p className="p-8 text-muted-foreground">Error cargando métricas.</p>;
+    if (error) {
+        return (
+            <div className="p-8 flex flex-col items-center justify-center h-full text-center space-y-4">
+                <div className="rounded-full bg-red-100 p-3">
+                    <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="space-y-2">
+                    <h3 className="font-semibold text-lg">Error cargando métricas</h3>
+                    <p className="text-muted-foreground max-w-md">{error}</p>
+                    <button
+                        onClick={() => fetchStats()}
+                        className="text-sm text-primary hover:underline hover:text-primary/80"
+                    >
+                        Reintentar
+                    </button>
+                    {error.includes("function") && (
+                        <p className="text-xs text-muted-foreground mt-4 bg-gray-100 p-2 rounded">
+                            Parece que falta la migración de base de datos.
+                        </p>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    if (!stats) return null;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -174,7 +203,7 @@ export default function AdminDashboard() {
                                     />
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                                     <Tooltip
-                                        formatter={(value: number) => [new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value), 'Ingresos']}
+                                        formatter={(value: any) => [new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value), 'Ingresos']}
                                         labelFormatter={(label) => format(new Date(label), "d MMMM yyyy, HH:mm", { locale: es })}
                                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                     />
