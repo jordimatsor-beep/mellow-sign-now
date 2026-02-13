@@ -52,7 +52,7 @@ serve(async (req) => {
             throw new Error('Invalid JSON body');
         }
 
-        const { token } = body
+        const { token, channel } = body // channel: 'sms' | 'whatsapp' | 'email'
 
         if (!token) throw new Error('Token is required')
 
@@ -66,7 +66,7 @@ serve(async (req) => {
         // 1. Get Document
         const { data: doc, error: docError } = await supabase
             .from('documents')
-            .select('id, signer_phone, security_level')
+            .select('id, signer_phone, signer_email, security_level, title, signer_name')
             .eq('sign_token', token)
             .single()
 
@@ -78,7 +78,7 @@ serve(async (req) => {
         const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
         const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
 
-        // Check 1: Doc Limit (Max 3 per 10 mins)
+        // Check 1: Doc Limit (Max 5 per 10 mins - increased for email/sms retries)
         const { count: docCount, error: err1 } = await supabase
             .from('otp_logs')
             .select('*', { count: 'exact', head: true })
@@ -86,7 +86,7 @@ serve(async (req) => {
             .gt('created_at', tenMinutesAgo);
 
         if (err1) throw new Error('Security Check Error 1');
-        if ((docCount || 0) >= 3) {
+        if ((docCount || 0) >= 5) {
             await logAttempt(supabase, doc.id, ipAddress, userAgent, false, true, 'limit_doc');
             return new Response(
                 JSON.stringify({ error: 'Demasiados intentos. Espera unos minutos.' }),
@@ -94,7 +94,7 @@ serve(async (req) => {
             );
         }
 
-        // Check 2: IP Limit (Max 10 per 10 mins)
+        // Check 2: IP Limit (Max 15 per 10 mins)
         const { count: ipCount, error: err2 } = await supabase
             .from('otp_logs')
             .select('*', { count: 'exact', head: true })
@@ -102,7 +102,7 @@ serve(async (req) => {
             .gt('created_at', tenMinutesAgo);
 
         if (err2) throw new Error('Security Check Error 2');
-        if ((ipCount || 0) >= 10) {
+        if ((ipCount || 0) >= 15) {
             await logAttempt(supabase, doc.id, ipAddress, userAgent, false, true, 'limit_ip');
             return new Response(
                 JSON.stringify({ error: 'Too many requests from this IP.' }),
@@ -110,14 +110,14 @@ serve(async (req) => {
             );
         }
 
-        // Check 3: Global Limit (Max 50 per hour)
+        // Check 3: Global Limit (Max 100 per hour)
         const { count: globalCount, error: err3 } = await supabase
             .from('otp_logs')
             .select('*', { count: 'exact', head: true })
             .gt('created_at', oneHourAgo);
 
         if (err3) throw new Error('Security Check Error 3');
-        if ((globalCount || 0) >= 50) {
+        if ((globalCount || 0) >= 100) {
             await logAttempt(supabase, doc.id, ipAddress, userAgent, false, true, 'limit_global');
             return new Response(
                 JSON.stringify({ error: 'System busy. Try again later.' }),
@@ -132,10 +132,25 @@ serve(async (req) => {
             throw new Error('Este documento no requiere verificación por OTP')
         }
 
-        // Clean phone number (remove spaces, ensure + prefix if needed)
-        if (!doc.signer_phone) throw new Error('El teléfono del firmante no está registrado')
+        // Determine effective channel
+        let effectiveChannel = channel;
+        if (!effectiveChannel) {
+            // Logic to auto-select: if phone exists -> sms/whatsapp (legacy behavior), else -> email
+            if (doc.signer_phone) effectiveChannel = 'sms'; // Default to SMS if phone exists
+            else effectiveChannel = 'email'; // Default to email if no phone
+        }
 
-        const phone = doc.signer_phone.replace(/[\s\-\(\)]/g, '')
+        // Validate contact info based on channel
+        if (effectiveChannel === 'email') {
+            if (!doc.signer_email) throw new Error('El email del firmante no está registrado');
+        } else {
+            // SMS / WhatsApp
+            if (!doc.signer_phone) {
+                // Fallback to email if phone is missing but email exists
+                if (doc.signer_email) effectiveChannel = 'email';
+                else throw new Error('El teléfono del firmante no está registrado');
+            }
+        }
 
         // 2. Generate OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString()
@@ -161,57 +176,103 @@ serve(async (req) => {
 
         if (updateError) throw new Error('Database Error: ' + updateError.message)
 
-        // 5. Send Message (Twilio)
-        const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
-        const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
-        let fromNumber = Deno.env.get('TWILIO_FROM_NUMBER') || Deno.env.get('TWILIO_PHONE_NUMBER');
+        // 5. Send Message
+        if (effectiveChannel === 'email') {
+            // --- SEND VIA RESEND (EMAIL) ---
+            const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+            if (!RESEND_API_KEY) throw new Error("Configuration Error: Missing RESEND_API_KEY");
 
-        if (!fromNumber) {
-            throw new Error("Configuration Error: Missing Twilio Number");
-        }
+            const html = `
+               <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+                 <h2 style="color: #111827; text-align: center;">Código de Seguridad</h2>
+                 <p style="color: #4b5563; text-align: center;">Usa el siguiente código para firmar el documento <strong>"${doc.title || 'Sin título'}"</strong>.</p>
+                 <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; text-align: center; margin: 24px 0;">
+                   <span style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #2563eb;">${otp}</span>
+                 </div>
+                 <p style="color: #6b7280; font-size: 12px; text-align: center;">Este código expira en 15 minutos.</p>
+               </div>
+             `;
 
-        let to = phone;
-        let from = fromNumber.replace('whatsapp:', '').trim();
-
-        console.log(`[OTP Request] To: ${to} | FromEnv: ${from}`);
-
-        if (accountSid && authToken) {
-            const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
-
-            const params = new URLSearchParams()
-            params.append('To', to)
-            if (from) params.append('From', from)
-            const bodyText = `FirmaClara: Tu código de seguridad es ${otp}.`;
-            params.append('Body', bodyText)
-
-            const res = await fetch(twilioUrl, {
+            const res = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
                 headers: {
-                    'Authorization': 'Basic ' + btoa(`${accountSid}:${authToken}`),
-                    'Content-Type': 'application/x-www-form-urlencoded'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${RESEND_API_KEY}`
                 },
-                body: params
-            })
+                body: JSON.stringify({
+                    from: 'FirmaClara Security <noreply@firmaclara.es>',
+                    to: [doc.signer_email],
+                    subject: `Tu código de seguridad: ${otp}`,
+                    html: html
+                })
+            });
 
             if (!res.ok) {
-                const txt = await res.text()
-                console.error('Twilio Error:', txt)
-                // Log failed attempt but not blocked
-                await logAttempt(supabase, doc.id, ipAddress, userAgent, false, false, 'provider_error');
-                throw new Error(`Error al enviar mensaje SMS: ${txt.substring(0, 100)}`)
+                const txt = await res.text();
+                console.error('Resend Error:', txt);
+                await logAttempt(supabase, doc.id, ipAddress, userAgent, false, false, 'provider_error_email');
+                throw new Error(`Error al enviar email: ${txt.substring(0, 100)}`);
             }
 
             // Log SUCCESS
-            await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, null);
+            await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'email_sent');
 
         } else {
-            console.log('[DEV MODE] OTP would be sent to:', phone.substring(0, 6) + '****', 'Code:', otp);
-            // Log SUCCESS (Dev)
-            await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'dev_mode');
+            // --- SEND VIA TWILIO (SMS) ---
+            // Clean phone number (remove spaces, ensure + prefix if needed)
+            const phone = doc.signer_phone.replace(/[\s\-\(\)]/g, '')
+
+            const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
+            const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
+            let fromNumber = Deno.env.get('TWILIO_FROM_NUMBER') || Deno.env.get('TWILIO_PHONE_NUMBER');
+
+            if (!fromNumber) {
+                throw new Error("Configuration Error: Missing Twilio Number");
+            }
+
+            let to = phone;
+            let from = fromNumber.replace('whatsapp:', '').trim();
+
+            console.log(`[OTP Request] To: ${to} | FromEnv: ${from}`);
+
+            if (accountSid && authToken) {
+                const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
+
+                const params = new URLSearchParams()
+                params.append('To', to)
+                if (from) params.append('From', from)
+                const bodyText = `FirmaClara: Tu código de seguridad es ${otp}.`;
+                params.append('Body', bodyText)
+
+                const res = await fetch(twilioUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(`${accountSid}:${authToken}`),
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: params
+                })
+
+                if (!res.ok) {
+                    const txt = await res.text()
+                    console.error('Twilio Error:', txt)
+                    // Log failed attempt but not blocked
+                    await logAttempt(supabase, doc.id, ipAddress, userAgent, false, false, 'provider_error_sms');
+                    throw new Error(`Error al enviar mensaje SMS: ${txt.substring(0, 100)}`)
+                }
+
+                // Log SUCCESS
+                await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'sms_sent');
+
+            } else {
+                console.log('[DEV MODE] OTP would be sent to:', phone.substring(0, 6) + '****', 'Code:', otp);
+                // Log SUCCESS (Dev)
+                await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'dev_mode');
+            }
         }
 
         return new Response(
-            JSON.stringify({ success: true, message: 'Código enviado correctamente' }),
+            JSON.stringify({ success: true, message: `Código enviado correctamente por ${effectiveChannel === 'email' ? 'email' : 'SMS'}` }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
 

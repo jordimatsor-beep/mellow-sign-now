@@ -76,7 +76,7 @@ export default function SignDocument() {
     }
   }, [resendCooldown]);
 
-  const handleResendOtp = async (channel: 'whatsapp' | 'sms') => {
+  const handleResendOtp = async (channel: 'whatsapp' | 'sms' | 'email') => {
     if (resendCooldown > 0) return;
 
     setResendCooldown(60); // Start 60s cooldown
@@ -91,7 +91,7 @@ export default function SignDocument() {
         throw new Error("Error al reenviar código");
       }
 
-      toast.success(`Código reenviado por ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}`, { id: toastId });
+      toast.success(`Código reenviado por ${channel === 'whatsapp' ? 'WhatsApp' : channel === 'sms' ? 'SMS' : 'Email'}`, { id: toastId });
     } catch (err) {
       // Remove console.error for prod
       toast.error("Error al reenviar el código", { id: toastId });
@@ -396,15 +396,26 @@ export default function SignDocument() {
     const requiresOtp = docData.whatsapp_verification || docData.security_level === 'whatsapp_otp';
 
     if (requiresOtp) {
+      // Logic to determine channel:
+      // If no phone, force email.
+      // If phone exists, default to SMS (legacy) but allow switching in UI (via resend).
+      // Ideally we should ask, but to keep it simple and fix the "blocker":
+
+      let channel: 'sms' | 'whatsapp' | 'email' = 'sms';
+
       if (!docData.signer_phone) {
-        toast.error("Error: Este documento requiere verificación SMS pero no tiene número de teléfono asociado.");
-        return;
+        if (docData.signer_email) {
+          channel = 'email';
+        } else {
+          toast.error("Error: No hay teléfono ni email registrados para enviar el código.");
+          return;
+        }
       }
 
-      const toastId = toast.loading("Enviando código de seguridad...");
+      const toastId = toast.loading(`Enviando código de seguridad por ${channel}...`);
       try {
         const { error } = await supabase.functions.invoke('send-otp', {
-          body: { token, channel: 'sms' }
+          body: { token, channel }
         });
 
         if (error) {
@@ -869,7 +880,17 @@ export default function SignDocument() {
                 disabled={resendCooldown > 0}
                 className={resendCooldown > 0 ? "opacity-50" : ""}
               >
-                {resendCooldown > 0 ? `Reenviar en ${resendCooldown}s` : "Reenviar código por SMS"}
+                {resendCooldown > 0 ? `Reenviar en ${resendCooldown}s` : "Reenviar por SMS"}
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleResendOtp('email')}
+                disabled={resendCooldown > 0}
+                className={resendCooldown > 0 ? "opacity-50" : ""}
+              >
+                {resendCooldown > 0 ? `Esperar ${resendCooldown}s` : "Enviar por Email"}
               </Button>
             </div>
           </div>
