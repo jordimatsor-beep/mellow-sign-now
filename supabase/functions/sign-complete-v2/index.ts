@@ -359,10 +359,10 @@ serve(async (req: Request) => {
         }
 
         // 10. Trigger Notification (Email + SMS)
-        // MOVED TO generate-audit-trail to ensure Certificate is included!
-        /*
+        // We trigger it here to ensure redundancy even if audit trail fails
         try {
-            fetch(`${supabaseUrl}/functions/v1/send-signed-notification`, {
+            console.log("Triggering send-signed-notification from sign-complete-v2...");
+            const notifyRes = await fetch(`${supabaseUrl}/functions/v1/send-signed-notification`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${supabaseKey}`,
@@ -370,10 +370,15 @@ serve(async (req: Request) => {
                 },
                 body: JSON.stringify({ document_id: doc.id })
             });
+            console.log("Notification Trigger Status:", notifyRes.status);
+            if (!notifyRes.ok) {
+                console.error("Notification Trigger Failed:", await notifyRes.text());
+            } else {
+                console.log("Notification Trigger Success");
+            }
         } catch (e) {
-            console.error("Trigger notification error:", e);
+            console.error("Trigger notification exception:", e);
         }
-        */
 
         // 11. Log event
         await supabase.from('event_logs').insert({

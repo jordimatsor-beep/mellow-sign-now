@@ -80,7 +80,7 @@ export default function SignDocument() {
     if (resendCooldown > 0) return;
 
     setResendCooldown(60); // Start 60s cooldown
-    const toastId = toast.loading(`Reenviando código por ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}...`);
+    const toastId = toast.loading(`Reenviando código por ${channel === 'whatsapp' ? 'WhatsApp' : channel === 'sms' ? 'SMS' : 'Email'}...`);
 
     try {
       const { error } = await supabase.functions.invoke('send-otp', {
@@ -565,7 +565,7 @@ export default function SignDocument() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
               </span>
-              Certificado generado a las {new Date().toLocaleTimeString()}
+              Certificado generado a las {docData?.signedAt ? new Date(docData.signedAt).toLocaleTimeString() : new Date().toLocaleTimeString()}
             </div>
           </div>
 
@@ -697,17 +697,32 @@ export default function SignDocument() {
                 </div>
               )}
             </div>
+
+            {/* Fallback for PDF visibility - Primary Action now */}
+            <div className="flex justify-end mb-2">
+              <Button className="gap-2 w-full sm:w-auto" onClick={() => window.open(docData?.file_url, '_blank')}>
+                <Download className="h-4 w-4" />
+                Abrir Documento (Si no carga abajo)
+              </Button>
+            </div>
             <Card
               ref={pdfContainerRef}
-              className={`h-[500px] w-full overflow-auto transition-all ${canAccept ? 'bg-muted/10 ring-2 ring-green-200' : 'bg-muted/20'
+              className={`h-[600px] w-full overflow-hidden transition-all ${canAccept ? 'bg-muted/10 ring-2 ring-green-200' : 'bg-muted/20'
                 }`}
               onScroll={handleScroll}
             >
-              <iframe
-                src={docData?.file_url}
-                className="w-full h-full border-none min-h-[800px]"
-                title="PDF Viewer"
-              />
+              <object
+                data={docData?.file_url}
+                type="application/pdf"
+                className="w-full h-full min-h-[600px]"
+              >
+                <div className="flex flex-col items-center justify-center h-full p-8 text-center text-muted-foreground">
+                  <p className="mb-4">Tu navegador no puede mostrar este PDF aquí.</p>
+                  <Button variant="outline" onClick={() => window.open(docData?.file_url, '_blank')}>
+                    Abrir documento en nueva pestaña
+                  </Button>
+                </div>
+              </object>
             </Card>
             {/* Scroll progress hint */}
             {!canAccept && (

@@ -54,6 +54,8 @@ serve(async (req) => {
 
         const { token, channel } = body // channel: 'sms' | 'whatsapp' | 'email'
 
+        console.log(`OTP Request - Token: ${token}, Requested Channel: ${channel}`);
+
         if (!token) throw new Error('Token is required')
 
         // Get IP - Hardened: Prioritize x-real-ip (LB trusted) over XFF (Client-appendable)

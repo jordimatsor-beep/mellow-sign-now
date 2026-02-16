@@ -140,14 +140,12 @@ serve(async (req: Request) => {
     const n8nSuccess = await triggerN8n('document.sent', n8nPayload);
 
     if (n8nSuccess) {
-      console.log('n8n triggered successfully. Email responsibility delegated to n8n.');
-      return new Response(
-        JSON.stringify({ success: true, method: 'n8n' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      console.log('n8n triggered successfully. Proceeding to send email via Resend as primary channel.');
+    } else {
+      console.log('n8n not configured or failed. Proceeding to send email via Resend.');
     }
 
-    console.log('n8n not configured or failed. Falling back to internal Resend logic.');
+    // --- DIRECT RESEND SENDING ---
 
     // --- RESEND FALLBACK START ---
 

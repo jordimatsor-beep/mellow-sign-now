@@ -349,6 +349,21 @@ serve(async (req: Request) => {
             console.error("Trigger n8n error:", e);
         }
 
+        // 10.5 Trigger Send Signed Notification (Email)
+        try {
+            console.log("Triggering send-signed-notification for doc:", doc.id);
+            await fetch(`${supabaseUrl}/functions/v1/send-signed-notification`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ document_id: doc.id })
+            });
+        } catch (e) {
+            console.error("Trigger send-signed-notification error:", e);
+        }
+
         // 11. Log event
         await supabase.from('event_logs').insert({
             user_id: doc.user_id,
