@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useProfile } from "@/context/ProfileContext";
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
-import { Send, Sparkles, User, AlertTriangle, Loader2 } from "lucide-react";
+import { Send, Sparkles, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";

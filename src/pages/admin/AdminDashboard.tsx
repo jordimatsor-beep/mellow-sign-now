@@ -36,8 +36,8 @@ export default function AdminDashboard() {
         try {
             const { data, error } = await supabase.rpc('get_admin_stats', { p_period: period });
             if (error) throw error;
-            console.log("Admin Stats:", data);
-            setStats(data as AdminStats);
+
+            setStats(data as unknown as AdminStats);
         } catch (error: any) {
             console.error("Error fetching admin stats:", error);
             setError(error.message || "Error desconocido cargando métricas");

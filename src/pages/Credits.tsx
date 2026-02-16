@@ -1,9 +1,8 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, Coins, Plus, Minus, Gift, CreditCard, Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Coins, Minus, Gift, CreditCard, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
@@ -22,7 +21,7 @@ interface CreditTransaction {
 }
 
 export default function Credits() {
-  const { t } = useTranslation();
+
 
   // Fetch available credits - cached
   const { data: availableCredits, isLoading: loading } = useQuery({

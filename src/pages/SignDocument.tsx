@@ -18,7 +18,7 @@ import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
 import type { DocumentForSigning } from "@/integrations/supabase/helpers";
 
-type SigningStep = "loading" | "error" | "view" | "signing" | "otp" | "complete";
+
 
 interface DocumentData {
   id: string;
@@ -50,24 +50,53 @@ interface DocumentData {
 
 export default function SignDocument() {
   const { token } = useParams();
-  const [step, setStep] = useState<SigningStep>("loading");
+
+  // Consolidated State
+  const [step, setStep] = useState<"loading" | "view" | "signing" | "otp" | "success" | "error" | "complete">("loading");
   const [accepted, setAccepted] = useState(false);
   const [canAccept, setCanAccept] = useState(false); // Scroll trap
   const [name, setName] = useState("");
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
 
-  const [docData, setDocData] = useState<DocumentData | null>(null);
-  const [errorMsg, setErrorMsg] = useState("");
-
-  // OTP State
+  const [docData, setDocData] = useState<any>(null);
+  const [error, setError] = useState<string>("");
   const [otpCode, setOtpCode] = useState("");
   const [otpError, setOtpError] = useState("");
-
-  // OTP Cooldown Logic
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Blob URL state
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+
+  // Fetch Blob on docData load
+  useEffect(() => {
+    if (docData?.file_url) {
+      let active = true;
+      const fetchPdf = async () => {
+        try {
+          const res = await fetch(docData.file_url);
+          if (!res.ok) throw new Error("Failed to load PDF");
+          const blob = await res.blob();
+          if (active) {
+            const url = URL.createObjectURL(blob);
+            setPdfBlobUrl(url);
+          }
+        } catch (err) {
+          console.error("Error loading PDF blob:", err);
+        }
+      };
+
+      fetchPdf();
+
+      return () => {
+        active = false;
+        if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+      };
+    }
+  }, [docData?.file_url, pdfBlobUrl]); // Added pdfBlobUrl to dependency array for cleanup
 
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -246,7 +275,7 @@ export default function SignDocument() {
   useEffect(() => {
     if (!token) {
       setStep("error");
-      setErrorMsg("Token no válido");
+      setError("Token no válido");
       return;
     }
 
@@ -372,7 +401,7 @@ export default function SignDocument() {
         setStep("error");
         // Handle Supabase errors (which are not always Error instances)
         const message = error?.message || error?.error_description || (typeof err === 'string' ? err : "Error al cargar el documento");
-        setErrorMsg(message);
+        setError(message);
       }
     }
 
@@ -380,12 +409,7 @@ export default function SignDocument() {
   }, [token]);
 
   // Helper: SHA-256 for client-side (still used for prompt, but backend does verification)
-  async function sha256(message: string): Promise<string> {
-    const msgBuffer = new TextEncoder().encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  }
+
 
   const handleSign = async () => {
     if (!canvasRef.current || !docData) return;
@@ -528,7 +552,7 @@ export default function SignDocument() {
           <div className="ml-2">
             <AlertTitle className="text-red-700 font-semibold text-lg">No se ha podido cargar el documento</AlertTitle>
             <AlertDescription className="mt-2 text-red-600/90 text-sm">
-              {errorMsg}
+              {error}
             </AlertDescription>
           </div>
         </Alert>
@@ -696,9 +720,9 @@ export default function SignDocument() {
 
             {/* Fallback for PDF visibility - Primary Action now */}
             <div className="flex justify-end mb-2">
-              <Button className="gap-2 w-full sm:w-auto" onClick={() => window.open(docData?.file_url, '_blank')}>
+              <Button className="gap-2 w-full sm:w-auto" disabled={!pdfBlobUrl} onClick={() => pdfBlobUrl && window.open(pdfBlobUrl, '_blank')}>
                 <Download className="h-4 w-4" />
-                Abrir Documento (Si no carga abajo)
+                Abrir Documento
               </Button>
             </div>
             <Card
@@ -707,18 +731,25 @@ export default function SignDocument() {
                 }`}
               onScroll={handleScroll}
             >
-              <object
-                data={docData?.file_url}
-                type="application/pdf"
-                className="w-full h-full min-h-[600px]"
-              >
-                <div className="flex flex-col items-center justify-center h-full p-8 text-center text-muted-foreground">
-                  <p className="mb-4">Tu navegador no puede mostrar este PDF aquí.</p>
-                  <Button variant="outline" onClick={() => window.open(docData?.file_url, '_blank')}>
-                    Abrir documento en nueva pestaña
-                  </Button>
+              {pdfBlobUrl ? (
+                <object
+                  data={pdfBlobUrl}
+                  type="application/pdf"
+                  className="w-full h-full min-h-[600px]"
+                >
+                  <div className="flex flex-col items-center justify-center h-full p-8 text-center text-muted-foreground">
+                    <p className="mb-4">Tu navegador no puede mostrar este PDF aquí visualmente.</p>
+                    <Button variant="outline" onClick={() => window.open(pdfBlobUrl || '', '_blank')}>
+                      Abrir documento en nueva pestaña
+                    </Button>
+                  </div>
+                </object>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-2">Cargando documento...</span>
                 </div>
-              </object>
+              )}
             </Card>
             {/* Scroll progress hint */}
             {!canAccept && (
