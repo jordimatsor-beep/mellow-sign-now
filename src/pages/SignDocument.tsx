@@ -262,7 +262,7 @@ export default function SignDocument() {
             if (!doc) throw new Error("Documento no encontrado o enlace inválido");
             return doc;
           })(),
-          3000, "Document fetch"
+          15000, "Document fetch"
         );
 
         if (docRecord.status !== 'sent' && docRecord.status !== 'viewed' && docRecord.status !== 'signed') {
@@ -404,12 +404,8 @@ export default function SignDocument() {
       let channel: 'sms' | 'whatsapp' | 'email' = 'sms';
 
       if (!docData.signer_phone) {
-        if (docData.signer_email) {
-          channel = 'email';
-        } else {
-          toast.error("Error: No hay teléfono ni email registrados para enviar el código.");
-          return;
-        }
+        toast.error("Error: Este documento requiere firma avanzada pero no tiene un teléfono asociado para el SMS de seguridad. Contacta con el emisor.");
+        return;
       }
 
       const toastId = toast.loading(`Enviando código de seguridad por ${channel}...`);
@@ -896,16 +892,6 @@ export default function SignDocument() {
                 className={resendCooldown > 0 ? "opacity-50" : ""}
               >
                 {resendCooldown > 0 ? `Reenviar en ${resendCooldown}s` : "Reenviar por SMS"}
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleResendOtp('email')}
-                disabled={resendCooldown > 0}
-                className={resendCooldown > 0 ? "opacity-50" : ""}
-              >
-                {resendCooldown > 0 ? `Esperar ${resendCooldown}s` : "Enviar por Email"}
               </Button>
             </div>
           </div>
