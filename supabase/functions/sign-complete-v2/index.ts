@@ -196,13 +196,21 @@ serve(async (req: Request) => {
         // 4. Load and modify PDF - CONFIGURABLE SIGNATURE PLACEMENT
         const pdfDoc = await PDFDocument.load(pdfBytes);
         const timesRoman = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-        // const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold); // Unused if mostly using last page
 
-        // Embed Signature Image
-        const pngImage = await pdfDoc.embedPng(signature_image);
+        // FIX: pdf-lib's embedPng needs raw PNG bytes, NOT a data URL string.
+        // Convert the base64 data URL to a Uint8Array for correct embedding.
+        const pngBase64 = base64Data; // Already extracted above (line 67)
+        const pngBinaryString = atob(pngBase64);
+        const pngBytesArray = new Uint8Array(pngBinaryString.length);
+        for (let i = 0; i < pngBinaryString.length; i++) {
+            pngBytesArray[i] = pngBinaryString.charCodeAt(i);
+        }
+        const pngImage = await pdfDoc.embedPng(pngBytesArray);
 
-        // Calculate scaling to fit within a bounding box (e.g. 200x80)
-        // This ensures signatures from Retina screens (high DPI) don't appear huge
+        console.log(`Signature image dimensions: ${pngImage.width}x${pngImage.height}`);
+
+        // Calculate scaling to fit within bounding box (200x80 points)
+        // These are PDF points (1 pt = 1/72 inch), so 200pt ≈ 7cm wide
         const MAX_SIG_WIDTH = 200;
         const MAX_SIG_HEIGHT = 80;
 
@@ -212,13 +220,16 @@ serve(async (req: Request) => {
         const scaleW = MAX_SIG_WIDTH / imgWidth;
         const scaleH = MAX_SIG_HEIGHT / imgHeight;
 
-        // Use the smaller scale to fit entirely within the box, but limit max scale to 0.5 to keep regular signatures crisp
-        const scaleFactor = Math.min(scaleW, scaleH, 0.5);
+        // FIX: Remove artificial 0.5 cap - just fit within bounding box
+        // The cap was causing tiny/invisible signatures on high-DPR canvases
+        const scaleFactor = Math.min(scaleW, scaleH);
 
         const pngDims = {
             width: imgWidth * scaleFactor,
             height: imgHeight * scaleFactor
         };
+
+        console.log(`Scaled signature dimensions: ${pngDims.width.toFixed(1)}x${pngDims.height.toFixed(1)} pts (scale: ${scaleFactor.toFixed(4)})`);
 
         // Get pages array
         const pages = pdfDoc.getPages();
