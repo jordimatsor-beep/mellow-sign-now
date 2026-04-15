@@ -521,6 +521,8 @@ export default function SignDocument() {
       setTimeout(() => {
         window.location.reload();
       }, 1000);
+
+    } catch (err: unknown) {
       if (import.meta.env.DEV) console.error(err);
 
       const message = err instanceof Error ? err.message : "Error al guardar la firma";
