@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { Check, Download, Eraser, Loader2, AlertCircle, Shield, Clock, Hash, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -514,11 +514,13 @@ export default function SignDocument() {
         throw new Error(data.error || "Error al procesar la firma");
       }
 
-      setDocData({ ...docData, signedAt: new Date().toISOString() });
-      setStep("complete");
       toast.success("Documento firmado y sellado correctamente", { id: toastId });
-
-    } catch (err: unknown) {
+      
+      // Reload the page to cleanly fetch the updated document state, which will now
+      // include the `signed_file_url` and correctly show the completed step without race conditions.
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
       if (import.meta.env.DEV) console.error(err);
 
       const message = err instanceof Error ? err.message : "Error al guardar la firma";
