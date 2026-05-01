@@ -20,7 +20,7 @@ export function Sidebar() {
     { to: "/contacts", icon: User, label: t('nav.contacts') },
     { to: "/clara", icon: Sparkles, label: t('nav.clara') },
     { to: "/credits", icon: CreditCard, label: t('nav.credits'), badge: credits },
-    { to: "/support", icon: LifeBuoy, label: t('nav.support') },
+    { to: "/help", icon: LifeBuoy, label: t('nav.support') },
   ];
 
   const bottomItems = [
