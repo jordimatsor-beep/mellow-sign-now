@@ -17,6 +17,7 @@ const ALLOWED_ORIGINS = [
     'https://www.firmaclara.es',
     'https://mellow-sign-now.lovable.app',
     'http://localhost:8080',
+    'http://localhost:8081',
     'http://localhost:3000',
     'http://localhost:5173',
 ];
@@ -28,6 +29,7 @@ const ALLOWED_RETURN_URLS = [
     'https://www.firmaclara.es',
     'https://mellow-sign-now.lovable.app',
     'http://localhost:8080',
+    'http://localhost:8081',
     'http://localhost:3000',
     'http://localhost:5173',
 ];

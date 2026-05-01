@@ -50,11 +50,18 @@ serve(async (req: Request) => {
 
         let event: any;
         try {
-            event = stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET)
+            // Debugging logs to verify secrets
+            console.log(`Checking signature for webhook...`);
+            console.log(`Secret starts with: ${STRIPE_WEBHOOK_SECRET.substring(0, 10)}...`);
+            
+            event = await stripe.webhooks.constructEventAsync(body, signature, STRIPE_WEBHOOK_SECRET)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Unknown error'
+            console.error(`🚨 Webhook signature verification failed: ${message}`);
             return new Response(`Webhook Error: ${message}`, { status: 400, headers: corsHeaders })
         }
+
+        console.log(`✅ Webhook verified. Event type: ${event.type}`);
 
         if (event.type === 'checkout.session.completed') {
             const session = event.data.object;
