@@ -6,7 +6,7 @@ import { z } from "https://esm.sh/zod@3.22.4"
 
 // Validation Schema for checkout request
 const CheckoutSchema = z.object({
-    priceId: z.enum(['basic', 'pro', 'business']),
+    priceId: z.enum(['test', 'basic', 'pro', 'business']),
     returnUrl: z.string().url().optional()
 });
 

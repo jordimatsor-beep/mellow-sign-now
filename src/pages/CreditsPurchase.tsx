@@ -141,7 +141,12 @@ export default function CreditsPurchase() {
                 </div>
 
                 <Button
-                  className={cn("w-full mt-6", isSelected ? "bg-primary" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")}
+                  className={cn(
+                    "w-full mt-6 transition-colors",
+                    isSelected
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground"
+                  )}
                   size="lg"
                   onClick={(e) => {
                     e.stopPropagation();
