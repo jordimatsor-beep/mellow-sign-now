@@ -128,18 +128,31 @@ serve(async (req) => {
 
         // ── ACTION: close_chat ─────────────────────────────────────────────
         if (action === 'close_chat') {
-            // Check admin auth
+            // Check auth
             const { data: { user }, error: userError } = await supabaseUser.auth.getUser()
             if (userError || !user) throw new Error('Unauthorized')
+            
             const { data: userData } = await supabaseAdmin.from('users').select('role').eq('id', user.id).single()
-            if (userData?.role !== 'admin') throw new Error('Forbidden')
+            const isAdmin = userData?.role === 'admin'
+
+            // Get chat data
+            const { data: chatData, error: chatFetchError } = await supabaseAdmin.from('support_chats')
+                .select('*')
+                .eq('id', chat_id)
+                .single()
+            if (chatFetchError) throw chatFetchError
+
+            // Verify permissions
+            if (!isAdmin && chatData.user_id !== user.id) {
+                throw new Error('Forbidden')
+            }
+
+            const closedBy = isAdmin ? 'admin' : 'user';
 
             // 1. Marcar como cerrado
-            const { data: chatData, error: closeError } = await supabaseAdmin.from('support_chats')
-                .update({ status: 'closed' })
+            const { error: closeError } = await supabaseAdmin.from('support_chats')
+                .update({ status: 'closed', closed_by: closedBy })
                 .eq('id', chat_id)
-                .select()
-                .single()
             if (closeError) throw closeError
 
             // 2. Obtener todos los mensajes para el transcript

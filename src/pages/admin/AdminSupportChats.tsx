@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, MessageCircle, Send, CheckCircle, Clock, ShieldCheck, Mail, Search, AlertCircle } from "lucide-react";
+import { Loader2, MessageCircle, Send, CheckCircle, Clock, ShieldCheck, Mail, Search, AlertCircle, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -20,6 +20,8 @@ interface ChatSession {
   last_message_at: string;
   user_read: boolean;
   admin_read: boolean;
+  rating?: number;
+  closed_by?: "user" | "admin";
 }
 
 interface Message {
@@ -273,7 +275,14 @@ export default function AdminSupportChats() {
                         {format(new Date(chat.last_message_at), "HH:mm", { locale: es })}
                       </span>
                       {chat.status === "closed" ? (
-                        <span className="text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider">Cerrado</span>
+                        <div className="flex items-center gap-2">
+                          {chat.rating && chat.rating > 0 ? (
+                            <span className="flex items-center text-yellow-500 text-[10px] font-bold">
+                              {chat.rating} <Star className="h-2.5 w-2.5 fill-current ml-0.5" />
+                            </span>
+                          ) : null}
+                          <span className="text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider">Cerrado</span>
+                        </div>
                       ) : (
                         <span className="text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider">Abierto</span>
                       )}
@@ -359,10 +368,18 @@ export default function AdminSupportChats() {
                       <div className="absolute inset-0 flex items-center">
                         <div className="w-full border-t border-slate-200"></div>
                       </div>
-                      <div className="relative flex justify-center">
+                      <div className="relative flex flex-col items-center gap-2">
                         <span className="bg-slate-100 text-slate-500 text-xs px-4 py-1.5 rounded-full flex items-center gap-1.5 font-medium border border-slate-200 shadow-sm">
-                          <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> Ticket Resuelto y Cerrado
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> Ticket Resuelto {selectedChat.closed_by === 'user' ? 'por el Usuario' : selectedChat.closed_by === 'admin' ? 'por Admin' : ''}
                         </span>
+                        {selectedChat.rating && selectedChat.rating > 0 ? (
+                          <div className="flex items-center gap-1 text-yellow-600 bg-yellow-50 border border-yellow-200 px-3 py-1 rounded-full shadow-sm animate-in zoom-in duration-300">
+                            <span className="text-xs font-semibold mr-1">Valoración:</span>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star key={star} className={cn("h-3.5 w-3.5", selectedChat.rating! >= star ? "fill-yellow-400 text-yellow-400" : "text-yellow-200")} />
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   )}

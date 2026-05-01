@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { MessageCircleMore, X, Send, Loader2, CheckCircle } from "lucide-react";
+import { MessageCircleMore, X, Send, Loader2, CheckCircle, Star, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
@@ -29,6 +30,8 @@ export function SupportChat() {
   const [isOpening, setIsOpening] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
+  const [rating, setRating] = useState<number>(0);
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -48,7 +51,7 @@ export function SupportChat() {
   useEffect(() => {
     if (!chatId) return;
 
-    // Load existing messages
+    // Load existing messages and chat status
     supabase
       .from("support_messages")
       .select("*")
@@ -58,7 +61,19 @@ export function SupportChat() {
         if (data) setMessages(data as Message[]);
       });
 
-    // Real-time subscription
+    supabase
+      .from("support_chats")
+      .select("status, rating")
+      .eq("id", chatId)
+      .single()
+      .then(({ data }) => {
+        if (data?.status === "closed") {
+          setIsClosed(true);
+          setRating(data.rating || 0);
+        }
+      });
+
+    // Real-time subscription for messages
     const channel = supabase
       .channel(`support_chat_${chatId}`)
       .on(
@@ -75,6 +90,21 @@ export function SupportChat() {
             if (exists) return prev;
             return [...prev, payload.new as Message];
           });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "support_chats",
+          filter: `id=eq.${chatId}`,
+        },
+        (payload) => {
+          if (payload.new.status === "closed") {
+            setIsClosed(true);
+            setRating(payload.new.rating || 0);
+          }
         }
       )
       .subscribe();
@@ -134,6 +164,40 @@ export function SupportChat() {
     setMessages([]);
     setInputText("");
     setIsClosed(false);
+    setRating(0);
+  };
+
+  const handleUserCloseChat = async () => {
+    if (!chatId) return;
+    try {
+      const { error } = await supabase.functions.invoke("contact-support", {
+        body: { action: "close_chat", chat_id: chatId },
+      });
+      if (error) throw error;
+      toast.success("Chat cerrado correctamente");
+      setIsClosed(true);
+    } catch (e: any) {
+      toast.error("Error al cerrar el chat");
+    }
+  };
+
+  const handleRate = async (value: number) => {
+    if (!chatId || rating > 0) return;
+    setIsSubmittingRating(true);
+    try {
+      const { error } = await supabase
+        .from("support_chats")
+        .update({ rating: value })
+        .eq("id", chatId);
+      
+      if (error) throw error;
+      setRating(value);
+      toast.success("¡Gracias por tu valoración!");
+    } catch (e: any) {
+      toast.error("Error al guardar la valoración");
+    } finally {
+      setIsSubmittingRating(false);
+    }
   };
 
   const formatTime = (iso: string) => {
@@ -250,42 +314,63 @@ export function SupportChat() {
             ))}
 
             {isClosed && (
-              <div className="flex items-center justify-center gap-1.5 py-2 text-xs text-muted-foreground">
-                <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                Chat cerrado
+              <div className="mt-4 flex flex-col items-center justify-center p-4 bg-muted/50 rounded-xl animate-in fade-in slide-in-from-bottom-2">
+                <p className="text-sm font-medium mb-3">¿Cómo calificarías nuestro soporte?</p>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => handleRate(star)}
+                      disabled={rating > 0 || isSubmittingRating}
+                      className={cn(
+                        "transition-all hover:scale-110 active:scale-95 disabled:hover:scale-100",
+                        rating >= star ? "text-yellow-400 drop-shadow-sm" : "text-muted-foreground/30 hover:text-yellow-400/50"
+                      )}
+                    >
+                      <Star className="h-7 w-7" fill={rating >= star ? "currentColor" : "none"} />
+                    </button>
+                  ))}
+                </div>
+                {rating > 0 && (
+                  <p className="text-xs text-green-600 mt-3 font-medium flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" /> ¡Gracias por tu feedback!
+                  </p>
+                )}
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
           {/* Input */}
-          <div className="flex gap-2 p-3 border-t flex-shrink-0">
-            <input
-              ref={inputRef}
-              className="flex-1 text-sm bg-muted rounded-full px-4 py-2 outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30"
-              placeholder="Escribe tu mensaje..."
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              disabled={isSending || isClosed}
-            />
-            <button
-              onClick={handleSendMessage}
-              disabled={!inputText.trim() || isSending || isClosed}
-              className="h-9 w-9 flex-shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center transition-all hover:bg-primary/90 disabled:opacity-40"
-            >
-              {isSending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </button>
-          </div>
+          {!isClosed && (
+            <div className="flex gap-2 p-3 border-t flex-shrink-0">
+              <input
+                ref={inputRef}
+                className="flex-1 text-sm bg-muted rounded-full px-4 py-2 outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30"
+                placeholder="Escribe tu mensaje..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={isSending}
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={!inputText.trim() || isSending}
+                className="h-9 w-9 flex-shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center transition-all hover:bg-primary/90 disabled:opacity-40"
+              >
+                {isSending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </>
