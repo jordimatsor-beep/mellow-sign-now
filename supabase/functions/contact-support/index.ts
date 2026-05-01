@@ -86,8 +86,8 @@ serve(async (req) => {
                                 <p style="color: #6b7280; font-size: 14px;">
                                     Accede al panel de administración de FirmaClara para responder al usuario en tiempo real.
                                 </p>
-                                <a href="https://firmaclara.es/admin" style="display: inline-block; background: #7c3aed; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; margin-top: 8px;">
-                                    Ir al panel admin →
+                                <a href="https://firmaclara.es/shobdgohs/support?chatId=${chat.id}" style="display: inline-block; background: #7c3aed; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; margin-top: 8px;">
+                                    Abrir Chat Privado →
                                 </a>
                             </div>
                         </div>
