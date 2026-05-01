@@ -107,7 +107,7 @@ serve(async (req) => {
             const { data: { user }, error: userError } = await supabaseUser.auth.getUser()
             if (userError || !user) throw new Error('Unauthorized')
             const { data: userData } = await supabaseAdmin.from('users').select('role').eq('id', user.id).single()
-            if (userData?.role !== 'admin') throw new Error('Forbidden')
+            if (userData?.role !== 'admin' && userData?.role !== 'support') throw new Error('Forbidden')
 
             const { error } = await supabaseAdmin.from('support_messages').insert({
                 chat_id: chat_id,
@@ -133,7 +133,7 @@ serve(async (req) => {
             if (userError || !user) throw new Error('Unauthorized')
             
             const { data: userData } = await supabaseAdmin.from('users').select('role').eq('id', user.id).single()
-            const isAdmin = userData?.role === 'admin'
+            const isStaff = userData?.role === 'admin' || userData?.role === 'support'
 
             // Get chat data
             const { data: chatData, error: chatFetchError } = await supabaseAdmin.from('support_chats')
@@ -143,11 +143,11 @@ serve(async (req) => {
             if (chatFetchError) throw chatFetchError
 
             // Verify permissions
-            if (!isAdmin && chatData.user_id !== user.id) {
+            if (!isStaff && chatData.user_id !== user.id) {
                 throw new Error('Forbidden')
             }
 
-            const closedBy = isAdmin ? 'admin' : 'user';
+            const closedBy = isStaff ? 'admin' : 'user';
 
             // 1. Marcar como cerrado
             const { error: closeError } = await supabaseAdmin.from('support_chats')

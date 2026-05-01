@@ -15,13 +15,12 @@ export const AdminRoute = () => {
         );
     }
 
-    // "Super Admin" backdoor via email (hardcoded for safety)
+    // Super Admin backdoor via email
     const isSuperAdmin = user?.email === 'jormattor@gmail.com';
     const isAdminRole = profile?.role === 'admin';
+    const isSupportRole = profile?.role === 'support';
 
-    // If authorized, show the Admin Layout (Outlet)
-    // We check if we are at the root /shobdgohs to redirect to dashboard, otherwise render children
-    if (user && (isSuperAdmin || isAdminRole)) {
+    if (user && (isSuperAdmin || isAdminRole || isSupportRole)) {
         return <Outlet />;
     }
 

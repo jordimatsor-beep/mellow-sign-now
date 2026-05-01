@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { useCredits } from "@/hooks/useCredits";
 
 interface CreditTransaction {
   id: string;
@@ -23,25 +24,8 @@ interface CreditTransaction {
 export default function Credits() {
 
 
-  // Fetch available credits - cached
-  const { data: availableCredits, isLoading: loading } = useQuery({
-    queryKey: queryKeys.credits.packs,
-    queryFn: async () => {
-      return withTimeout(
-        (async () => {
-          const { data, error } = await supabase
-            .from('user_credit_purchases')
-            .select('credits_total, credits_used');
-          if (error) throw error;
-          if (data) {
-            return data.reduce((acc, pack) => acc + (pack.credits_total || 0) - (pack.credits_used || 0), 0);
-          }
-          return 0;
-        })(),
-        3000, "Credits fetch"
-      );
-    },
-  });
+  // Fetch available credits using the shared hook
+  const { credits: availableCredits, isLoading: loading } = useCredits();
 
   // Fetch transactions - cached
   const { data: transactions = [], isLoading: loadingHistory } = useQuery({

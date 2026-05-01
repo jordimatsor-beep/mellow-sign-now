@@ -10,7 +10,7 @@ export interface Profile {
     name: string | null;
     email: string | null;
     company_name: string | null;
-    role: 'user' | 'admin' | null;
+    role: 'user' | 'admin' | 'support' | null;
     // Add other fields from public.users as needed
 }
 

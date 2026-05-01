@@ -1,4 +1,4 @@
-import { Home, Users, CreditCard, LayoutDashboard, LogOut, ScrollText, MessageCircle } from "lucide-react";
+import { Home, Users, CreditCard, LayoutDashboard, LogOut, ScrollText, MessageCircle, ShieldAlert } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/brand/Logo";
@@ -6,15 +6,21 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 
 export function AdminSidebar() {
-    const { signOut } = useAuth();
+    const { profile, signOut } = useAuth();
+    const isAdmin = profile?.role === 'admin' || profile?.email === 'jormattor@gmail.com';
+    const isSupport = profile?.role === 'support';
+    const canAccessUsers = isAdmin;
+    const canAccessLogs = isAdmin;
+    const canAccessTeam = isAdmin;
 
     const navItems = [
         { to: "/shobdgohs/dashboard", icon: LayoutDashboard, label: "Dashboard", end: true },
-        { to: "/shobdgohs/users", icon: Users, label: "Usuarios" },
+        canAccessUsers && { to: "/shobdgohs/users", icon: Users, label: "Usuarios" },
         { to: "/shobdgohs/credits", icon: CreditCard, label: "Créditos" },
         { to: "/shobdgohs/support", icon: MessageCircle, label: "Soporte en vivo" },
-        { to: "/shobdgohs/logs", icon: ScrollText, label: "Logs" },
-    ];
+        isAdmin && { to: "/shobdgohs/logs", icon: ScrollText, label: "Logs" },
+        isAdmin && { to: "/shobdgohs/team", icon: ShieldAlert, label: "Equipo" },
+    ].filter(Boolean) as any[];
 
     return (
         <aside className="hidden w-64 flex-col border-r bg-slate-900 text-slate-100 md:flex h-full">

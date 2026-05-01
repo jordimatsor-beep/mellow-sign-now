@@ -92,10 +92,10 @@ export default function CreditsManager() {
 
         setProcessing(true);
         try {
-            const { data, error } = await supabase.rpc("admin_add_credits", {
-                p_target_user_id: selectedUser.id,
-                p_credits: num,
-                p_note: "admin_gift",
+            const { data, error } = await supabase.rpc("grant_credits", {
+                target_email: selectedUser.email,
+                credits_amount: num,
+                description_text: "Asignación manual por equipo de soporte",
             });
             if (error) throw error;
             toast.success(`${num} créditos añadidos a ${selectedUser.email}`);
