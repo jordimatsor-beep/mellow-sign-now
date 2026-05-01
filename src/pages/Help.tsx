@@ -1,14 +1,7 @@
-import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, HelpCircle, MessageCircle, FileQuestion, Mail, Loader2 } from "lucide-react";
+import { ArrowLeft, MessageCircle, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/lib/supabase";
-import { withTimeout } from "@/lib/withTimeout";
-import { toast } from "sonner";
 import {
   Accordion,
   AccordionContent,
@@ -23,16 +16,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { ClaraChat } from "@/components/ClaraChat";
+import { SupportChat } from "@/components/SupportChat";
 
 const faqs = [
   {
@@ -63,54 +48,6 @@ const faqs = [
 ];
 
 export default function Help() {
-  const { user } = useAuth(); // Assuming useAuth is available or I need to import it. It's not imported in original file!
-  // Wait, checking imports... original file has NO useAuth.
-  // I need to add useAuth import.
-
-  const [isContactOpen, setIsContactOpen] = useState(false);
-  const [supportEmail, setSupportEmail] = useState("");
-  const [supportMessage, setSupportMessage] = useState("");
-  const [isSending, setIsSending] = useState(false);
-
-  // Initialize email when user loads (if useAuth is present)
-  // I will add the hook call. 
-
-  const handleContactSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!supportMessage.trim()) return;
-
-    setIsSending(true);
-    try {
-      const { error } = await withTimeout(
-        supabase.functions.invoke('contact-support', {
-          body: {
-            email: supportEmail,
-            message: supportMessage,
-            user_email: user?.email
-          }
-        }),
-        3000, "Contact support"
-      );
-
-      if (error) throw error;
-
-      toast.success("Mensaje enviado a soporte");
-      setIsContactOpen(false);
-      setSupportMessage("");
-    } catch (error: any) {
-      console.error(error);
-      toast.error("Error al enviar el mensaje");
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user?.email) {
-      setSupportEmail(user.email);
-    }
-  }, [user]);
-
   return (
     <div className="container space-y-6 px-4 py-6">
       {/* Header */}
@@ -125,6 +62,7 @@ export default function Help() {
 
       {/* Quick links */}
       <div className="grid grid-cols-2 gap-3">
+        {/* Asistente Virtual */}
         <Sheet>
           <SheetTrigger asChild>
             <Card className="cursor-pointer transition-colors hover:bg-accent">
@@ -152,57 +90,16 @@ export default function Help() {
           </SheetContent>
         </Sheet>
 
-        <Dialog open={isContactOpen} onOpenChange={setIsContactOpen}>
-          <DialogTrigger asChild>
-            <Card className="cursor-pointer transition-colors hover:bg-accent h-full">
-              <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Mail className="h-5 w-5 text-primary" />
-                </div>
-                <p className="text-sm font-medium">Contactar Soporte</p>
-              </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Contactar con Soporte</DialogTitle>
-              <DialogDescription>
-                Escríbenos tu consulta y te responderemos a la mayor brevedad posible a <strong>soporte@operiatech.es</strong>.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleContactSubmit} className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="contact-email">Tu Email</Label>
-                <Input
-                  id="contact-email"
-                  type="email"
-                  value={supportEmail}
-                  onChange={(e) => setSupportEmail(e.target.value)}
-                  placeholder="tu@email.com"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contact-message">Mensaje</Label>
-                <textarea
-                  id="contact-message"
-                  className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Describe tu problema o duda..."
-                  value={supportMessage}
-                  onChange={(e) => setSupportMessage(e.target.value)}
-                  required
-                />
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsContactOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={isSending}>
-                  {isSending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Enviar mensaje
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        {/* Live support info card */}
+        <Card className="transition-colors bg-primary/5 border-primary/20">
+          <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <HelpCircle className="h-5 w-5 text-primary" />
+            </div>
+            <p className="text-sm font-medium">Soporte en vivo</p>
+            <p className="text-xs text-muted-foreground">Usa el botón flotante para chatear</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* FAQs */}
@@ -221,6 +118,9 @@ export default function Help() {
           ))}
         </Accordion>
       </div>
+
+      {/* Floating live chat widget */}
+      <SupportChat />
     </div>
   );
 }

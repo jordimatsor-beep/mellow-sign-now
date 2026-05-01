@@ -38,6 +38,7 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import UsersManager from "@/pages/admin/UsersManager";
 import CreditsManager from "@/pages/admin/CreditsManager";
 import AdminLogs from "@/pages/admin/AdminLogs";
+import AdminSupportChats from "@/pages/admin/AdminSupportChats";
 import Register from "@/pages/auth/Register";
 import UpdatePassword from "@/pages/auth/UpdatePassword";
 import AccountConfirmed from "@/pages/auth/AccountConfirmed";
@@ -110,6 +111,7 @@ const App = () => (
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="users" element={<UsersManager />} />
                     <Route path="credits" element={<CreditsManager />} />
+                    <Route path="support" element={<AdminSupportChats />} />
                     <Route path="logs" element={<AdminLogs />} />
                   </Route>
                 </Route>
