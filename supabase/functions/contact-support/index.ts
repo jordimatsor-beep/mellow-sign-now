@@ -24,14 +24,15 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
+        // Helper to get authenticated user
+        const supabaseUser = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: authHeader ?? '' } } }
+        )
+
         // ── ACTION: open_chat ──────────────────────────────────────────────
         if (action === 'open_chat') {
-            // Get user from auth token
-            const supabaseUser = createClient(
-                Deno.env.get('SUPABASE_URL') ?? '',
-                Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-                { global: { headers: { Authorization: authHeader ?? '' } } }
-            )
             const { data: { user }, error: userError } = await supabaseUser.auth.getUser()
             if (userError || !user) {
                 return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -102,6 +103,12 @@ serve(async (req) => {
 
         // ── ACTION: send_message (admin only, uses service role) ───────────
         if (action === 'send_admin_message') {
+            // Check admin auth
+            const { data: { user }, error: userError } = await supabaseUser.auth.getUser()
+            if (userError || !user) throw new Error('Unauthorized')
+            const { data: userData } = await supabaseAdmin.from('users').select('role').eq('id', user.id).single()
+            if (userData?.role !== 'admin') throw new Error('Forbidden')
+
             const { error } = await supabaseAdmin.from('support_messages').insert({
                 chat_id: chat_id,
                 sender: 'admin',
@@ -121,6 +128,12 @@ serve(async (req) => {
 
         // ── ACTION: close_chat ─────────────────────────────────────────────
         if (action === 'close_chat') {
+            // Check admin auth
+            const { data: { user }, error: userError } = await supabaseUser.auth.getUser()
+            if (userError || !user) throw new Error('Unauthorized')
+            const { data: userData } = await supabaseAdmin.from('users').select('role').eq('id', user.id).single()
+            if (userData?.role !== 'admin') throw new Error('Forbidden')
+
             // 1. Marcar como cerrado
             const { data: chatData, error: closeError } = await supabaseAdmin.from('support_chats')
                 .update({ status: 'closed' })

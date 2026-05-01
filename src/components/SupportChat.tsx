@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useProfile } from "@/context/ProfileContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ type Step = "closed" | "subject" | "chat";
 
 export function SupportChat() {
   const { user } = useAuth();
+  const { profile } = useProfile();
   const [step, setStep] = useState<Step>("closed");
   const [subject, setSubject] = useState("");
   const [chatId, setChatId] = useState<string | null>(null);
@@ -171,7 +173,7 @@ export function SupportChat() {
           {/* Content */}
           <div className="p-5 space-y-4">
             <p className="text-sm text-muted-foreground">
-              Hola{user?.email ? `, ${user.email.split("@")[0]}` : ""}! ¿En qué podemos ayudarte hoy?
+              Hola{profile?.name ? `, ${profile.name.split(" ")[0]}` : user?.email ? `, ${user.email.split("@")[0]}` : ""}! ¿En qué podemos ayudarte hoy?
             </p>
             <div className="space-y-2">
               <label className="text-sm font-medium">Asunto del chat</label>
