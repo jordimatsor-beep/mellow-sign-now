@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { playNotificationSound } from "@/lib/audio";
 
 interface Message {
   id: string;
@@ -88,6 +89,12 @@ export function SupportChat() {
           setMessages((prev) => {
             const exists = prev.find((m) => m.id === payload.new.id);
             if (exists) return prev;
+
+            // Play notification sound if the message is from the admin
+            if (payload.new.sender === "admin") {
+              playNotificationSound();
+            }
+
             return [...prev, payload.new as Message];
           });
         }

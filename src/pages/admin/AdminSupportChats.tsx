@@ -5,10 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, MessageCircle, Send, CheckCircle, Clock, ShieldCheck, Mail, Search, AlertCircle, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { playNotificationSound } from "@/lib/audio";
 
 interface ChatSession {
   id: string;
@@ -45,12 +47,12 @@ export default function AdminSupportChats() {
   const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load all open chats
+  // Load all open chats and subscribe globally
   useEffect(() => {
     fetchChats();
     
-    // Subscribe to new chats and updates
-    const channel = supabase
+    // Subscribe to chat updates (new chats, status changes)
+    const chatsChannel = supabase
       .channel("admin_support_chats")
       .on(
         "postgres_changes",
@@ -59,8 +61,25 @@ export default function AdminSupportChats() {
       )
       .subscribe();
 
+    // Subscribe to ALL new messages to play sound and trigger re-fetch
+    const globalMessagesChannel = supabase
+      .channel("admin_global_messages")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "support_messages" },
+        (payload) => {
+          // If a user sends a message, play the sound
+          if (payload.new.sender === "user") {
+            playNotificationSound();
+            fetchChats(); // Refresh list to update "last_message_at" and "admin_read" status
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(chatsChannel);
+      supabase.removeChannel(globalMessagesChannel);
     };
   }, []);
 
@@ -116,6 +135,7 @@ export default function AdminSupportChats() {
 
     fetchMessages();
 
+    // The global channel plays the sound, this channel updates the active chat UI
     const channel = supabase
       .channel(`admin_chat_${selectedChat.id}`)
       .on(
@@ -191,10 +211,87 @@ export default function AdminSupportChats() {
     setSearchParams({ chatId: chat.id });
   };
 
+  // Filter and categorize chats
   const filteredChats = chats.filter((chat) => 
     chat.user_email.toLowerCase().includes(searchQuery.toLowerCase()) || 
     chat.subject.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const unreadChats = filteredChats.filter(c => c.status === "open" && !c.admin_read);
+  const activeChats = filteredChats.filter(c => c.status === "open" && c.admin_read);
+  const closedChats = filteredChats.filter(c => c.status === "closed");
+
+  // Reusable render function for a list of chats
+  const renderChatList = (list: ChatSession[]) => {
+    if (isLoading && list.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-10 space-y-3">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <span className="text-sm text-muted-foreground">Cargando...</span>
+        </div>
+      );
+    }
+    
+    if (list.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
+          <AlertCircle className="h-8 w-8 text-slate-300 mb-3" />
+          <p className="text-sm">No hay tickets en esta categoría.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="divide-y divide-slate-100">
+        {list.map((chat) => (
+          <button
+            key={chat.id}
+            onClick={() => handleSelectChat(chat)}
+            className={cn(
+              "w-full text-left p-4 transition-all flex flex-col gap-1.5 relative border-l-4",
+              selectedChat?.id === chat.id 
+                ? "bg-white border-blue-600 shadow-sm" 
+                : "bg-transparent border-transparent hover:bg-slate-100/50",
+              chat.status === "closed" && "opacity-70"
+            )}
+          >
+            {!chat.admin_read && chat.status === "open" && selectedChat?.id !== chat.id && (
+              <div className="absolute right-4 top-4 h-2.5 w-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-200 animate-pulse" />
+            )}
+            <div className="flex justify-between items-start mr-4">
+              <span className="font-medium text-sm truncate flex items-center gap-1.5 text-slate-700">
+                <Mail className="h-3.5 w-3.5 text-slate-400" />
+                {chat.user_email}
+              </span>
+            </div>
+            <span className={cn("text-xs font-semibold truncate", 
+              selectedChat?.id === chat.id ? "text-blue-700" : "text-slate-900"
+            )}>{chat.subject}</span>
+            <div className="flex justify-between items-center mt-1 pt-2 border-t border-slate-100/50 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" />
+                {format(new Date(chat.last_message_at), "HH:mm", { locale: es })}
+              </span>
+              {chat.status === "closed" ? (
+                <div className="flex items-center gap-2">
+                  {chat.rating && chat.rating > 0 ? (
+                    <span className="flex items-center text-yellow-500 text-[10px] font-bold">
+                      {chat.rating} <Star className="h-2.5 w-2.5 fill-current ml-0.5" />
+                    </span>
+                  ) : null}
+                  <span className="text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider">Cerrado</span>
+                </div>
+              ) : (
+                <span className="text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider">
+                  {chat.admin_read ? 'En Curso' : 'Abierto'}
+                </span>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 h-[calc(100vh-8rem)]">
@@ -210,7 +307,7 @@ export default function AdminSupportChats() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-full min-h-[600px]">
-        {/* Chat List */}
+        {/* Chat List with Tabs */}
         <Card className="md:col-span-4 lg:col-span-3 h-full flex flex-col overflow-hidden border-slate-200 shadow-sm rounded-xl">
           <CardHeader className="py-4 px-5 border-b bg-slate-50/50">
             <CardTitle className="text-base font-semibold flex items-center justify-between">
@@ -233,64 +330,38 @@ export default function AdminSupportChats() {
             </div>
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-y-auto bg-slate-50/30">
-            {isLoading ? (
-              <div className="flex flex-col items-center justify-center h-full space-y-3">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                <span className="text-sm text-muted-foreground">Cargando tickets...</span>
-              </div>
-            ) : filteredChats.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full p-8 text-center text-muted-foreground">
-                <AlertCircle className="h-8 w-8 text-slate-300 mb-3" />
-                <p className="text-sm">No se encontraron tickets.</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {filteredChats.map((chat) => (
-                  <button
-                    key={chat.id}
-                    onClick={() => handleSelectChat(chat)}
-                    className={cn(
-                      "w-full text-left p-4 transition-all flex flex-col gap-1.5 relative border-l-4",
-                      selectedChat?.id === chat.id 
-                        ? "bg-white border-blue-600 shadow-sm" 
-                        : "bg-transparent border-transparent hover:bg-slate-100/50",
-                      chat.status === "closed" && "opacity-70"
-                    )}
-                  >
-                    {!chat.admin_read && chat.status === "open" && selectedChat?.id !== chat.id && (
-                      <div className="absolute right-4 top-4 h-2.5 w-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-200 animate-pulse" />
-                    )}
-                    <div className="flex justify-between items-start mr-4">
-                      <span className="font-medium text-sm truncate flex items-center gap-1.5 text-slate-700">
-                        <Mail className="h-3.5 w-3.5 text-slate-400" />
-                        {chat.user_email}
+            <Tabs defaultValue="unread" className="h-full flex flex-col">
+              <div className="px-4 py-3 border-b bg-white shrink-0 sticky top-0 z-10">
+                <TabsList className="grid w-full grid-cols-3 h-9">
+                  <TabsTrigger value="unread" className="text-[11px] font-semibold relative">
+                    Nuevos
+                    {unreadChats.length > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold shadow-sm">
+                        {unreadChats.length}
                       </span>
-                    </div>
-                    <span className={cn("text-xs font-semibold truncate", 
-                      selectedChat?.id === chat.id ? "text-blue-700" : "text-slate-900"
-                    )}>{chat.subject}</span>
-                    <div className="flex justify-between items-center mt-1 pt-2 border-t border-slate-100/50 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5" />
-                        {format(new Date(chat.last_message_at), "HH:mm", { locale: es })}
-                      </span>
-                      {chat.status === "closed" ? (
-                        <div className="flex items-center gap-2">
-                          {chat.rating && chat.rating > 0 ? (
-                            <span className="flex items-center text-yellow-500 text-[10px] font-bold">
-                              {chat.rating} <Star className="h-2.5 w-2.5 fill-current ml-0.5" />
-                            </span>
-                          ) : null}
-                          <span className="text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider">Cerrado</span>
-                        </div>
-                      ) : (
-                        <span className="text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider">Abierto</span>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="active" className="text-[11px] font-semibold">
+                    En Curso {activeChats.length > 0 && `(${activeChats.length})`}
+                  </TabsTrigger>
+                  <TabsTrigger value="closed" className="text-[11px] font-semibold">
+                    Cerrados
+                  </TabsTrigger>
+                </TabsList>
               </div>
-            )}
+              
+              <div className="flex-1 overflow-y-auto">
+                <TabsContent value="unread" className="m-0 focus-visible:outline-none">
+                  {renderChatList(unreadChats)}
+                </TabsContent>
+                <TabsContent value="active" className="m-0 focus-visible:outline-none">
+                  {renderChatList(activeChats)}
+                </TabsContent>
+                <TabsContent value="closed" className="m-0 focus-visible:outline-none">
+                  {renderChatList(closedChats)}
+                </TabsContent>
+              </div>
+            </Tabs>
           </CardContent>
         </Card>
 
