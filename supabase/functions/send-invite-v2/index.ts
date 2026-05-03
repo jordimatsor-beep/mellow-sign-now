@@ -360,7 +360,6 @@ serve(async (req: Request) => {
       JSON.stringify({
         success: false,
         error: error.message || 'Unknown error occurred',
-        details: JSON.stringify(error)
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     )

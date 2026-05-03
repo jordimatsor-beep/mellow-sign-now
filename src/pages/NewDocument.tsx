@@ -36,6 +36,7 @@ export default function NewDocument() {
 
   // Form Data
   const [file, setFile] = useState<File | null>(null);
+  const [draftFileUrl, setDraftFileUrl] = useState<string | null>(null);
   const [title, setTitle] = useState("");
 
   const [signerName, setSignerName] = useState("");
@@ -134,15 +135,9 @@ export default function NewDocument() {
         }
 
         if (draft.file_url) {
-          try {
-            const { data: fileData, error: fileError } = await supabase.storage.from('documents').download(draft.file_path || draft.file_url.split('/documents/').pop());
-            if (fileData) {
-              const file = new File([fileData], "documento_guardado.pdf", { type: "application/pdf" });
-              setFile(file);
-            }
-          } catch (e) {
-            console.error("Error loading file content", e);
-          }
+          // Store original URL to reuse on submit without re-downloading
+          setDraftFileUrl(draft.file_url);
+          setFile(new File([], draft.title ? `${draft.title}.pdf` : "documento_guardado.pdf", { type: "application/pdf" }));
         }
 
         if (draft.file_url) {
@@ -244,29 +239,25 @@ export default function NewDocument() {
 
       let fileUrl = "";
 
-      // Check if it's the dummy file from draft loading (avoid re-upload if possible, or just re-upload it)
-      // If the file is the dummy one, we might want to skip upload if we can retrieve the original URL,
-      // but we don't store the original URL in state easily without another state var.
-      // However, re-uploading the same content is safe. 
-      // Optimization: Check if file name matches our dummy name, if so, assume we can reuse existing URL if we had it, but we don't have it handy in this scope without fetching again or storing it.
-      // So standard upload path is safest for now.
-
       const { data: { user } } = await withTimeout(
         supabase.auth.getUser(),
         3000, "Auth user"
       );
       if (!user) throw new Error("No estás autenticado");
 
-      const fileName = `${user.id}/${Date.now()}_${sanitizeFileName(file.name)}`;
-      const { data: uploadData, error: uploadError } = await withTimeout(
-        supabase.storage.from('documents').upload(fileName, file),
-        10000, "File upload"
-      );
-
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(fileName);
-      fileUrl = publicUrlData.publicUrl;
+      // Reuse draft URL when user hasn't changed the file (placeholder has size 0)
+      if (draftFileUrl && file.size === 0) {
+        fileUrl = draftFileUrl;
+      } else {
+        const fileName = `${user.id}/${Date.now()}_${sanitizeFileName(file.name)}`;
+        const { data: uploadData, error: uploadError } = await withTimeout(
+          supabase.storage.from('documents').upload(fileName, file),
+          10000, "File upload"
+        );
+        if (uploadError) throw uploadError;
+        const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(fileName);
+        fileUrl = publicUrlData.publicUrl;
+      }
 
       let doc;
       let error;
@@ -394,10 +385,16 @@ export default function NewDocument() {
         console.error("Error sending email:", fnError || fnData);
 
         // 2.1 ROLLBACK: Devolver el crédito si el email falló
-        await supabase.rpc('consume_credit', { amount: -1, description: 'Reembolso por fallo de envío' });
+        const { error: refundError } = await supabase.rpc('consume_credit', { amount: -1, description: 'Reembolso por fallo de envío' });
+        if (refundError) {
+          console.error("Credit refund failed:", refundError);
+        }
+        const creditMsg = refundError
+          ? " No se pudo devolver el crédito automáticamente — contacta con soporte."
+          : " El crédito ha sido devuelto.";
 
         const errorMsg = fnError?.message || fnData?.error || "Error desconocido al enviar email";
-        toast.error(`No se pudo enviar el email: ${errorMsg}. El crédito ha sido devuelto.`);
+        toast.error(`No se pudo enviar el email: ${errorMsg}.${creditMsg}`);
         toast.info("El documento se ha guardado como borrador. Inténtalo de nuevo.");
 
         setUploadStatus("error");
@@ -974,7 +971,8 @@ export default function NewDocument() {
                   <div>
                     <p className="font-medium truncate max-w-[200px]">{title}</p>
                     <p className="text-sm text-muted-foreground">
-                      {docTypes.find(d => d.value === docType)?.label || "Documento"} • {file ? (file.size / 1024).toFixed(0) : 0} KB
+                      {docTypes.find(d => d.value === docType)?.label || "Documento"}
+                  {file && file.size > 0 ? ` • ${(file.size / 1024).toFixed(0)} KB` : ""}
                     </p>
                   </div>
                 </div>
