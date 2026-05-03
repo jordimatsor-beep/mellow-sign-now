@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { MessageCircleMore, X, Send, Loader2, CheckCircle, Star, MoreVertical } from "lucide-react";
+import { MessageCircleMore, X, Send, Loader2, CheckCircle, Star, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
@@ -20,6 +19,8 @@ interface Message {
 
 type Step = "closed" | "subject" | "chat";
 
+const CHAT_STORAGE_KEY = "firmaclara_live_chat";
+
 export function SupportChat() {
   const { user } = useAuth();
   const { profile } = useProfile();
@@ -33,26 +34,60 @@ export function SupportChat() {
   const [isClosed, setIsClosed] = useState(false);
   const [rating, setRating] = useState<number>(0);
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Focus input when chat opens
   useEffect(() => {
     if (step === "chat") {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [step]);
 
+  // Restore session from localStorage on mount
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (parsed.userId !== user.id || !parsed.chatId) return;
+      supabase
+        .from("support_chats")
+        .select("status, subject, rating")
+        .eq("id", parsed.chatId)
+        .single()
+        .then(({ data }) => {
+          if (!data) {
+            localStorage.removeItem(CHAT_STORAGE_KEY);
+            return;
+          }
+          setChatId(parsed.chatId);
+          setSubject(parsed.subject || data.subject);
+          if (data.status === "closed") {
+            setIsClosed(true);
+            setRating(data.rating || 0);
+          }
+          setStep("chat");
+        });
+    } catch {}
+  }, [user?.id]);
+
+  // Save session when chatId is set
+  useEffect(() => {
+    if (chatId && user) {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({ chatId, subject, userId: user.id }));
+    }
+  }, [chatId, subject, user?.id]);
+
   // Subscribe to real-time messages when chatId is set
   useEffect(() => {
     if (!chatId) return;
 
-    // Load existing messages and chat status
     supabase
       .from("support_messages")
       .select("*")
@@ -74,7 +109,6 @@ export function SupportChat() {
         }
       });
 
-    // Real-time subscription for messages
     const channel = supabase
       .channel(`support_chat_${chatId}`)
       .on(
@@ -87,15 +121,14 @@ export function SupportChat() {
         },
         (payload) => {
           setMessages((prev) => {
-            const exists = prev.find((m) => m.id === payload.new.id);
-            if (exists) return prev;
-
-            // Play notification sound if the message is from the admin
-            if (payload.new.sender === "admin") {
-              playNotificationSound();
-            }
-
-            return [...prev, payload.new as Message];
+            // Remove any temp message when real message arrives from same sender
+            const withoutTemp = prev.filter(
+              (m) => !(m.id.startsWith("temp_") && m.sender === payload.new.sender)
+            );
+            const exists = withoutTemp.find((m) => m.id === payload.new.id);
+            if (exists) return withoutTemp;
+            if (payload.new.sender === "admin") playNotificationSound();
+            return [...withoutTemp, payload.new as Message];
           });
         }
       )
@@ -111,13 +144,17 @@ export function SupportChat() {
           if (payload.new.status === "closed") {
             setIsClosed(true);
             setRating(payload.new.rating || 0);
+            localStorage.removeItem(CHAT_STORAGE_KEY);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        setIsConnected(status === "SUBSCRIBED");
+      });
 
     return () => {
       supabase.removeChannel(channel);
+      setIsConnected(false);
     };
   }, [chatId]);
 
@@ -143,35 +180,50 @@ export function SupportChat() {
     const text = inputText.trim();
     setInputText("");
     setIsSending(true);
+
+    // Optimistic update
+    const tempId = `temp_${Date.now()}`;
+    const optimisticMsg: Message = {
+      id: tempId,
+      chat_id: chatId,
+      sender: "user",
+      content: text,
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+
     try {
-      const { error } = await supabase.from("support_messages").insert({
-        chat_id: chatId,
-        sender: "user",
-        content: text,
-      });
+      const { data: inserted, error } = await supabase
+        .from("support_messages")
+        .insert({ chat_id: chatId, sender: "user", content: text })
+        .select()
+        .single();
+
       if (error) throw error;
 
-      // Update last_message_at
+      // Replace optimistic with real (in case realtime hasn't fired yet)
+      setMessages((prev) => {
+        const withoutTemp = prev.filter((m) => m.id !== tempId);
+        const alreadyHere = withoutTemp.find((m) => m.id === inserted.id);
+        return alreadyHere ? withoutTemp : [...withoutTemp, inserted as Message];
+      });
+
       await supabase
         .from("support_chats")
         .update({ admin_read: false, last_message_at: new Date().toISOString() })
         .eq("id", chatId);
     } catch (e: any) {
       toast.error("Error al enviar el mensaje");
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setInputText(text);
     } finally {
       setIsSending(false);
     }
   };
 
-  const handleClose = () => {
+  // Minimize the widget - keeps the chat session alive
+  const handleMinimize = () => {
     setStep("closed");
-    setSubject("");
-    setChatId(null);
-    setMessages([]);
-    setInputText("");
-    setIsClosed(false);
-    setRating(0);
   };
 
   const handleUserCloseChat = async () => {
@@ -183,9 +235,22 @@ export function SupportChat() {
       if (error) throw error;
       toast.success("Chat cerrado correctamente");
       setIsClosed(true);
+      localStorage.removeItem(CHAT_STORAGE_KEY);
     } catch (e: any) {
       toast.error("Error al cerrar el chat");
     }
+  };
+
+  // Fully discard the chat widget state (used after rating or when closed)
+  const handleDiscard = () => {
+    setStep("closed");
+    setSubject("");
+    setChatId(null);
+    setMessages([]);
+    setInputText("");
+    setIsClosed(false);
+    setRating(0);
+    localStorage.removeItem(CHAT_STORAGE_KEY);
   };
 
   const handleRate = async (value: number) => {
@@ -196,7 +261,6 @@ export function SupportChat() {
         .from("support_chats")
         .update({ rating: value })
         .eq("id", chatId);
-      
       if (error) throw error;
       setRating(value);
       toast.success("¡Gracias por tu valoración!");
@@ -214,34 +278,38 @@ export function SupportChat() {
     });
   };
 
+  // If widget is minimized but there's an active chat, show a badge on the button
+  const hasActiveChat = chatId && step === "closed";
+
   return (
     <>
       {/* Floating trigger button */}
       {step === "closed" && (
         <button
-          onClick={() => setStep("subject")}
+          onClick={() => (hasActiveChat ? setStep("chat") : setStep("subject"))}
           className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition-all hover:bg-primary/90 hover:scale-105 active:scale-95"
         >
           <MessageCircleMore className="h-5 w-5" />
-          Soporte en vivo
+          {hasActiveChat ? "Volver al chat" : "Soporte en vivo"}
+          {hasActiveChat && (
+            <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse ml-1" />
+          )}
         </button>
       )}
 
       {/* Step 1: Subject input */}
       {step === "subject" && (
         <div className="fixed bottom-6 right-6 z-50 w-80 rounded-2xl border bg-background shadow-2xl animate-in slide-in-from-bottom-4 duration-200">
-          {/* Header */}
           <div className="flex items-center justify-between rounded-t-2xl bg-primary px-4 py-3">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
               <span className="font-semibold text-primary-foreground text-sm">Soporte FirmaClara</span>
             </div>
-            <button onClick={handleClose} className="text-primary-foreground/70 hover:text-primary-foreground">
+            <button onClick={handleMinimize} className="text-primary-foreground/70 hover:text-primary-foreground">
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Content */}
           <div className="p-5 space-y-4">
             <p className="text-sm text-muted-foreground">
               Hola{profile?.name ? `, ${profile.name.split(" ")[0]}` : user?.email ? `, ${user.email.split("@")[0]}` : ""}! ¿En qué podemos ayudarte hoy?
@@ -277,21 +345,39 @@ export function SupportChat() {
 
       {/* Step 2: Live chat window */}
       {step === "chat" && (
-        <div className="fixed bottom-6 right-6 z-50 w-80 rounded-2xl border bg-background shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 duration-200"
-          style={{ height: "420px" }}>
-
+        <div
+          className="fixed bottom-6 right-6 z-50 w-80 rounded-2xl border bg-background shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 duration-200"
+          style={{ height: "420px" }}
+        >
           {/* Header */}
           <div className="flex items-center justify-between rounded-t-2xl bg-primary px-4 py-3 flex-shrink-0">
             <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+              <div
+                title={isConnected ? "Conectado" : "Conectando..."}
+                className={cn(
+                  "h-2 w-2 rounded-full transition-colors",
+                  isConnected ? "bg-green-400 animate-pulse" : "bg-yellow-400"
+                )}
+              />
               <div>
                 <p className="font-semibold text-primary-foreground text-sm leading-tight">Soporte FirmaClara</p>
-                <p className="text-primary-foreground/70 text-xs">{subject}</p>
+                <p className="text-primary-foreground/70 text-xs truncate max-w-[160px]">{subject}</p>
               </div>
             </div>
-            <button onClick={handleClose} className="text-primary-foreground/70 hover:text-primary-foreground">
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              {!isClosed && (
+                <button
+                  onClick={handleUserCloseChat}
+                  title="Cerrar chat"
+                  className="text-primary-foreground/50 hover:text-primary-foreground/80 text-[10px] px-1.5 py-0.5 rounded hover:bg-primary-foreground/10 transition-colors"
+                >
+                  Cerrar
+                </button>
+              )}
+              <button onClick={handleMinimize} className="text-primary-foreground/70 hover:text-primary-foreground ml-1">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -301,7 +387,8 @@ export function SupportChat() {
                 key={msg.id}
                 className={cn(
                   "flex flex-col max-w-[85%] gap-0.5",
-                  msg.sender === "user" ? "ml-auto items-end" : "items-start"
+                  msg.sender === "user" ? "ml-auto items-end" : "items-start",
+                  msg.id.startsWith("temp_") && "opacity-60"
                 )}
               >
                 <div
@@ -315,7 +402,8 @@ export function SupportChat() {
                   {msg.content}
                 </div>
                 <span className="text-[10px] text-muted-foreground px-1">
-                  {msg.sender === "admin" ? "Soporte · " : ""}{formatTime(msg.created_at)}
+                  {msg.sender === "admin" ? "Soporte · " : ""}
+                  {msg.id.startsWith("temp_") ? "Enviando..." : formatTime(msg.created_at)}
                 </span>
               </div>
             ))}
@@ -331,7 +419,9 @@ export function SupportChat() {
                       disabled={rating > 0 || isSubmittingRating}
                       className={cn(
                         "transition-all hover:scale-110 active:scale-95 disabled:hover:scale-100",
-                        rating >= star ? "text-yellow-400 drop-shadow-sm" : "text-muted-foreground/30 hover:text-yellow-400/50"
+                        rating >= star
+                          ? "text-yellow-400 drop-shadow-sm"
+                          : "text-muted-foreground/30 hover:text-yellow-400/50"
                       )}
                     >
                       <Star className="h-7 w-7" fill={rating >= star ? "currentColor" : "none"} />
@@ -339,9 +429,17 @@ export function SupportChat() {
                   ))}
                 </div>
                 {rating > 0 && (
-                  <p className="text-xs text-green-600 mt-3 font-medium flex items-center gap-1">
-                    <CheckCircle className="h-3 w-3" /> ¡Gracias por tu feedback!
-                  </p>
+                  <div className="flex flex-col items-center gap-2 mt-3">
+                    <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" /> ¡Gracias por tu feedback!
+                    </p>
+                    <button
+                      onClick={handleDiscard}
+                      className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                    >
+                      Cerrar ventana
+                    </button>
+                  </div>
                 )}
               </div>
             )}
