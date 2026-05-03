@@ -58,7 +58,7 @@ serve(async (req) => {
             await supabaseAdmin.from('support_messages').insert({
                 chat_id: chat.id,
                 sender: 'admin',
-                content: `Hola 👋 Has abierto un chat sobre: **${subject}**. Un agente de soporte te atenderá pronto.`
+                content: `Hola 👋 Has abierto un chat sobre: "${subject}". Un agente de soporte te atenderá pronto.`
             })
 
             // Send notification email to admin

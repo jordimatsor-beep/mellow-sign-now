@@ -53,6 +53,10 @@ export default function AdminSupportChats() {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
 
+  // Typing broadcast channel ref
+  const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const typingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const scrollToBottom = useCallback(() => {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
   }, []);
@@ -138,6 +142,34 @@ export default function AdminSupportChats() {
       supabase.removeChannel(globalMessagesChannel);
     };
   }, [fetchChats]);
+
+  // Typing broadcast channel — created when a chat is selected
+  useEffect(() => {
+    if (!selectedChat) return;
+
+    const chan = supabase.channel(`support:typing:${selectedChat.id}`);
+    chan.subscribe();
+    typingChannelRef.current = chan;
+
+    return () => {
+      if (typingChannelRef.current) {
+        supabase.removeChannel(typingChannelRef.current);
+        typingChannelRef.current = null;
+      }
+      if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+    };
+  }, [selectedChat?.id]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputText(e.target.value);
+    // Broadcast typing event with debounce (fire at most every 1s)
+    if (!typingChannelRef.current || selectedChat?.status !== "open") return;
+    if (typingDebounceRef.current) return; // already pending
+    typingDebounceRef.current = setTimeout(() => {
+      typingChannelRef.current?.send({ type: "broadcast", event: "typing", payload: {} });
+      typingDebounceRef.current = null;
+    }, 400);
+  };
 
   // Load messages + per-chat subscription when selected chat changes
   useEffect(() => {
@@ -240,7 +272,25 @@ export default function AdminSupportChats() {
       });
 
       if (error) throw error;
-      // Realtime subscription will replace the temp message when the real one arrives
+
+      // Fetch the just-inserted message immediately — realtime may not fire for the
+      // sender's own messages when the insert was done via service_role (RLS realtime).
+      const { data: newMsg } = await supabase
+        .from("support_messages")
+        .select("*")
+        .eq("chat_id", selectedChat.id)
+        .eq("sender", "admin")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      setMessages((prev) => {
+        const withoutTemp = prev.filter((m) => m.id !== tempId);
+        if (!newMsg) return withoutTemp;
+        if (withoutTemp.find((m) => m.id === newMsg.id)) return withoutTemp;
+        return [...withoutTemp, newMsg as Message];
+      });
+      scrollToBottom();
     } catch (error) {
       console.error(error);
       toast.error("Error al enviar mensaje");
@@ -574,7 +624,7 @@ export default function AdminSupportChats() {
                           : "Este ticket está cerrado"
                       }
                       value={inputText}
-                      onChange={(e) => setInputText(e.target.value)}
+                      onChange={handleInputChange}
                       onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
                       disabled={isSending || selectedChat.status === "closed"}
                       className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-4 text-sm"
