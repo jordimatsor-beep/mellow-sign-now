@@ -58,11 +58,11 @@ serve(async (req) => {
             await supabaseAdmin.from('support_messages').insert({
                 chat_id: chat.id,
                 sender: 'admin',
-                content: `Hola 👋 Has abierto un chat sobre: "${subject}". Un agente de soporte te atenderá pronto.`
+                content: `Hola 👋 Tu consulta ha sido recibida. Un agente de soporte te atenderá en breve.`
             })
 
-            // Send notification email to admin
-            await fetch('https://api.resend.com/emails', {
+            // Send notification email to admin (fire-and-forget to avoid blocking response)
+            fetch('https://api.resend.com/emails', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

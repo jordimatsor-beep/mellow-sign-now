@@ -1,5 +1,6 @@
+import { useRef } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, MessageCircle, HelpCircle } from "lucide-react";
+import { ArrowLeft, MessageCircle, MessageCircleMore } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -17,7 +18,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { ClaraChat } from "@/components/ClaraChat";
-import { SupportChat } from "@/components/SupportChat";
+import { SupportChat, type SupportChatHandle } from "@/components/SupportChat";
 
 const faqs = [
   {
@@ -48,6 +49,8 @@ const faqs = [
 ];
 
 export default function Help() {
+  const chatRef = useRef<SupportChatHandle>(null);
+
   return (
     <div className="container space-y-6 px-4 py-6">
       {/* Header */}
@@ -90,14 +93,17 @@ export default function Help() {
           </SheetContent>
         </Sheet>
 
-        {/* Live support info card */}
-        <Card className="transition-colors bg-primary/5 border-primary/20">
+        {/* Live support card — clicks open the chat widget */}
+        <Card
+          className="cursor-pointer transition-colors hover:bg-accent border-primary/20"
+          onClick={() => chatRef.current?.open()}
+        >
           <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <HelpCircle className="h-5 w-5 text-primary" />
+              <MessageCircleMore className="h-5 w-5 text-primary" />
             </div>
             <p className="text-sm font-medium">Soporte en vivo</p>
-            <p className="text-xs text-muted-foreground">Usa el botón flotante para chatear</p>
+            <p className="text-xs text-muted-foreground">Habla con un agente</p>
           </CardContent>
         </Card>
       </div>
@@ -119,8 +125,8 @@ export default function Help() {
         </Accordion>
       </div>
 
-      {/* Floating live chat widget */}
-      <SupportChat />
+      {/* Chat widget — hidden trigger button, opened via card click */}
+      <SupportChat ref={chatRef} hideTriggerButton />
     </div>
   );
 }
