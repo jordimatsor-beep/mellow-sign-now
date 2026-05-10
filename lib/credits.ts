@@ -11,7 +11,7 @@ export interface CreditResult {
  */
 export async function getAvailableCredits(userId: string): Promise<number> {
     const { data, error } = await supabase
-        .from('credit_packs')
+        .from('user_credit_purchases')
         .select('credits_total, credits_used')
         .eq('user_id', userId);
 

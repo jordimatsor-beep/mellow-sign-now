@@ -1,0 +1,89 @@
+--- a/supabase/functions/send-document-invitation/index.ts
++++ b/supabase/functions/send-document-invitation/index.ts
+@@ -1,6 +1,7 @@
+ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+ import { getCorsHeaders, handleCorsPreflightRequest, escapeHtml } from '../_shared/cors.ts'
++import { queueEmail } from '../_shared/emailQueue.ts'
+ 
+ interface RequestBody {
+   document_id: string;
+@@ -18,11 +19,6 @@ serve(async (req: Request) => {
+   console.log("Send-document-invitation (Legacy V1 -> V2 logic) invoked");
+ 
+   try {
+-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+-    if (!RESEND_API_KEY) {
+-      console.error("Missing RESEND_API_KEY");
+-      throw new Error('Internal Server Error: Missing Configuration')
+-    }
+-
+     const supabase = createClient(
+       Deno.env.get('SUPABASE_URL') ?? '',
+       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+@@ -75,6 +71,12 @@ serve(async (req: Request) => {
+     const docTitle = escapeHtml(title) || 'Documento sin título'
+     const sender = escapeHtml(sender_name) || 'FirmaClara'
+     const safeSignerName = escapeHtml(signer_name)
++    const subject = `FirmaClara: ${sender} solicita tu firma en "${docTitle}"`
++
++    // Update document status to 'sent' before queuing email
++    const { error: updateError } = await supabase
++      .from('documents')
++      .update({ status: 'sent' })
++      .eq('id', document_id)
+ 
+     // Premium HTML Email Template
+     const html = `
+@@ -225,32 +227,22 @@ serve(async (req: Request) => {
+         </body>
+       </html>
+     `
+ 
+-    console.log("Sending email via Resend to:", signer_email);
+-
+-    const res = await fetch('https://api.resend.com/emails', {
+-      method: 'POST',
+-      headers: {
+-        'Content-Type': 'application/json',
+-        'Authorization': `Bearer ${RESEND_API_KEY}`
+-      },
+-      body: JSON.stringify({
+-        from: 'FirmaClara <noreply@firmaclara.es>',
+-        to: [signer_email],
+-        subject: `FirmaClara: ${sender} solicita tu firma en "${docTitle}"`,
+-        html: html
+-      })
+-    })
+-
+-    const data = await res.json()
+-
+-    if (!res.ok) {
+-      console.error('Resend Error Response:', data)
+-      throw new Error(data.message || 'Error sending email with Resend')
+-    }
+-
+-    console.log("Email sent successfully:", data.id);
++    // Create admin client for queuing email
++    const supabaseAdmin = createClient(
++      Deno.env.get('SUPABASE_URL') ?? '',
++      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
++      { auth: { autoRefreshToken: false, persistSession: false } }
++    )
++
++    // Queue email for sending
++    const queueResult = await queueEmail(supabaseAdmin, {
++      template_type: 'document_invitation',
++      to_email: signer_email,
++      to_name: safeSignerName,
++      subject,
++      html_body: html,
++      metadata: { document_id, user_id: user.id }
++    })
++
++    if (!queueResult.success) {
++      throw new Error(queueResult.error || 'Failed to queue email')
++    }
+ 
+     return new Response(
+       JSON.stringify({ success: true, email_id: queueResult.email_id }),

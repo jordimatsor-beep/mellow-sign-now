@@ -1,28 +1,16 @@
 /**
- * client for FreeTSA (RFC 3161)
- * 
- * Note: Real implementation requires ASN.1 DER encoding of the request (TimeStampReq).
- * Since we don't have 'asn1js' or 'pkijs' installed, and manually constructing DER 
- * is error-prone, we will MOCK the response for this phase to ensure the flow works.
- * 
- * In a production environment, install 'pkijs' and 'asn1js' to build the request properly.
+ * @deprecated DO NOT USE THIS FILE.
+ *
+ * TSA (RFC 3161) timestamping is handled exclusively by the `request-tsa` Supabase Edge Function,
+ * which uses asn1js + pkijs for real DER encoding and submits to FreeTSA.
+ *
+ * Calling this function would silently produce fake timestamps, invalidating signatures legally.
+ * All TSA requests must go through: supabase.functions.invoke('request-tsa', { body: { hash } })
  */
-
-export async function requestTSA(hash: string): Promise<{ tsr: string; timestamp: string }> {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    console.log(`[Mock TSA] Requesting timestamp for hash: ${hash}`);
-
-    // In real life, we would fetch(FREETSA_URL, body: derBuffer, headers: 'application/timestamp-query')
-    // And parse the response.
-
-    // Mock generic response (Base64)
-    // This represents a dummy DER sequence
-    const mockTsr = Buffer.from(`MockTsarResponseOfHash_${hash}_${Date.now()}`).toString('base64');
-
-    return {
-        tsr: mockTsr,
-        timestamp: new Date().toISOString()
-    };
+export async function requestTSA(_hash: string): Promise<never> {
+    throw new Error(
+        '[FirmaClara] requestTSA() is deprecated. ' +
+        'Use the request-tsa Edge Function instead: ' +
+        'supabase.functions.invoke("request-tsa", { body: { hash } })'
+    );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, Fragment, forwardRef, useImperativeHandle } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, Fragment, forwardRef, useImperativeHandle, type ChangeEvent } from "react";
 import { MessageCircleMore, X, Send, Loader2, CheckCircle, Star, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -101,6 +101,8 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+    const typingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const firstName = profile?.name
       ? profile.name.split(" ")[0]
@@ -193,12 +195,13 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
       // Typing broadcast
       const typingChan = supabase
         .channel(`support:typing:${chatId}`)
-        .on("broadcast", { event: "typing" }, () => {
+        .on("broadcast", { event: "admin_typing" }, () => {
           setAdminIsTyping(true);
           if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
           typingTimerRef.current = setTimeout(() => setAdminIsTyping(false), 2500);
         })
         .subscribe();
+      typingChannelRef.current = typingChan;
 
       // Messages + status changes
       const msgChan = supabase
@@ -238,10 +241,25 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
       return () => {
         supabase.removeChannel(typingChan);
         supabase.removeChannel(msgChan);
+        typingChannelRef.current = null;
         setIsConnected(false);
         if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+        if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
       };
     }, [chatId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleInputChange = useCallback(
+      (e: ChangeEvent<HTMLInputElement>) => {
+        setInputText(e.target.value);
+        if (!chatId || isClosed || !typingChannelRef.current) return;
+        if (typingDebounceRef.current) return;
+        typingDebounceRef.current = setTimeout(() => {
+          typingChannelRef.current?.send({ type: "broadcast", event: "user_typing", payload: {} });
+          typingDebounceRef.current = null;
+        }, 300);
+      },
+      [chatId, isClosed]
+    );
 
     // ── Polling fallback when realtime is not connected ──
     useEffect(() => {
@@ -704,7 +722,7 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
                   className="flex-1 text-sm bg-secondary rounded-full px-4 py-2.5 outline-none placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-primary/20 transition-all"
                   placeholder="Escribe tu mensaje..."
                   value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
                   }}

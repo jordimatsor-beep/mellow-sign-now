@@ -127,6 +127,37 @@ serve(async (req) => {
             );
         }
 
+        // Check 4: Per signer_email limit (Max 5 successful OTPs per hour across all their documents)
+        // Finds all document IDs sharing the same signer_email, then counts successful OTP logs.
+        if (doc.signer_email) {
+            const { data: relatedDocs, error: err4a } = await supabase
+                .from('documents')
+                .select('id')
+                .eq('signer_email', doc.signer_email);
+
+            if (err4a) throw new Error('Security Check Error 4');
+
+            const relatedDocIds = (relatedDocs || []).map((d: { id: string }) => d.id);
+
+            if (relatedDocIds.length > 0) {
+                const { count: emailCount, error: err4b } = await supabase
+                    .from('otp_logs')
+                    .select('*', { count: 'exact', head: true })
+                    .in('document_id', relatedDocIds)
+                    .eq('success', true)
+                    .gt('created_at', oneHourAgo);
+
+                if (err4b) throw new Error('Security Check Error 4b');
+                if ((emailCount || 0) >= 5) {
+                    await logAttempt(supabase, doc.id, ipAddress, userAgent, false, true, 'limit_email');
+                    return new Response(
+                        JSON.stringify({ error: 'Demasiados códigos enviados a este email. Espera una hora.' }),
+                        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
+                    );
+                }
+            }
+        }
+
         // --- END RATE LIMITING ---
 
         // Allow SMS fallback even if security level says whatsapp_otp? Yes, it's just the channel.

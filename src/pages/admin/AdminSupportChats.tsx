@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, Fragment, type ChangeEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,6 +101,8 @@ export default function AdminSupportChats() {
 
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const typingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [userIsTyping, setUserIsTyping] = useState(false);
+  const userTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
@@ -173,12 +175,20 @@ export default function AdminSupportChats() {
   // ── Typing broadcast channel ──
   useEffect(() => {
     if (!selectedChat) return;
-    const chan = supabase.channel(`support:typing:${selectedChat.id}`);
+    const chan = supabase.channel(`support:typing:${selectedChat.id}`)
+      .on("broadcast", { event: "user_typing" }, () => {
+        setUserIsTyping(true);
+        if (userTypingTimerRef.current) clearTimeout(userTypingTimerRef.current);
+        userTypingTimerRef.current = setTimeout(() => setUserIsTyping(false), 2500);
+      });
     chan.subscribe();
     typingChannelRef.current = chan;
+    setUserIsTyping(false);
+
     return () => {
       if (typingChannelRef.current) { supabase.removeChannel(typingChannelRef.current); typingChannelRef.current = null; }
       if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+      if (userTypingTimerRef.current) clearTimeout(userTypingTimerRef.current);
     };
   }, [selectedChat?.id]);
 
@@ -268,12 +278,12 @@ export default function AdminSupportChats() {
     }
   }, [inputText, selectedChat, isSending, scrollToBottom]);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setInputText(e.target.value);
     if (!typingChannelRef.current || selectedChat?.status !== "open") return;
     if (typingDebounceRef.current) return;
     typingDebounceRef.current = setTimeout(() => {
-      typingChannelRef.current?.send({ type: "broadcast", event: "typing", payload: {} });
+      typingChannelRef.current?.send({ type: "broadcast", event: "admin_typing", payload: {} });
       typingDebounceRef.current = null;
     }, 400);
   }, [selectedChat?.status]);
@@ -517,6 +527,11 @@ export default function AdminSupportChats() {
                   </Button>
                 )}
               </CardHeader>
+              {userIsTyping && selectedChat.status === "open" && (
+                <div className="px-5 py-2 border-b border-border/50 bg-slate-50 text-xs text-slate-600">
+                  El usuario está escribiendo...
+                </div>
+              )}
 
               {/* Messages */}
               <CardContent

@@ -55,7 +55,7 @@ export default function NewDocument() {
   const [isContactSelectorOpen, setIsContactSelectorOpen] = useState(false);
 
   // Fetch credits
-  const { data: credits = 0 } = useQuery({
+  const { data: credits = 0, isLoading: isLoadingCredits } = useQuery({
     queryKey: ['credits-check'],
     queryFn: async () => {
       return withTimeout(
@@ -1026,24 +1026,44 @@ export default function NewDocument() {
               </div>
             </div>
 
-            <div className="rounded-lg bg-primary/5 p-3 text-center">
-              <p className="text-sm">
-                💳 Se usará <strong>1 crédito</strong>
-              </p>
-              <p className="text-xs text-muted-foreground">(Se descontará al enviar)</p>
+            <div className={`rounded-lg p-3 text-center ${credits <= 0 && !isLoadingCredits ? 'bg-destructive/10' : 'bg-primary/5'}`}>
+              {isLoadingCredits ? (
+                <p className="text-sm text-muted-foreground">Verificando créditos disponibles...</p>
+              ) : credits <= 0 ? (
+                <>
+                  <p className="text-sm text-destructive font-medium">Sin créditos disponibles</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <button className="underline" onClick={() => navigate('/credits/purchase')}>Comprar créditos</button> para enviar este documento
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm">
+                    💳 Se usará <strong>1 crédito</strong> · Disponibles: <strong>{credits}</strong>
+                  </p>
+                  <p className="text-xs text-muted-foreground">(Se descontará al enviar)</p>
+                </>
+              )}
             </div>
 
             <Button
               className="w-full"
               size="lg"
               onClick={handleCreateDocument}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoadingCredits || credits <= 0}
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Enviando...
                 </>
+              ) : isLoadingCredits ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verificando créditos...
+                </>
+              ) : credits <= 0 ? (
+                'Sin créditos disponibles'
               ) : (
                 'Enviar documento'
               )}
