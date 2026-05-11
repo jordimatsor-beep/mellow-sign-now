@@ -726,17 +726,7 @@ export default function NewDocument() {
                           <SelectValue placeholder="Prefijo" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="+34">🇪🇸 +34</SelectItem>
-                          <SelectItem value="+33">🇫🇷 +33</SelectItem>
-                          <SelectItem value="+351">🇵🇹 +351</SelectItem>
-                          <SelectItem value="+44">🇬🇧 +44</SelectItem>
-                          <SelectItem value="+49">🇩🇪 +49</SelectItem>
-                          <SelectItem value="+39">🇮🇹 +39</SelectItem>
-                          <SelectItem value="+1">🇺🇸 +1</SelectItem>
-                          <SelectItem value="+52">🇲🇽 +52</SelectItem>
-                          <SelectItem value="+54">🇦🇷 +54</SelectItem>
-                          <SelectItem value="+56">🇨🇱 +56</SelectItem>
-                          <SelectItem value="+57">🇨🇴 +57</SelectItem>
+                          <SelectItem value="+34">🇪🇸 +34 España</SelectItem>
                         </SelectContent>
                       </Select>
                       <Input

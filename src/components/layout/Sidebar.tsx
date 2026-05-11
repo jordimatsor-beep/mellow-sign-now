@@ -1,4 +1,4 @@
-import { Home, FileText, Sparkles, CreditCard, Settings, HelpCircle, Plus, User, LifeBuoy } from "lucide-react";
+import { Home, FileText, CreditCard, Settings, HelpCircle, Plus, User, LifeBuoy } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,6 @@ export function Sidebar() {
     { to: "/dashboard", icon: Home, label: t('nav.home') },
     { to: "/documents", icon: FileText, label: t('nav.documents') },
     { to: "/contacts", icon: User, label: t('nav.contacts') },
-    { to: "/clara", icon: Sparkles, label: t('nav.clara') },
     { to: "/credits", icon: CreditCard, label: t('nav.credits'), badge: credits },
     { to: "/help", icon: LifeBuoy, label: t('nav.support') },
   ];
@@ -57,16 +56,12 @@ export function Sidebar() {
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-300",
                     isActive
                       ? "bg-sidebar-accent text-sidebar-primary"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    item.to === "/clara" && !isActive && "border border-primary/20 shadow-[0_0_10px_hsl(var(--primary)/0.2)] bg-gradient-to-r from-primary/5 to-transparent text-primary hover:shadow-[0_0_15px_hsl(var(--primary)/0.3)] hover:border-primary/30"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   )
                 }
               >
-                <item.icon className={cn("h-5 w-5", item.to === "/clara" && "text-primary animate-pulse")} />
+                <item.icon className="h-5 w-5" />
                 {item.label}
-                {item.to === "/clara" && (
-                  <span className="ml-auto inline-flex h-2 w-2 animate-ping rounded-full bg-primary/60 opacity-75"></span>
-                )}
                 {item.badge !== undefined && item.badge !== null && (
                   <span className="ml-auto inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                     {item.badge}

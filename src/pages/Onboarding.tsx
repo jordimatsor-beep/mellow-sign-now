@@ -15,6 +15,7 @@ export default function Onboarding() {
   const [step, setStep] = useState<Step>(1);
   const [accepted, setAccepted] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
 
@@ -148,9 +149,23 @@ export default function Onboarding() {
             <Button
               variant="link"
               className="mt-2 self-start text-sm"
+              onClick={() => setShowDetails(prev => !prev)}
             >
-              ▼ Ver más detalles
+              {showDetails ? "▲ Ocultar detalles" : "▼ Ver más detalles"}
             </Button>
+
+            {showDetails && (
+              <div className="mt-2 rounded-lg border bg-muted/30 p-4 text-sm space-y-3 text-muted-foreground">
+                <p><strong className="text-foreground">¿Qué es la firma electrónica simple?</strong><br />
+                  Es el nivel básico de firma electrónica definido por el Reglamento eIDAS (UE 910/2014). Recoge evidencias técnicas de la firma: hora, IP, dispositivo y hash del documento.</p>
+                <p><strong className="text-foreground">¿Qué incluye el certificado de FirmaClara?</strong><br />
+                  Un PDF de auditoría con sello de tiempo RFC 3161 (FreeTSA), hash SHA-256 del documento firmado, datos del firmante y trazabilidad completa de la sesión.</p>
+                <p><strong className="text-foreground">¿Para qué sirve?</strong><br />
+                  Presupuestos, contratos de servicios, partes de trabajo, acuerdos de confidencialidad y cualquier documento comercial ordinario donde no se requiera firma notarial.</p>
+                <p><strong className="text-foreground">¿Cuándo NO es suficiente?</strong><br />
+                  Operaciones inmobiliarias, testamentos, poderes notariales y actos que la ley exige escritura pública o firma cualificada con DNIe/certificado digital.</p>
+              </div>
+            )}
 
             <div className="mt-auto">
               <Button className="w-full" onClick={() => setStep(4)}>

@@ -1,11 +1,11 @@
-import { Home, FileText, Sparkles, CreditCard, Settings } from "lucide-react";
+import { Home, FileText, CreditCard, Settings, Users } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/dashboard", icon: Home, label: "Inicio" },
   { to: "/documents", icon: FileText, label: "Documentos" },
-  { to: "/clara", icon: Sparkles, label: "Clara" },
+  { to: "/contacts", icon: Users, label: "Contactos" },
   { to: "/credits", icon: CreditCard, label: "Créditos" },
   { to: "/settings", icon: Settings, label: "Ajustes" },
 ];

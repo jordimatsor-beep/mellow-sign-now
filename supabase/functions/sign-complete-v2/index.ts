@@ -103,7 +103,7 @@ serve(async (req: Request) => {
         let otpVerified = false;
 
         // Use security_level or legacy boolean
-        if (doc.security_level === 'whatsapp_otp' || doc.whatsapp_verification === true) {
+        if (doc.security_level === 'whatsapp_otp') {
             if (!otp_code) throw new Error('Se requiere código OTP para firmar este documento')
 
             // Hash incoming code
@@ -342,8 +342,7 @@ serve(async (req: Request) => {
             signed_at: signedAt.toISOString(),
             signed_file_url: publicUrlData.publicUrl,
             otp_code_hash: null,
-            otp_expires_at: null,
-            whatsapp_verification_status: otpVerified ? 'verified' : null
+            otp_expires_at: null
         }, { count: 'exact' })
             .eq('id', doc.id)
             .neq('status', 'signed'); // Ensure we don't overwrite if race condition occur

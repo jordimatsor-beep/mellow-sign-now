@@ -95,6 +95,8 @@ export default function AdminSupportChats() {
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isConnectedRef = useRef(false);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const selectedChatRef = useRef<ChatSession | null>(null);
   useEffect(() => { selectedChatRef.current = selectedChat; }, [selectedChat]);
@@ -213,6 +215,25 @@ export default function AdminSupportChats() {
         if (!error && data) { setMessages(data as Message[]); scrollToBottom(); }
       });
 
+    const fetchMessages = async () => {
+      const { data } = await supabase
+        .from("support_messages")
+        .select("*")
+        .eq("chat_id", selectedChat.id)
+        .order("created_at", { ascending: true });
+      if (data) {
+        setMessages((prev) => {
+          // Keep any temp messages still in-flight, replace the rest
+          const temps = prev.filter((m) => m.id.startsWith("temp_"));
+          const fresh = data as Message[];
+          const merged = [...fresh];
+          temps.forEach((t) => { if (!merged.find((m) => m.sender === t.sender && m.content === t.content)) merged.push(t); });
+          return merged;
+        });
+        scrollToBottom();
+      }
+    };
+
     const channel = supabase
       .channel(`admin_chat_${selectedChat.id}`)
       .on(
@@ -233,9 +254,31 @@ export default function AdminSupportChats() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        isConnectedRef.current = status === "SUBSCRIBED";
 
-    return () => { supabase.removeChannel(channel); };
+        if (status === "SUBSCRIBED") {
+          // Realtime OK — clear any polling fallback
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+        } else {
+          // Realtime not connected — poll every 3s as fallback
+          if (!pollIntervalRef.current) {
+            pollIntervalRef.current = setInterval(fetchMessages, 3000);
+          }
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      isConnectedRef.current = false;
+    };
   }, [selectedChat?.id, scrollToBottom]);
 
   // ── Send message ──
@@ -256,13 +299,18 @@ export default function AdminSupportChats() {
       });
       if (error) throw new Error(error.message ?? "Error al enviar mensaje");
       if (data?.error) throw new Error(data.error);
-      // The realtime subscription on admin_chat_${selectedChat.id} will replace the
-      // temp message automatically when the INSERT event arrives. We only need to
-      // remove the temp bubble here as a safety fallback (in case realtime is slow).
-      setTimeout(() => {
-        setMessages((prev) => prev.filter((m) => m.id !== tempId));
-      }, 5000);
-      scrollToBottom();
+
+      // Re-fetch messages immediately to replace temp with persisted row.
+      // This is more reliable than waiting for Realtime (avoids RLS/latency issues).
+      const { data: freshMsgs } = await supabase
+        .from("support_messages")
+        .select("*")
+        .eq("chat_id", selectedChat.id)
+        .order("created_at", { ascending: true });
+      if (freshMsgs) {
+        setMessages(freshMsgs as Message[]);
+        scrollToBottom();
+      }
     } catch (err: any) {
       toast.error("Error al enviar mensaje: " + (err?.message ?? "Error desconocido"));
       setMessages((prev) => prev.filter((m) => m.id !== tempId));

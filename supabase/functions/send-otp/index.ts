@@ -202,8 +202,7 @@ serve(async (req) => {
             .from('documents')
             .update({
                 otp_code_hash: otpHash,
-                otp_expires_at: expiresAt.toISOString(),
-                whatsapp_verification_status: 'sent'
+                otp_expires_at: expiresAt.toISOString()
             })
             .eq('id', doc.id)
 
