@@ -3,7 +3,6 @@ import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, MailCheck, ArrowLeft } from "lucide-react";
 import { AuthLayout } from "@/components/auth/AuthLayout";

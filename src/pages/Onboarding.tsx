@@ -33,6 +33,11 @@ export default function Onboarding() {
 
       if (error) throw error;
 
+      // Fire-and-forget: send welcome email without blocking navigation
+      supabase.functions.invoke('send-welcome-email').catch(() => {
+        // Silent fail — email is a nice-to-have, never block the user
+      });
+
       await refreshProfile();
       navigate("/dashboard");
     } catch (err) {

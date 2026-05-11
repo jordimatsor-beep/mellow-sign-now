@@ -1,4 +1,4 @@
-import { Plus, Sparkles, FileText, Clock, Check, Loader2, File, AlertCircle } from "lucide-react";
+import { Plus, Sparkles, FileText, Clock, Check, Loader2, File, AlertCircle, ArrowRight, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -147,17 +147,54 @@ export default function Dashboard() {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : recentDocuments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-                <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                  <File className="h-6 w-6 text-slate-400" />
+              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                {/* Top accent */}
+                <div className="h-1 bg-gradient-to-r from-primary via-blue-400 to-indigo-500" />
+                <div className="p-6">
+                  <div className="flex items-start gap-4 mb-5">
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <FileText className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-900 text-base">Envía tu primer documento</h3>
+                      <p className="text-sm text-slate-500 mt-0.5">
+                        Tienes <span className="font-semibold text-primary">{stats.credits} crédito{stats.credits !== 1 ? 's' : ''} gratis</span> — úsalos ahora y comprueba lo fácil que es.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Steps */}
+                  <div className="space-y-2.5 mb-5">
+                    {[
+                      { icon: Upload, color: 'text-blue-600 bg-blue-50', label: 'Sube un PDF o crea uno con Clara IA' },
+                      { icon: Plus,   color: 'text-green-600 bg-green-50', label: 'Introduce el email de tu cliente' },
+                      { icon: Check,  color: 'text-purple-600 bg-purple-50', label: 'Tu cliente firma en 1 minuto desde cualquier dispositivo' },
+                    ].map(({ icon: Icon, color, label }, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+                          <Icon className="h-3.5 w-3.5" />
+                        </div>
+                        <p className="text-sm text-slate-600">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* CTAs */}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button asChild className="flex-1 gap-2">
+                      <Link to="/documents/new">
+                        <Upload className="h-4 w-4" />
+                        Subir mi primer documento
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" className="flex-1 gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+                      <Link to="/clara">
+                        <Sparkles className="h-4 w-4" />
+                        Crear con Clara IA
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
-                <h3 className="text-sm font-medium text-slate-900">{t('dashboard.no_documents')}</h3>
-                <p className="text-xs text-slate-500 mb-4 mt-1">{t('dashboard.no_documents_desc')}</p>
-                <Button size="sm" variant="outline" asChild>
-                  <Link to="/documents/new">
-                    {t('dashboard.create_first')}
-                  </Link>
-                </Button>
               </div>
             ) : (
               recentDocuments.map((doc) => (
