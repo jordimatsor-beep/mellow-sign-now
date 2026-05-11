@@ -36,9 +36,7 @@ interface DocumentData {
   };
   sender_name?: string;
   signedAt?: string;
-  whatsapp_verification?: boolean;
   signer_phone?: string;
-  // security_level can be string or enum
   security_level?: 'standard' | 'whatsapp_otp';
   signed_file_url?: string;
   certificate_url?: string;
@@ -105,11 +103,11 @@ export default function SignDocument() {
     }
   }, [resendCooldown]);
 
-  const handleResendOtp = async (channel: 'whatsapp' | 'sms' | 'email') => {
+  const handleResendOtp = async (channel: 'sms' | 'email') => {
     if (resendCooldown > 0) return;
 
     setResendCooldown(60); // Start 60s cooldown
-    const toastId = toast.loading(`Reenviando código por ${channel === 'whatsapp' ? 'WhatsApp' : channel === 'sms' ? 'SMS' : 'Email'}...`);
+    const toastId = toast.loading(`Reenviando código por ${channel === 'sms' ? 'SMS' : 'Email'}...`);
 
     try {
       const { error } = await supabase.functions.invoke('send-otp', {
@@ -120,7 +118,7 @@ export default function SignDocument() {
         throw new Error("Error al reenviar código");
       }
 
-      toast.success(`Código reenviado por ${channel === 'whatsapp' ? 'WhatsApp' : channel === 'sms' ? 'SMS' : 'Email'}`, { id: toastId });
+      toast.success(`Código reenviado por ${channel === 'sms' ? 'SMS' : 'Email'}`, { id: toastId });
     } catch (err) {
       // Remove console.error for prod
       toast.error("Error al reenviar el código", { id: toastId });
@@ -417,7 +415,7 @@ export default function SignDocument() {
     // Check if WhatsApp verification is required (security_level or legacy flag)
     // Assuming backend returns security_level in docData (we need to fetch it)
     // If docData was updated to include security_level check:
-    const requiresOtp = docData.whatsapp_verification || docData.security_level === 'whatsapp_otp';
+    const requiresOtp = docData.security_level === 'whatsapp_otp';
 
     if (requiresOtp) {
       // Logic to determine channel:
@@ -432,7 +430,7 @@ export default function SignDocument() {
         return;
       }
 
-      const toastId = toast.loading(`Enviando código de seguridad por ${channel}...`);
+      const toastId = toast.loading(`Enviando código de seguridad por ${channel === 'sms' ? 'SMS' : 'Email'}...`);
       try {
         const { error } = await supabase.functions.invoke('send-otp', {
           body: { token, channel }

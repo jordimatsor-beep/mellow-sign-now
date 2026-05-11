@@ -256,16 +256,22 @@ serve(async (req) => {
 
             const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
             const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
-            let fromNumber = Deno.env.get('TWILIO_FROM_NUMBER') || Deno.env.get('TWILIO_PHONE_NUMBER');
+            const fromNumber = Deno.env.get('TWILIO_FROM_NUMBER') || Deno.env.get('TWILIO_PHONE_NUMBER');
 
             if (!fromNumber) {
                 throw new Error("Configuration Error: Missing Twilio Number");
             }
 
-            let to = phone;
-            let from = fromNumber.replace('whatsapp:', '').trim();
+            // If the configured number has whatsapp: prefix, route via WhatsApp API.
+            // Both To and From must carry the prefix for WhatsApp messages.
+            // Otherwise send as plain SMS.
+            const isWhatsApp = fromNumber.startsWith('whatsapp:');
+            const from = isWhatsApp ? fromNumber : fromNumber.trim();
+            const to = isWhatsApp
+                ? (phone.startsWith('whatsapp:') ? phone : `whatsapp:${phone}`)
+                : phone;
 
-            console.log(`[OTP Request] To: ${to} | FromEnv: ${from}`);
+            console.log(`[OTP Request] Via: ${isWhatsApp ? 'WhatsApp' : 'SMS'} | To: ${to} | From: ${from}`);
 
             if (accountSid && authToken) {
                 const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`

@@ -30,7 +30,6 @@ const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Documents = lazy(() => import("@/pages/Documents"));
 const DocumentDetail = lazy(() => import("@/pages/DocumentDetail"));
 const NewDocument = lazy(() => import("@/pages/NewDocument"));
-const Clara = lazy(() => import("@/pages/Clara"));
 const Credits = lazy(() => import("@/pages/Credits"));
 const CreditsPurchase = lazy(() => import("@/pages/CreditsPurchase"));
 const Settings = lazy(() => import("@/pages/Settings"));
@@ -109,7 +108,6 @@ const App = () => (
                       <Route path="/contacts" element={<Contacts />} />
                       <Route path="/documents/new" element={<NewDocument />} />
                       <Route path="/documents/:id" element={<DocumentDetail />} />
-                      <Route path="/clara" element={<Clara />} />
                       <Route path="/credits" element={<Credits />} />
                       <Route path="/credits/purchase" element={<CreditsPurchase />} />
                       <Route path="/settings" element={<Settings />} />

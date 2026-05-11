@@ -16,7 +16,6 @@ import {
   Briefcase,
   Wrench,
   FileSignature,
-  Sparkles,
   ChevronRight
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
@@ -98,8 +97,8 @@ export default function Index() {
             {/* Left - Content */}
             <div className="space-y-6">
               <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-1.5 text-sm font-medium text-muted-foreground">
-                <Sparkles className="h-4 w-4 text-primary" />
-                Asistente IA incluido
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                Validez legal eIDAS
               </div>
 
               <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight animate-fade-in [animation-delay:200ms]">
@@ -345,81 +344,6 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Clara AI Section */}
-      <section id="clara" className="py-16 lg:py-20 bg-secondary">
-        <div className="container mx-auto px-4">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left - Content */}
-            <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-                <Sparkles className="h-4 w-4" />
-                Inteligencia Artificial
-              </div>
-
-              <h2 className="text-3xl font-bold text-foreground">
-                Crea documentos con Clara IA
-              </h2>
-
-              <p className="text-muted-foreground">
-                Describe lo que necesitas y Clara redactará presupuestos, NDAs,
-                contratos de servicio y más. Solo revisa, ajusta y envía a firmar.
-              </p>
-
-              <ul className="space-y-3">
-                <li className="flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0" />
-                  <span className="text-foreground">Presupuestos y propuestas comerciales</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0" />
-                  <span className="text-foreground">Contratos de confidencialidad (NDA)</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0" />
-                  <span className="text-foreground">Acuerdos de servicios profesionales</span>
-                </li>
-              </ul>
-
-              <Button size="lg" asChild className="bg-primary hover:bg-primary/90">
-                <Link to="/register">
-                  Probar Clara IA
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-            </div>
-
-            {/* Right - Abstract UI Card */}
-            <Card className="bg-background border border-border shadow-lg rounded-xl overflow-hidden">
-              <CardContent className="p-6 space-y-4">
-                <div className="flex items-center gap-3 pb-4 border-b border-border">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">Clara IA</p>
-                    <p className="text-sm text-muted-foreground">Asistente Inteligente</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="bg-secondary rounded-lg p-3">
-                    <p className="text-sm text-muted-foreground">
-                      "Necesito un presupuesto para una reforma de baño,
-                      materiales incluidos, plazo 2 semanas..."
-                    </p>
-                  </div>
-                  <div className="bg-primary/5 rounded-lg p-3 border-l-2 border-primary">
-                    <p className="text-sm text-foreground">
-                      He creado tu presupuesto con todos los detalles.
-                      ¿Quieres que añada condiciones de pago?
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
       {/* How it works - Simplified */}
       <section className="py-16 lg:py-20">
         <div className="container mx-auto px-4">
@@ -434,9 +358,9 @@ export default function Index() {
               <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <span className="text-xl font-bold text-primary">1</span>
               </div>
-              <h3 className="font-semibold text-foreground mb-2">Sube o crea</h3>
+              <h3 className="font-semibold text-foreground mb-2">Sube tu documento</h3>
               <p className="text-sm text-muted-foreground">
-                Sube tu PDF o créalo con Clara IA
+                Sube el PDF que quieres que te firmen
               </p>
             </div>
             <div className="text-center">
@@ -656,7 +580,6 @@ export default function Index() {
               <ul className="space-y-2 text-sm">
                 <li><Link to="/how-it-works" className="text-background/50 hover:text-background transition-colors">Cómo funciona</Link></li>
                 <li><a href="#pricing" className="text-background/50 hover:text-background transition-colors">Precios</a></li>
-                <li><a href="#clara" className="text-background/50 hover:text-background transition-colors">Clara IA</a></li>
               </ul>
             </div>
 

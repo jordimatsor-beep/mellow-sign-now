@@ -1,4 +1,4 @@
-import { Plus, Sparkles, FileText, Clock, Check, Loader2, File, AlertCircle, ArrowRight, Upload } from "lucide-react";
+import { Plus, FileText, Clock, Check, Loader2, File, AlertCircle, ArrowRight, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -166,7 +166,7 @@ export default function Dashboard() {
                   {/* Steps */}
                   <div className="space-y-2.5 mb-5">
                     {[
-                      { icon: Upload, color: 'text-blue-600 bg-blue-50', label: 'Sube un PDF o crea uno con Clara IA' },
+                      { icon: Upload, color: 'text-blue-600 bg-blue-50', label: 'Sube un PDF' },
                       { icon: Plus,   color: 'text-green-600 bg-green-50', label: 'Introduce el email de tu cliente' },
                       { icon: Check,  color: 'text-purple-600 bg-purple-50', label: 'Tu cliente firma en 1 minuto desde cualquier dispositivo' },
                     ].map(({ icon: Icon, color, label }, i) => (
@@ -185,12 +185,6 @@ export default function Dashboard() {
                       <Link to="/documents/new">
                         <Upload className="h-4 w-4" />
                         Subir mi primer documento
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" className="flex-1 gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50">
-                      <Link to="/clara">
-                        <Sparkles className="h-4 w-4" />
-                        Crear con Clara IA
                       </Link>
                     </Button>
                   </div>
@@ -232,7 +226,7 @@ export default function Dashboard() {
         {/* Sidebar: Quick Actions & Help */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-slate-900">{t('dashboard.quick_actions')}</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <Button
               asChild
               className="h-auto flex-col gap-2 py-4 bg-white text-slate-700 border hover:bg-slate-50 hover:text-primary shadow-sm"
@@ -241,22 +235,6 @@ export default function Dashboard() {
               <Link to="/documents/new">
                 <Plus className="h-5 w-5" />
                 <span className="text-xs font-medium">{t('dashboard.new')}</span>
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="h-auto flex-col gap-2 py-4 border-dashed bg-gradient-to-br from-indigo-50/50 to-white text-indigo-700 border-indigo-200 hover:bg-indigo-50 hover:text-indigo-800 hover:border-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.2)] hover:shadow-[0_0_20px_rgba(99,102,241,0.35)] transition-all duration-300"
-            >
-              <Link to="/clara">
-                <div className="relative">
-                  <Sparkles className="h-5 w-5 animate-pulse" />
-                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                  </span>
-                </div>
-                <span className="text-xs font-medium">{t('dashboard.clara_ai')}</span>
               </Link>
             </Button>
           </div>

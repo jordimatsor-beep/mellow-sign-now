@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Upload, Sparkles, FileText, ArrowRight, Loader2, User, Lock, Unlock, Receipt, Wrench, FileSignature, ClipboardList, MapPin } from "lucide-react";
+import { ArrowLeft, Upload, FileText, ArrowRight, Loader2, User, Lock, Unlock, Receipt, Wrench, FileSignature, ClipboardList, MapPin } from "lucide-react";
 import { ContactSelector } from "@/components/contacts/ContactSelector";
 import { useProfile } from "@/context/ProfileContext";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
 import { sanitizeFileName } from "@/lib/utils";
 
-type Step = "source" | "doctype" | "upload" | "signer" | "options" | "confirm";
+type Step = "doctype" | "upload" | "signer" | "options" | "confirm";
 type DocType = "presupuesto" | "parte" | "contrato" | "otro";
 
 // ... existing imports ...
@@ -28,8 +28,7 @@ export default function NewDocument() {
   const [searchParams] = useSearchParams();
   const draftId = searchParams.get('draftId');
   const { profile } = useProfile();
-  const [step, setStep] = useState<Step>("source");
-  const [source, setSource] = useState<"upload" | "clara" | null>(null);
+  const [step, setStep] = useState<Step>("doctype");
   const [docType, setDocType] = useState<DocType | null>(null);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "creating_record" | "sending" | "success" | "error">("idle");
   const isSubmitting = uploadStatus !== "idle" && uploadStatus !== "error" && uploadStatus !== "success";
@@ -142,7 +141,6 @@ export default function NewDocument() {
 
         if (draft.file_url) {
           setStep('signer');
-          setSource('upload');
           setDocType('otro');
         }
       }
@@ -470,61 +468,6 @@ export default function NewDocument() {
 
   const renderStep = () => {
     switch (step) {
-      case "source":
-        return (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">¿Cómo quieres crear el documento?</h2>
-            <div className="space-y-3">
-              <div
-                className={`flex items-center gap-4 rounded-xl border p-4 cursor-pointer transition-all hover:bg-slate-50 hover:border-primary/50 hover:shadow-sm ${source === "upload" ? "ring-2 ring-primary border-transparent" : "bg-white"
-                  }`}
-                onClick={() => setSource("upload")}
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <Upload className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">Subir PDF</p>
-                  <p className="text-sm text-muted-foreground">
-                    Sube un documento que ya tengas preparado
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className={`flex items-center gap-4 rounded-xl border p-4 cursor-pointer transition-all hover:bg-slate-50 hover:border-primary/50 hover:shadow-sm ${source === "clara" ? "ring-2 ring-primary border-transparent" : "bg-white"
-                  }`}
-                onClick={() => setSource("clara")}
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <Sparkles className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">Crear con Clara</p>
-                  <p className="text-sm text-muted-foreground">
-                    El asistente te ayuda a redactar el documento
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <Button
-              className="w-full"
-              disabled={!source}
-              onClick={() => {
-                if (source === "clara") {
-                  navigate("/clara");
-                } else {
-                  setStep("doctype");
-                }
-              }}
-            >
-              Continuar
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        );
-
       case "doctype":
         return (
           <div className="space-y-4">
@@ -1064,7 +1007,7 @@ export default function NewDocument() {
   };
 
   const getSteps = () => {
-    return ["source", "doctype", "upload", "signer", "options", "confirm"];
+    return ["doctype", "upload", "signer", "options", "confirm"];
   };
 
   const steps = getSteps();
