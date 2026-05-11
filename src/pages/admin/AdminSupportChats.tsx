@@ -251,26 +251,20 @@ export default function AdminSupportChats() {
     ]);
     scrollToBottom();
     try {
-      const { error } = await supabase.functions.invoke("contact-support", {
+      const { data, error } = await supabase.functions.invoke("contact-support", {
         body: { action: "send_admin_message", chat_id: selectedChat.id, content: text },
       });
-      if (error) throw error;
-      const { data: newMsg } = await supabase
-        .from("support_messages")
-        .select("*")
-        .eq("chat_id", selectedChat.id)
-        .eq("sender", "admin")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-      setMessages((prev) => {
-        const without = prev.filter((m) => m.id !== tempId);
-        if (!newMsg || without.find((m) => m.id === newMsg.id)) return without;
-        return [...without, newMsg as Message];
-      });
+      if (error) throw new Error(error.message ?? "Error al enviar mensaje");
+      if (data?.error) throw new Error(data.error);
+      // The realtime subscription on admin_chat_${selectedChat.id} will replace the
+      // temp message automatically when the INSERT event arrives. We only need to
+      // remove the temp bubble here as a safety fallback (in case realtime is slow).
+      setTimeout(() => {
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      }, 5000);
       scrollToBottom();
-    } catch {
-      toast.error("Error al enviar mensaje");
+    } catch (err: any) {
+      toast.error("Error al enviar mensaje: " + (err?.message ?? "Error desconocido"));
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setInputText(text);
     } finally {
