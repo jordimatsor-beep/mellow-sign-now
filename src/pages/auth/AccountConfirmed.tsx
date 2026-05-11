@@ -12,7 +12,7 @@ export default function AccountConfirmed() {
             setCountdown((prev) => {
                 if (prev <= 1) {
                     clearInterval(timer);
-                    navigate("/dashboard");
+                    navigate("/onboarding");
                     return 0;
                 }
                 return prev - 1;
@@ -40,9 +40,9 @@ export default function AccountConfirmed() {
                 <Button
                     size="lg"
                     className="w-full gap-2"
-                    onClick={() => navigate("/dashboard")}
+                    onClick={() => navigate("/onboarding")}
                 >
-                    Ir al Dashboard
+                    Configurar mi cuenta
                     <ArrowRight className="h-4 w-4" />
                 </Button>
 

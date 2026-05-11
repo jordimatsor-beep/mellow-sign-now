@@ -1,21 +1,45 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, Shield, Gift, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Gift, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { ProfileForm } from "@/components/onboarding/ProfileForm";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 type Step = 1 | 2 | 3 | 4;
 
 export default function Onboarding() {
   const [step, setStep] = useState<Step>(1);
   const [accepted, setAccepted] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const navigate = useNavigate();
+  const { user, refreshProfile } = useAuth();
 
-  const handleComplete = () => {
-    // In a real app, save onboarding completion to backend
-    navigate("/dashboard");
+  const handleComplete = async () => {
+    if (!user) return;
+    setCompleting(true);
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          onboarding_completed: true,
+          legal_accepted: true,
+          legal_accepted_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      await refreshProfile();
+      navigate("/dashboard");
+    } catch (err) {
+      toast.error("No se pudo completar el registro. Inténtalo de nuevo.");
+    } finally {
+      setCompleting(false);
+    }
   };
 
   return (
@@ -178,9 +202,10 @@ export default function Onboarding() {
             <div className="mt-auto">
               <Button
                 className="w-full"
-                disabled={!accepted}
+                disabled={!accepted || completing}
                 onClick={handleComplete}
               >
+                {completing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Empezar a usar FirmaClara
               </Button>
             </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ type LoginFormValues = z.infer<ReturnType<typeof createLoginSchema>>;
 export default function Login() {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const location = useLocation();
     const [loading, setLoading] = useState(false);
 
     // Auto-redirect if already logged in (Fixes Google Login redirecting back to login)
@@ -66,7 +67,8 @@ export default function Login() {
                 password: data.password,
             });
             if (error) throw error;
-            navigate("/dashboard");
+            const from = (location.state as any)?.from?.pathname || "/dashboard";
+            navigate(from, { replace: true });
         } catch (error: any) {
             toast.error(error.message || "Error en la autenticación");
         } finally {

@@ -14,15 +14,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 const registerSchema = z.object({
+    name: z.string().min(2, "El nombre es requerido"),
     email: z.string().email("Email inválido"),
     password: z
         .string()
         .min(12, "Mínimo 12 caracteres")
         .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Debe contener mayúscula, minúscula y número"),
-    confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-    message: "Las contraseñas no coinciden",
-    path: ["confirmPassword"],
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -36,9 +33,9 @@ export default function Register() {
     const form = useForm<RegisterFormValues>({
         resolver: zodResolver(registerSchema),
         defaultValues: {
+            name: "",
             email: "",
             password: "",
-            confirmPassword: "",
         },
     });
 
@@ -56,7 +53,7 @@ export default function Register() {
                 password: data.password,
                 options: {
                     data: {
-                        full_name: data.email.split('@')[0],
+                        full_name: data.name,
                     }
                 }
             });
@@ -109,12 +106,26 @@ export default function Register() {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
                         control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Nombre completo</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="María García" type="text" className="h-11" autoComplete="name" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
                         name="email"
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Email</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="hola@ejemplo.com" type="email" className="h-11" {...field} />
+                                    <Input placeholder="hola@ejemplo.com" type="email" className="h-11" autoComplete="email" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -131,6 +142,7 @@ export default function Register() {
                                     <Input
                                         type="password"
                                         className="h-11"
+                                        autoComplete="new-password"
                                         {...field}
                                     />
                                 </FormControl>
@@ -142,23 +154,9 @@ export default function Register() {
                         )}
                     />
 
-                    <FormField
-                        control={form.control}
-                        name="confirmPassword"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Confirmar Contraseña</FormLabel>
-                                <FormControl>
-                                    <Input type="password" className="h-11" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
                     <Button className="w-full h-11 text-base" type="submit" disabled={loading}>
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Registrarse
+                        Crear cuenta gratis
                     </Button>
                     <p className="text-xs text-center text-muted-foreground mt-4">
                         Al registrarte, aceptas nuestros <Link to="/terms" className="underline hover:text-primary">Términos</Link> y <Link to="/privacy" className="underline hover:text-primary">Política de Privacidad</Link>.

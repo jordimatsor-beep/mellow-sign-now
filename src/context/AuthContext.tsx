@@ -11,7 +11,8 @@ export interface Profile {
     email: string | null;
     company_name: string | null;
     role: 'user' | 'admin' | 'support' | null;
-    // Add other fields from public.users as needed
+    onboarding_completed: boolean | null;
+    legal_accepted: boolean | null;
 }
 
 interface AuthContextType {
@@ -61,7 +62,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 name: data.name,
                 email: data.email,
                 company_name: data.company_name,
-                role: (data.role as any) || 'user' // Default to 'user' if role is missing/null
+                role: (data.role as any) || 'user',
+                onboarding_completed: data.onboarding_completed ?? false,
+                legal_accepted: data.legal_accepted ?? false,
             };
 
             return profile;

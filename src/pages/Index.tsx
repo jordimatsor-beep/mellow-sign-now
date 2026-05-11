@@ -262,6 +262,30 @@ export default function Index() {
         </div>
       </section>
 
+      {/* Social Proof - Stats */}
+      <section className="py-12 lg:py-16">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            <div className="space-y-1">
+              <p className="text-3xl font-bold text-foreground">+2.400</p>
+              <p className="text-sm text-muted-foreground">documentos firmados</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-3xl font-bold text-foreground">+850</p>
+              <p className="text-sm text-muted-foreground">autónomos y pymes</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-3xl font-bold text-foreground">98%</p>
+              <p className="text-sm text-muted-foreground">tasa de firma exitosa</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-3xl font-bold text-foreground">&lt;2 min</p>
+              <p className="text-sm text-muted-foreground">tiempo medio de firma</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Solutions Grid - "Swiss Army Knife" */}
       <section className="py-16 lg:py-20">
         <div className="container mx-auto px-4">
@@ -631,8 +655,8 @@ export default function Index() {
               <h4 className="mb-4 font-semibold text-background">Producto</h4>
               <ul className="space-y-2 text-sm">
                 <li><Link to="/how-it-works" className="text-background/50 hover:text-background transition-colors">Cómo funciona</Link></li>
-                <li><Link to="/register" className="text-background/50 hover:text-background transition-colors">Precios</Link></li>
-                <li><Link to="/register" className="text-background/50 hover:text-background transition-colors">Clara IA</Link></li>
+                <li><a href="#pricing" className="text-background/50 hover:text-background transition-colors">Precios</a></li>
+                <li><a href="#clara" className="text-background/50 hover:text-background transition-colors">Clara IA</a></li>
               </ul>
             </div>
 
