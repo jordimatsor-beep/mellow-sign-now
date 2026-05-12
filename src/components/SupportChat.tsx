@@ -210,18 +210,19 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "support_messages", filter: `chat_id=eq.${chatId}` },
           (payload) => {
+            const newMsg = payload.new as Message;
             setAdminIsTyping(false);
             if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
             setMessages((prev) => {
               const withoutTemp = prev.filter(
-                (m) => !(m.id.startsWith("temp_") && m.sender === payload.new.sender)
+                (m) => !(m.id.startsWith("temp_") && m.sender === newMsg.sender)
               );
-              if (withoutTemp.find((m) => m.id === payload.new.id)) return withoutTemp;
-              if (payload.new.sender === "admin") {
+              if (withoutTemp.find((m) => m.id === newMsg.id)) return withoutTemp;
+              if (newMsg.sender === "admin") {
                 playNotificationSound();
                 setUnreadCount((n) => (document.hidden || step === "closed" ? n + 1 : n));
               }
-              return [...withoutTemp, payload.new as Message];
+              return [...withoutTemp, newMsg];
             });
           }
         )
@@ -229,10 +230,11 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
           "postgres_changes",
           { event: "UPDATE", schema: "public", table: "support_chats", filter: `id=eq.${chatId}` },
           (payload) => {
-            if (payload.new.status === "closed") {
+            const updatedChat = payload.new as { status: string; rating?: number };
+            if (updatedChat.status === "closed") {
               setIsClosed(true);
               localStorage.removeItem(CHAT_STORAGE_KEY);
-              if ((payload.new.rating ?? 0) > 0) setRatingPhase("done");
+              if ((updatedChat.rating ?? 0) > 0) setRatingPhase("done");
             }
           }
         )

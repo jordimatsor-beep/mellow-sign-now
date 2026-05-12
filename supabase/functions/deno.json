@@ -1,9 +1,7 @@
 {
-    "tasks": {
-        "test": "deno test --allow-all",
-        "dev": "deno run --watch --allow-all index.ts"
-    },
-    "imports": {
-        "std/": "https://deno.land/std@0.168.0/"
-    }
+  "imports": {},
+  "compilerOptions": {
+    "lib": ["deno.window"],
+    "strict": false
+  }
 }

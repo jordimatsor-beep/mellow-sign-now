@@ -152,13 +152,14 @@ export default function AdminSupportChats() {
       .channel("admin_global_messages")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "support_messages" },
         (payload) => {
-          if (payload.new.sender === "user") {
-            if (selectedChatRef.current?.id !== payload.new.chat_id) playNotificationSound();
+          const msg = payload.new as Message;
+          if (msg.sender === "user") {
+            if (selectedChatRef.current?.id !== msg.chat_id) playNotificationSound();
             setChats((prev) =>
               prev
                 .map((c) =>
-                  c.id === payload.new.chat_id
-                    ? { ...c, last_message_at: payload.new.created_at as string, admin_read: false }
+                  c.id === msg.chat_id
+                    ? { ...c, last_message_at: msg.created_at, admin_read: false }
                     : c
                 )
                 .sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime())
@@ -240,15 +241,16 @@ export default function AdminSupportChats() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "support_messages", filter: `chat_id=eq.${selectedChat.id}` },
         (payload) => {
+          const newMsg = payload.new as Message;
           setMessages((prev) => {
             const withoutTemp = prev.filter(
-              (m) => !(m.id.startsWith("temp_") && m.sender === payload.new.sender)
+              (m) => !(m.id.startsWith("temp_") && m.sender === newMsg.sender)
             );
-            if (withoutTemp.find((m) => m.id === payload.new.id)) return withoutTemp;
-            return [...withoutTemp, payload.new as Message];
+            if (withoutTemp.find((m) => m.id === newMsg.id)) return withoutTemp;
+            return [...withoutTemp, newMsg];
           });
           scrollToBottom();
-          if (payload.new.sender === "user") {
+          if (newMsg.sender === "user") {
             supabase.from("support_chats").update({ admin_read: true }).eq("id", selectedChat.id);
             setChats((prev) => prev.map((c) => c.id === selectedChat.id ? { ...c, admin_read: true } : c));
           }
