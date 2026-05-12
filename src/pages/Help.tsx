@@ -1,6 +1,5 @@
-import { useRef } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, MessageCircle, MessageCircleMore } from "lucide-react";
+import { ArrowLeft, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -9,16 +8,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { ClaraChat } from "@/components/ClaraChat";
-import { SupportChat, type SupportChatHandle } from "@/components/SupportChat";
 
 const faqs = [
   {
@@ -49,8 +38,6 @@ const faqs = [
 ];
 
 export default function Help() {
-  const chatRef = useRef<SupportChatHandle>(null);
-
   return (
     <div className="container space-y-6 px-4 py-6">
       {/* Header */}
@@ -63,50 +50,20 @@ export default function Help() {
         <h1 className="text-2xl font-bold tracking-tight">Ayuda</h1>
       </div>
 
-      {/* Quick links */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Asistente Virtual */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <Card className="cursor-pointer transition-colors hover:bg-accent">
-              <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <MessageCircle className="h-5 w-5 text-primary" />
-                </div>
-                <p className="text-sm font-medium">Asistente Virtual</p>
-              </CardContent>
-            </Card>
-          </SheetTrigger>
-          <SheetContent className="w-[400px] sm:w-[540px]">
-            <SheetHeader>
-              <SheetTitle>Asistente FirmaClara</SheetTitle>
-              <SheetDescription>
-                Pregunta a nuestra IA sobre cómo usar la plataforma o redactar documentos.
-              </SheetDescription>
-            </SheetHeader>
-            <div className="mt-6">
-              <ClaraChat
-                endpoint="support-chat"
-                initialMessage="Hola, soy tu asistente de soporte. ¿En qué puedo ayudarte hoy? (Dudas sobre créditos, legalidad, problemas técnicos...)"
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
-
-        {/* Live support card — clicks open the chat widget */}
-        <Card
-          className="cursor-pointer transition-colors hover:bg-accent border-primary/20"
-          onClick={() => chatRef.current?.open()}
-        >
-          <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
+      {/* Contact card */}
+      <a href="mailto:hola@firmaclara.es" className="block">
+        <Card className="cursor-pointer transition-colors hover:bg-accent border-primary/20">
+          <CardContent className="flex items-center gap-4 p-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <MessageCircleMore className="h-5 w-5 text-primary" />
+              <Mail className="h-5 w-5 text-primary" />
             </div>
-            <p className="text-sm font-medium">Soporte en vivo</p>
-            <p className="text-xs text-muted-foreground">Habla con un agente</p>
+            <div>
+              <p className="text-sm font-medium">Contactar con soporte</p>
+              <p className="text-xs text-muted-foreground">hola@firmaclara.es</p>
+            </div>
           </CardContent>
         </Card>
-      </div>
+      </a>
 
       {/* FAQs */}
       <div className="space-y-3">
@@ -124,9 +81,6 @@ export default function Help() {
           ))}
         </Accordion>
       </div>
-
-      {/* Chat widget — hidden trigger button, opened via card click */}
-      <SupportChat ref={chatRef} hideTriggerButton />
     </div>
   );
 }

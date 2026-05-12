@@ -74,7 +74,6 @@ serve(async (req: Request) => {
 
 function buildWelcomeEmail(name: string, dashboardUrl: string, siteUrl: string): string {
   const newDocUrl = `${dashboardUrl}/documents/new`
-  const claraUrl = `${dashboardUrl}/clara`
   const year = new Date().getFullYear()
 
   return `<!DOCTYPE html>
@@ -153,7 +152,7 @@ function buildWelcomeEmail(name: string, dashboardUrl: string, siteUrl: string):
                         </td>
                         <td style="vertical-align:middle;">
                           <p style="margin:0 0 3px;font-size:15px;font-weight:700;color:#1e3a8a;">1 · Sube tu documento</p>
-                          <p style="margin:0;font-size:13px;color:#3b82f6;line-height:1.5;">Arrastra tu PDF o usa <strong>Clara IA</strong> para crearlo desde cero — contratos, presupuestos, NDAs…</p>
+                          <p style="margin:0;font-size:13px;color:#3b82f6;line-height:1.5;">Arrastra tu PDF — contratos, presupuestos, partes de trabajo, NDAs…</p>
                         </td>
                       </tr>
                     </table>
@@ -230,28 +229,6 @@ function buildWelcomeEmail(name: string, dashboardUrl: string, siteUrl: string):
               <p style="margin:14px 0 0;font-size:13px;color:#9ca3af;">
                 Se descuenta 1 crédito al enviar &nbsp;·&nbsp; Los créditos no caducan nunca
               </p>
-            </td>
-          </tr>
-
-          <!-- CLARA AI BANNER -->
-          <tr>
-            <td style="background-color:#ffffff;padding:0 48px 36px;">
-              <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background:linear-gradient(145deg,#1e1b4b,#2e1065);border-radius:16px;overflow:hidden;">
-                <tr>
-                  <td style="padding:28px 28px 24px;">
-                    <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#a5b4fc;text-transform:uppercase;letter-spacing:0.1em;">✨ Incluido gratis — sin límite</p>
-                    <p style="margin:0 0 10px;font-size:18px;font-weight:700;color:#ffffff;line-height:1.3;">
-                      ¿No tienes el documento? Clara IA lo escribe por ti
-                    </p>
-                    <p style="margin:0 0 20px;font-size:14px;color:#c7d2fe;line-height:1.6;">
-                      Dile qué necesitas en lenguaje natural y Clara redactará contratos, presupuestos, hojas de encargo o NDAs adaptados a tu negocio. Solo revisa, ajusta y envía a firmar.
-                    </p>
-                    <a href="${claraUrl}" style="display:inline-block;background:rgba(255,255,255,0.12);color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 22px;border-radius:8px;border:1px solid rgba(255,255,255,0.25);">
-                      Probar Clara IA &rarr;
-                    </a>
-                  </td>
-                </tr>
-              </table>
             </td>
           </tr>
 
