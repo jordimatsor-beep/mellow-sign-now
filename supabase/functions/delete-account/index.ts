@@ -63,18 +63,38 @@ serve(async (req) => {
         }
 
         const reqUserId = user.id
+        const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 
-        // 3. Delete the user from Auth (This cascades to public.users usually if configured, but we want to be sure)
-        // Note: Deleting from Auth usually requires handling database cleanup via Triggers or manual deletion if ON DELETE CASCADE is not set everywhere.
-        // Assuming the database has Foreign Keys with ON DELETE CASCADE or RLS policies handling orphaned rows.
-        // Ideally, we should delete DB data first to be clean, or rely on Postgres constraints.
+        // 3. Notify signers of any pending documents before deletion
+        if (RESEND_API_KEY) {
+            const { data: pendingDocs } = await supabaseAdmin
+                .from('documents')
+                .select('id, title, signer_email, signer_name')
+                .eq('user_id', reqUserId)
+                .in('status', ['sent', 'viewed'])
 
-        // Manual cleanup of key data just in case constraint cascading is partial
-        // (Optional: if you have ON DELETE CASCADE on user_id fkey, this happens automatically)
-        // await supabaseAdmin.from('documents').delete().eq('user_id', reqUserId) 
-        // ...
+            if (pendingDocs && pendingDocs.length > 0) {
+                await Promise.allSettled(
+                    pendingDocs.map((doc) =>
+                        fetch('https://api.resend.com/emails', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${RESEND_API_KEY}`
+                            },
+                            body: JSON.stringify({
+                                from: 'FirmaClara <noreply@firmaclara.es>',
+                                to: [doc.signer_email],
+                                subject: `Documento cancelado: "${doc.title}"`,
+                                html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px"><h2>Documento cancelado</h2><p>Hola <strong>${doc.signer_name || 'firmante'}</strong>,</p><p>El documento <strong>"${doc.title}"</strong> que tenías pendiente de firma ha sido cancelado porque el emisor ha eliminado su cuenta.</p><p>No es necesario que realices ninguna acción.</p><p style="color:#6b7280;font-size:12px">— FirmaClara</p></div>`
+                            })
+                        })
+                    )
+                )
+            }
+        }
 
-        // Perform Auth Deletion
+        // 4. Perform Auth Deletion (cascades to public.users via ON DELETE CASCADE)
         const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(
             reqUserId
         )

@@ -177,6 +177,10 @@ export default function NewDocument() {
         toast.error("Solo se permiten archivos PDF");
         return;
       }
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        toast.error("El archivo es demasiado grande. Máximo 10MB.");
+        return;
+      }
       setFile(selectedFile);
       if (!title) {
         setTitle(selectedFile.name.replace('.pdf', ''));

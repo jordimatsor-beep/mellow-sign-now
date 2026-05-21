@@ -69,32 +69,34 @@ export default function SignDocument() {
   // Blob URL state
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
 
-  // Fetch Blob on docData load
+  // Fetch PDF blob — deps only on file_url to avoid infinite loop
   useEffect(() => {
-    if (docData?.file_url) {
-      let active = true;
-      const fetchPdf = async () => {
-        try {
-          const res = await fetch(docData.file_url);
-          if (!res.ok) throw new Error("Failed to load PDF");
-          const blob = await res.blob();
-          if (active) {
-            const url = URL.createObjectURL(blob);
-            setPdfBlobUrl(url);
-          }
-        } catch (err) {
-          console.error("Error loading PDF blob:", err);
+    if (!docData?.file_url) return;
+
+    let active = true;
+    let objectUrl: string | null = null;
+
+    const fetchPdf = async () => {
+      try {
+        const res = await fetch(docData.file_url);
+        if (!res.ok) throw new Error("Failed to load PDF");
+        const blob = await res.blob();
+        if (active) {
+          objectUrl = URL.createObjectURL(blob);
+          setPdfBlobUrl(objectUrl);
         }
-      };
+      } catch (err) {
+        console.error("Error loading PDF blob:", err);
+      }
+    };
 
-      fetchPdf();
+    fetchPdf();
 
-      return () => {
-        active = false;
-        if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
-      };
-    }
-  }, [docData?.file_url, pdfBlobUrl]); // Added pdfBlobUrl to dependency array for cleanup
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [docData?.file_url]); // Only re-fetch when URL changes, not when blob URL changes
 
   useEffect(() => {
     if (resendCooldown > 0) {

@@ -2,8 +2,24 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts'
 
-// Security: Read webhook URL from environment instead of hardcoding
 const N8N_WEBHOOK_URL = Deno.env.get('N8N_WEBHOOK_URL') || ''
+
+// In-memory rate limiter: max 20 requests per minute per user
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+function checkRateLimit(userId: string): boolean {
+    const now = Date.now();
+    const entry = rateLimitMap.get(userId);
+    if (!entry || now > entry.resetAt) {
+        rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+        return true;
+    }
+    if (entry.count >= RATE_LIMIT_MAX) return false;
+    entry.count++;
+    return true;
+}
 
 serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
@@ -41,6 +57,14 @@ serve(async (req: Request) => {
 
         if (userError || !user) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+
+        // Rate limiting: max 20 requests/minute per user
+        if (!checkRateLimit(user.id)) {
+            return new Response(
+                JSON.stringify({ error: 'Demasiadas solicitudes. Espera un momento antes de continuar.' }),
+                { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' } }
+            );
         }
 
         // 3. Parse Frontend Payload
@@ -81,12 +105,28 @@ serve(async (req: Request) => {
             }
         }
 
-        // Security: Validate documentId if provided
-        if (documentId !== null && documentId !== undefined && typeof documentId !== 'string') {
-            return new Response(
-                JSON.stringify({ error: 'Invalid documentId format' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+        // Security: Validate documentId format and ownership
+        if (documentId !== null && documentId !== undefined) {
+            if (typeof documentId !== 'string') {
+                return new Response(
+                    JSON.stringify({ error: 'Invalid documentId format' }),
+                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+            }
+            // Verify the document belongs to the authenticated user
+            const { data: docOwnership } = await supabaseClient
+                .from('documents')
+                .select('id')
+                .eq('id', documentId)
+                .eq('user_id', user.id)
+                .single();
+
+            if (!docOwnership) {
+                return new Response(
+                    JSON.stringify({ error: 'Document not found or access denied' }),
+                    { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+            }
         }
 
         // 4. Forward to n8n

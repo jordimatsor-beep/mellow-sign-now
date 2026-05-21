@@ -50,7 +50,37 @@ export function useDataExport() {
                 zip.file('documentos.json', JSON.stringify(documents, null, 2));
             }
 
-            // 4. Generate ZIP
+            // 4. Firmas (evidencias — GDPR Art. 20)
+            if (documents && documents.length > 0) {
+                const docIds = documents.map((d: any) => d.id);
+                const { data: signatures } = await withTimeout(
+                    supabase.from('signatures').select('*').in('document_id', docIds),
+                    5000, "Signatures export"
+                );
+                if (signatures) {
+                    zip.file('firmas.json', JSON.stringify(signatures, null, 2));
+                }
+            }
+
+            // 5. Historial de pagos (GDPR Art. 20)
+            const { data: purchases } = await withTimeout(
+                supabase.from('user_credit_purchases').select('*').eq('user_id', user.id),
+                3000, "Purchases export"
+            );
+            if (purchases) {
+                zip.file('pagos.json', JSON.stringify(purchases, null, 2));
+            }
+
+            // 6. Logs de eventos (GDPR Art. 20)
+            const { data: eventLogs } = await withTimeout(
+                supabase.from('event_logs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(500),
+                5000, "Event logs export"
+            );
+            if (eventLogs) {
+                zip.file('historial_actividad.json', JSON.stringify(eventLogs, null, 2));
+            }
+
+            // 7. Generate ZIP
             const content = await zip.generateAsync({ type: 'blob' });
 
             // 5. Trigger download

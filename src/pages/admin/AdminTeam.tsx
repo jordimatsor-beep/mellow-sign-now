@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ interface TeamMember {
 }
 
 export default function AdminTeam() {
+    const { user: currentUser } = useAuth();
     const [members, setMembers] = useState<TeamMember[]>([]);
     const [loading, setLoading] = useState(true);
     const [newEmail, setNewEmail] = useState("");
@@ -44,6 +46,10 @@ export default function AdminTeam() {
 
     const handleSetRole = async (email: string, role: string) => {
         if (!email.trim()) return;
+        if (email.trim().toLowerCase() === currentUser?.email?.toLowerCase()) {
+            toast.error("No puedes modificar tu propio rol");
+            return;
+        }
         setProcessing(true);
         try {
             const { data, error } = await supabase.rpc("set_user_role", {

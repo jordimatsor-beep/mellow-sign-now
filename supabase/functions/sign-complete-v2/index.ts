@@ -143,8 +143,29 @@ serve(async (req: Request) => {
             }
 
             if (!timingSafeStringEqual(inputHash, expectedHash)) {
-                throw new Error('Código OTP incorrecto')
+                // Increment failed attempt counter — lock out after 5 consecutive failures
+                const attempts = (doc.otp_failed_attempts ?? 0) + 1;
+                const MAX_ATTEMPTS = 5;
+
+                if (attempts >= MAX_ATTEMPTS) {
+                    // Invalidate OTP entirely — user must request a new one
+                    await supabase.from('documents')
+                        .update({ otp_code_hash: null, otp_expires_at: null, otp_failed_attempts: 0 })
+                        .eq('id', doc.id);
+                    throw new Error('Demasiados intentos incorrectos. Solicita un nuevo código.');
+                }
+
+                await supabase.from('documents')
+                    .update({ otp_failed_attempts: attempts })
+                    .eq('id', doc.id);
+
+                throw new Error(`Código OTP incorrecto. Intentos restantes: ${MAX_ATTEMPTS - attempts}`);
             }
+
+            // OTP correct — reset failed counter
+            await supabase.from('documents')
+                .update({ otp_failed_attempts: 0 })
+                .eq('id', doc.id);
 
             otpVerified = true;
         }
@@ -345,7 +366,27 @@ serve(async (req: Request) => {
 
         const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(finalPath);
 
-        // 7. Insert Signature Record
+        // 7. Update Document Status FIRST (Optimistic Concurrency Control)
+        // Doing this before inserting the signature ensures that if the signature insert
+        // fails, the document status is already 'signed', preventing a second signing attempt.
+        // Order: update doc → insert signature (not the reverse, to avoid orphan signatures)
+        const { error: updateError, count } = await supabase.from('documents').update({
+            status: 'signed',
+            signed_at: signedAt.toISOString(),
+            signed_file_url: publicUrlData.publicUrl,
+            otp_code_hash: null,
+            otp_expires_at: null
+        }, { count: 'exact' })
+            .eq('id', doc.id)
+            .neq('status', 'signed');
+
+        if (updateError) throw new Error('Error al actualizar estado del documento: ' + updateError.message);
+
+        if (count === 0) {
+            throw new Error('Este documento ya ha sido firmado por otra petición concurrente.');
+        }
+
+        // 8. Insert Signature Record (after doc is marked signed — no orphan risk)
         const { error: sigError } = await supabase.from('signatures').insert({
             document_id: doc.id,
             signer_name: doc.signer_name,
@@ -358,24 +399,6 @@ serve(async (req: Request) => {
         });
 
         if (sigError) throw new Error('Error al registrar la firma en base de datos');
-
-        // 8. Update Document Status (Optimistic Concurrency Control)
-        const { error: updateError, count } = await supabase.from('documents').update({
-            status: 'signed',
-            signed_at: signedAt.toISOString(),
-            signed_file_url: publicUrlData.publicUrl,
-            otp_code_hash: null,
-            otp_expires_at: null
-        }, { count: 'exact' })
-            .eq('id', doc.id)
-            .neq('status', 'signed'); // Ensure we don't overwrite if race condition occur
-
-        if (updateError) throw new Error('Error al actualizar estado del documento: ' + updateError.message);
-
-        // If count is 0, it means it was already signed in the millisecond between read and write
-        if (count === 0 && !updateError) {
-            throw new Error('Este documento ya ha sido firmado por otra petición concurrente.');
-        }
 
         // 9. Trigger Audit Trail
         try {
