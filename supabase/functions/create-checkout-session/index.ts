@@ -86,7 +86,7 @@ serve(async (req) => {
 
         if (!parseResult.success) {
             return new Response(
-                JSON.stringify({ error: 'Invalid pack or parameters', details: parseResult.error }),
+                JSON.stringify({ error: 'Invalid pack or parameters' }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
@@ -115,17 +115,28 @@ serve(async (req) => {
             )
         }
 
-        // Return URL Security Check
+        // Return URL Security Check — compare exact origin, not prefix (prevents firmaclara.es.evil.com bypass)
         let finalReturnUrl = req.headers.get('origin');
         if (returnUrl) {
-            const isReturnUrlAllowed = ALLOWED_RETURN_URLS.some(url => returnUrl.startsWith(url));
+            let parsedReturnUrl: URL;
+            try {
+                parsedReturnUrl = new URL(returnUrl);
+            } catch {
+                return new Response(
+                    JSON.stringify({ error: 'Invalid returnUrl format' }),
+                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+            }
+            const isReturnUrlAllowed = ALLOWED_RETURN_URLS.some(allowed => {
+                try { return new URL(allowed).origin === parsedReturnUrl.origin; } catch { return false; }
+            });
             if (!isReturnUrlAllowed) {
                 return new Response(
                     JSON.stringify({ error: 'Invalid returnUrl domain' }),
                     { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
                 )
             }
-            finalReturnUrl = returnUrl;
+            finalReturnUrl = parsedReturnUrl.origin;
         }
 
         // 3. Create Session

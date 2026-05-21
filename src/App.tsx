@@ -41,6 +41,7 @@ const Register = lazy(() => import("@/pages/auth/Register"));
 const UpdatePassword = lazy(() => import("@/pages/auth/UpdatePassword"));
 const AccountConfirmed = lazy(() => import("@/pages/auth/AccountConfirmed"));
 const Contacts = lazy(() => import("@/pages/Contacts"));
+const Clara = lazy(() => import("@/pages/Clara"));
 const Legal = lazy(() => import("@/pages/Legal"));
 const Terms = lazy(() => import("@/pages/Terms"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
@@ -112,6 +113,7 @@ const App = () => (
                       <Route path="/credits/purchase" element={<CreditsPurchase />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/help" element={<Help />} />
+                      <Route path="/clara" element={<Clara />} />
                     </Route>
                   </Route>
 

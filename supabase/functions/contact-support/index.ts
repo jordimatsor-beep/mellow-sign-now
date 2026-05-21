@@ -1,12 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const ALLOWED_ORIGINS = [
+    'https://firmaclara.com',
+    'https://firmaclara.es',
+    'https://www.firmaclara.com',
+    'https://www.firmaclara.es',
+    'https://mellow-sign-now.lovable.app',
+    'http://localhost:8080',
+    'http://localhost:3000',
+    'http://localhost:5173',
+];
+
+function getCorsHeaders(request: Request): Record<string, string> {
+    const origin = request.headers.get('Origin');
+    const isAllowed = origin && ALLOWED_ORIGINS.includes(origin);
+    return {
+        'Access-Control-Allow-Origin': isAllowed ? origin : 'null',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Vary': 'Origin',
+    };
 }
 
 serve(async (req) => {
+    const corsHeaders = getCorsHeaders(req);
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -14,6 +33,7 @@ serve(async (req) => {
     try {
         const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
         if (!RESEND_API_KEY) throw new Error('Missing RESEND_API_KEY')
+        const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') ?? ADMIN_EMAIL
 
         const authHeader = req.headers.get('Authorization')
         const body = await req.json()
@@ -70,7 +90,7 @@ serve(async (req) => {
                 },
                 body: JSON.stringify({
                     from: 'FirmaClara Support <noreply@firmaclara.es>',
-                    to: ['jordi.mateu@operiatech.es'],
+                    to: [ADMIN_EMAIL],
                     reply_to: user.email,
                     subject: `[Chat Soporte] ${subject ?? 'Nueva consulta'} — ${user.email}`,
                     html: `
@@ -206,7 +226,7 @@ serve(async (req) => {
                 },
                 body: JSON.stringify({
                     from: 'FirmaClara Support <noreply@firmaclara.es>',
-                    to: [chatData.user_email, 'jordi.mateu@operiatech.es'],
+                    to: [chatData.user_email, ADMIN_EMAIL],
                     subject: `[Chat Cerrado] Transcripción: ${chatData.subject}`,
                     html: emailHtml
                 })
@@ -226,7 +246,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
                 from: 'FirmaClara Support <noreply@firmaclara.es>',
-                to: ['jordi.mateu@operiatech.es'],
+                to: [ADMIN_EMAIL],
                 reply_to: email,
                 subject: `[Soporte] ${subject || 'Nueva consulta'} - ${user_email || email}`,
                 html: `

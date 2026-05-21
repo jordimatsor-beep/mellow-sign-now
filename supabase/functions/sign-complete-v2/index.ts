@@ -35,7 +35,7 @@ serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
 
     try {
-        console.log("Sign-complete-v2 invoked");
+        // sign-complete-v2 invoked
 
         const supabaseUrl = Deno.env.get('SUPABASE_URL')
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -102,25 +102,48 @@ serve(async (req: Request) => {
         // 2. Security / OTP Check
         let otpVerified = false;
 
-        // Use security_level or legacy boolean
         if (doc.security_level === 'whatsapp_otp') {
             if (!otp_code) throw new Error('Se requiere código OTP para firmar este documento')
 
-            // Hash incoming code
-            const msgUint8 = new TextEncoder().encode(otp_code);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const inputHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-            // Verify
-            if (inputHash !== doc.otp_code_hash) {
-                // Rate limit/Anti-brute force SHOULD be here, but for now we throw error
-                throw new Error('Código OTP incorrecto')
-            }
-
-            // Check Expiry
+            // Check Expiry first (cheaper check)
             if (doc.otp_expires_at && new Date(doc.otp_expires_at) < new Date()) {
                 throw new Error('Código OTP expirado. Solicita uno nuevo.')
+            }
+
+            // Constant-time string comparison to prevent timing attacks
+            function timingSafeStringEqual(a: string, b: string): boolean {
+                if (a.length !== b.length) return false;
+                const aBytes = new TextEncoder().encode(a);
+                const bBytes = new TextEncoder().encode(b);
+                let result = 0;
+                for (let i = 0; i < aBytes.length; i++) result |= aBytes[i] ^ bBytes[i];
+                return result === 0;
+            }
+
+            // Support both new format ("salt:hash") and legacy format (plain SHA-256)
+            const storedHash = doc.otp_code_hash as string;
+            const isNewFormat = storedHash?.includes(':');
+
+            let inputHash: string;
+            let expectedHash: string;
+
+            if (isNewFormat) {
+                const colonIdx = storedHash.indexOf(':');
+                const salt = storedHash.slice(0, colonIdx);
+                expectedHash = storedHash.slice(colonIdx + 1);
+                const msgUint8 = new TextEncoder().encode(salt + otp_code);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+                inputHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+            } else {
+                // Legacy: plain SHA-256 without salt
+                expectedHash = storedHash;
+                const msgUint8 = new TextEncoder().encode(otp_code);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+                inputHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+
+            if (!timingSafeStringEqual(inputHash, expectedHash)) {
+                throw new Error('Código OTP incorrecto')
             }
 
             otpVerified = true;
@@ -130,7 +153,18 @@ serve(async (req: Request) => {
         let pdfBytes: ArrayBuffer;
         let fileUrl = doc.file_url;
 
-        console.log("Original document URL/Path:", fileUrl); // DEBUG
+        // Validate URL scheme before any network operation (prevents SSRF via file://, ftp://, etc.)
+        if (fileUrl && fileUrl.startsWith('http')) {
+            try {
+                const parsedUrl = new URL(fileUrl);
+                if (parsedUrl.protocol !== 'https:' && parsedUrl.hostname !== 'localhost') {
+                    throw new Error('Unsupported URL scheme for document download');
+                }
+            } catch (e: any) {
+                if (e.message.startsWith('Unsupported URL scheme')) throw e;
+                throw new Error('Invalid document URL');
+            }
+        }
 
         // Determine if we should use internal download or public fetch
         let useInternalDownload = false;
@@ -148,25 +182,20 @@ serve(async (req: Request) => {
             if (urlParts.length > 1) {
                 downloadPath = decodeURIComponent(urlParts[1]); // Decode in case of %20 etc.
                 useInternalDownload = true;
-                console.log(`Detected internal Supabase URL. Converted to path: ${downloadPath}`);
             }
         }
         else if (fileUrl && fileUrl.includes('/storage/v1/object/sign/documents/')) {
             // Extract path from signed URL
             const urlParts = fileUrl.split('/documents/');
             if (urlParts.length > 1) {
-                // Remove query params if any
                 let path = urlParts[1];
                 if (path.includes('?')) path = path.split('?')[0];
                 downloadPath = decodeURIComponent(path);
                 useInternalDownload = true;
-                console.log(`Detected signed Supabase URL. Converted to path: ${downloadPath}`);
             }
         }
 
         if (useInternalDownload) {
-            // Internal Download via Service Role (Bypasses RLS/Public checks)
-            console.log(`Downloading internally from path: ${downloadPath}`);
             const { data: fileData, error: fileError } = await supabase.storage
                 .from('documents')
                 .download(downloadPath);
@@ -177,8 +206,6 @@ serve(async (req: Request) => {
             }
             pdfBytes = await fileData.arrayBuffer();
         } else {
-            // Fallback: External URL Fetch
-            console.log("Downloading from public/external URL:", fileUrl);
             try {
                 const res = await fetch(fileUrl);
                 if (!res.ok) {
@@ -207,8 +234,6 @@ serve(async (req: Request) => {
         }
         const pngImage = await pdfDoc.embedPng(pngBytesArray);
 
-        console.log(`Signature image dimensions: ${pngImage.width}x${pngImage.height}`);
-
         // Calculate scaling to fit within bounding box (200x80 points)
         // These are PDF points (1 pt = 1/72 inch), so 200pt ≈ 7cm wide
         const MAX_SIG_WIDTH = 200;
@@ -228,8 +253,6 @@ serve(async (req: Request) => {
             width: imgWidth * scaleFactor,
             height: imgHeight * scaleFactor
         };
-
-        console.log(`Scaled signature dimensions: ${pngDims.width.toFixed(1)}x${pngDims.height.toFixed(1)} pts (scale: ${scaleFactor.toFixed(4)})`);
 
         // Get pages array
         const pages = pdfDoc.getPages();
@@ -371,7 +394,6 @@ serve(async (req: Request) => {
         // 10. Trigger Notification (Email + SMS)
         // We trigger it here to ensure redundancy even if audit trail fails
         try {
-            console.log("Triggering send-signed-notification from sign-complete-v2...");
             const notifyRes = await fetch(`${supabaseUrl}/functions/v1/send-signed-notification`, {
                 method: 'POST',
                 headers: {
@@ -380,14 +402,11 @@ serve(async (req: Request) => {
                 },
                 body: JSON.stringify({ document_id: doc.id })
             });
-            console.log("Notification Trigger Status:", notifyRes.status);
             if (!notifyRes.ok) {
-                console.error("Notification Trigger Failed:", await notifyRes.text());
-            } else {
-                console.log("Notification Trigger Success");
+                console.error("send-signed-notification failed:", notifyRes.status);
             }
         } catch (e) {
-            console.error("Trigger notification exception:", e);
+            console.error("send-signed-notification exception:", e);
         }
 
         // 11. Log event

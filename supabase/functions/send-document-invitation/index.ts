@@ -47,22 +47,20 @@ serve(async (req: Request) => {
       throw new Error('Invalid JSON body');
     }
 
-    const { document_id, signer_email, signer_name, sign_token, sender_name, title } = body;
+    const { document_id, sender_name } = body;
 
-    if (!signer_email || !sign_token || !document_id) {
-      console.error("Missing fields:", body);
+    if (!document_id) {
       throw new Error('Missing required fields')
     }
 
-    // Verify ownership
+    // Fetch full document from DB — use DB values for email, never trust request body
     const { data: doc, error: docError } = await supabase
       .from('documents')
-      .select('user_id')
+      .select('user_id, signer_email, signer_name, sign_token, title')
       .eq('id', document_id)
       .single()
 
     if (docError || !doc) {
-      console.error("Document not found or error:", docError);
       throw new Error('Document not found')
     }
 
@@ -70,14 +68,23 @@ serve(async (req: Request) => {
       throw new Error('Unauthorized: You do not own this document')
     }
 
+    if (!doc.signer_email || !doc.sign_token) {
+      throw new Error('Document is missing signer email or sign token')
+    }
+
     // URL Configuration
     const siteUrl = Deno.env.get('SITE_URL') || 'https://firmaclara.es';
-    const signUrl = `${siteUrl}/sign/${sign_token}`
+    // Validate siteUrl scheme to prevent header injection
+    if (!siteUrl.startsWith('https://') && !siteUrl.startsWith('http://localhost')) {
+      throw new Error('Invalid SITE_URL configuration')
+    }
+    const signUrl = `${siteUrl}/sign/${doc.sign_token}`
 
-    // Escape user-provided content
-    const docTitle = escapeHtml(title) || 'Documento sin título'
+    // Escape — use DB values, sender_name is the only caller-supplied field
+    const docTitle = escapeHtml(doc.title) || 'Documento sin título'
     const sender = escapeHtml(sender_name) || 'FirmaClara'
-    const safeSignerName = escapeHtml(signer_name)
+    const safeSignerName = escapeHtml(doc.signer_name)
+    const signerEmail = doc.signer_email // always from DB
 
     // Premium HTML Email Template
     const html = `
@@ -244,8 +251,6 @@ serve(async (req: Request) => {
       </html>
     `
 
-    console.log("Sending email via Resend to:", signer_email);
-
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -254,7 +259,7 @@ serve(async (req: Request) => {
       },
       body: JSON.stringify({
         from: 'FirmaClara <noreply@firmaclara.es>',
-        to: [signer_email],
+        to: [signerEmail],
         subject: `FirmaClara: ${sender} solicita tu firma en "${docTitle}"`,
         html: html
       })
@@ -280,7 +285,6 @@ serve(async (req: Request) => {
       JSON.stringify({
         success: false,
         error: error.message || 'Unknown error occurred',
-        details: JSON.stringify(error)
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     )

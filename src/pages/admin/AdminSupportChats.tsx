@@ -110,6 +110,10 @@ export default function AdminSupportChats() {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
   }, []);
 
+  useEffect(() => {
+    if (userIsTyping) scrollToBottom();
+  }, [userIsTyping, scrollToBottom]);
+
   const fetchChats = useCallback(async (isInitial = false) => {
     if (isInitial) setIsInitialLoading(true);
     const { data, error } = await supabase
@@ -251,6 +255,8 @@ export default function AdminSupportChats() {
           });
           scrollToBottom();
           if (newMsg.sender === "user") {
+            setUserIsTyping(false);
+            if (userTypingTimerRef.current) { clearTimeout(userTypingTimerRef.current); userTypingTimerRef.current = null; }
             supabase.from("support_chats").update({ admin_read: true }).eq("id", selectedChat.id);
             setChats((prev) => prev.map((c) => c.id === selectedChat.id ? { ...c, admin_read: true } : c));
           }
@@ -283,7 +289,7 @@ export default function AdminSupportChats() {
     };
   }, [selectedChat?.id, scrollToBottom]);
 
-  // ── Send message ──
+  // ── Send message (direct insert — RLS is_support() allows it, no Edge Function cold start) ──
   const handleSendMessage = useCallback(async () => {
     if (!inputText.trim() || !selectedChat || isSending) return;
     const text = inputText.trim();
@@ -296,23 +302,23 @@ export default function AdminSupportChats() {
     ]);
     scrollToBottom();
     try {
-      const { data, error } = await supabase.functions.invoke("contact-support", {
-        body: { action: "send_admin_message", chat_id: selectedChat.id, content: text },
-      });
-      if (error) throw new Error(error.message ?? "Error al enviar mensaje");
-      if (data?.error) throw new Error(data.error);
-
-      // Re-fetch messages immediately to replace temp with persisted row.
-      // This is more reliable than waiting for Realtime (avoids RLS/latency issues).
-      const { data: freshMsgs } = await supabase
+      const { data: inserted, error } = await supabase
         .from("support_messages")
-        .select("*")
-        .eq("chat_id", selectedChat.id)
-        .order("created_at", { ascending: true });
-      if (freshMsgs) {
-        setMessages(freshMsgs as Message[]);
-        scrollToBottom();
-      }
+        .insert({ chat_id: selectedChat.id, sender: "admin", content: text })
+        .select()
+        .single();
+      if (error) throw error;
+
+      await supabase
+        .from("support_chats")
+        .update({ user_read: false, last_message_at: new Date().toISOString() })
+        .eq("id", selectedChat.id);
+
+      setMessages((prev) => {
+        const without = prev.filter((m) => m.id !== tempId);
+        return without.find((m) => m.id === (inserted as Message).id) ? without : [...without, inserted as Message];
+      });
+      scrollToBottom();
     } catch (err: any) {
       toast.error("Error al enviar mensaje: " + (err?.message ?? "Error desconocido"));
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
@@ -571,12 +577,6 @@ export default function AdminSupportChats() {
                   </Button>
                 )}
               </CardHeader>
-              {userIsTyping && selectedChat.status === "open" && (
-                <div className="px-5 py-2 border-b border-border/50 bg-slate-50 text-xs text-slate-600">
-                  El usuario está escribiendo...
-                </div>
-              )}
-
               {/* Messages */}
               <CardContent
                 className="flex-1 flex flex-col p-0 overflow-hidden"
@@ -685,6 +685,29 @@ export default function AdminSupportChats() {
                           ))}
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* Typing bubble */}
+                  {userIsTyping && selectedChat.status === "open" && (
+                    <div className="flex flex-col items-start gap-1 mt-3 animate-in fade-in duration-200">
+                      <div className="flex items-end gap-2">
+                        <div className="h-7 w-7 rounded-full flex items-center justify-center shrink-0 mb-1 text-xs font-bold bg-slate-200 text-slate-600">
+                          {getInitials(selectedChat.user_email)}
+                        </div>
+                        <div className="bg-white rounded-2xl rounded-bl-sm px-3.5 py-2.5 shadow-sm ring-1 ring-black/5">
+                          <div className="flex gap-1 items-center">
+                            {[0, 150, 300].map((delay) => (
+                              <span
+                                key={delay}
+                                className="block w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce"
+                                style={{ animationDelay: `${delay}ms` }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-black/30 font-medium px-9">Escribiendo...</span>
                     </div>
                   )}
 

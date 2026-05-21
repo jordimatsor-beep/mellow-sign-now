@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
@@ -43,11 +43,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    // Ref keeps onAuthStateChange callback from closing over stale profile state
+    const profileRef = useRef<Profile | null>(null);
 
     const fetchProfile = async (userId: string) => {
         try {
             const { data, error } = await withTimeout(
-                supabase.from('users').select('*').eq('id', userId).single(),
+                supabase.from('users')
+                    .select('id, name, email, company_name, role, onboarding_completed, legal_accepted')
+                    .eq('id', userId)
+                    .single(),
                 10000, "Profile fetch"
             );
 
@@ -75,10 +80,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
+    const setProfileAndRef = (p: Profile | null) => {
+        profileRef.current = p;
+        setProfile(p);
+    };
+
     const refreshProfile = async () => {
         if (!user) return;
         const data = await fetchProfile(user.id);
-        if (data) setProfile(data);
+        if (data) setProfileAndRef(data);
     };
 
     useEffect(() => {
@@ -110,7 +120,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     if (currentUser) {
                         try {
                             const profileData = await fetchProfile(currentUser.id);
-                            if (mounted) setProfile(profileData);
+                            if (mounted) setProfileAndRef(profileData);
                         } catch (e) {
                             console.error("Profile fetch error", e);
                         }
@@ -138,7 +148,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (event === 'SIGNED_OUT') {
                 setSession(null);
                 setUser(null);
-                setProfile(null);
+                setProfileAndRef(null);
                 setLoading(false);
                 return;
             }
@@ -148,13 +158,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setUser(currentUser);
 
             if (currentUser) {
-                // Only fetch profile if we don't have it or user changed
-                if (!profile || profile.id !== currentUser.id) {
+                // Use ref to avoid stale closure — profileRef always reflects current value
+                if (!profileRef.current || profileRef.current.id !== currentUser.id) {
                     const profileData = await fetchProfile(currentUser.id);
-                    if (mounted) setProfile(profileData);
+                    if (mounted) setProfileAndRef(profileData);
                 }
             } else {
-                if (mounted) setProfile(null);
+                if (mounted) setProfileAndRef(null);
             }
 
             if (mounted) setLoading(false);
@@ -175,7 +185,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             await supabase.auth.signOut();
 
             // Clear local state immediately
-            setProfile(null);
+            setProfileAndRef(null);
             setUser(null);
             setSession(null);
 

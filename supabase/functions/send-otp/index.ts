@@ -185,14 +185,22 @@ serve(async (req) => {
             }
         }
 
-        // 2. Generate OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString()
+        // 2. Generate OTP (cryptographically secure)
+        const otpArray = new Uint32Array(1);
+        crypto.getRandomValues(otpArray);
+        const otp = String(100000 + (otpArray[0] % 900000));
 
-        // 3. Hash OTP
-        const msgUint8 = new TextEncoder().encode(otp);
+        // 3. Hash OTP with random salt — prevents precomputed rainbow table attacks
+        const saltBytes = new Uint8Array(16);
+        crypto.getRandomValues(saltBytes);
+        const salt = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
+        const msgUint8 = new TextEncoder().encode(salt + otp);
         const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const otpHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        // Format: "salt:hash" — both needed for verification
+        const storedHash = `${salt}:${otpHash}`;
 
         // 4. Update DB
         const expiresAt = new Date();
@@ -201,7 +209,7 @@ serve(async (req) => {
         const { error: updateError } = await supabase
             .from('documents')
             .update({
-                otp_code_hash: otpHash,
+                otp_code_hash: storedHash,
                 otp_expires_at: expiresAt.toISOString()
             })
             .eq('id', doc.id)
@@ -234,7 +242,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                     from: 'FirmaClara Security <noreply@firmaclara.es>',
                     to: [doc.signer_email],
-                    subject: `Tu código de seguridad: ${otp}`,
+                    subject: 'Tu código de seguridad - FirmaClara',
                     html: html
                 })
             });
@@ -303,8 +311,7 @@ serve(async (req) => {
                 await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'sms_sent');
 
             } else {
-                console.log('[DEV MODE] OTP would be sent to:', phone.substring(0, 6) + '****', 'Code:', otp);
-                // Log SUCCESS (Dev)
+                console.log('[DEV MODE] OTP would be sent via SMS (code omitted for security)');
                 await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'dev_mode');
             }
         }

@@ -15,12 +15,10 @@ export const AdminRoute = () => {
         );
     }
 
-    // Super Admin backdoor via email
-    const isSuperAdmin = user?.email === 'jormattor@gmail.com';
     const isAdminRole = profile?.role === 'admin';
     const isSupportRole = profile?.role === 'support';
 
-    if (user && (isSuperAdmin || isAdminRole || isSupportRole)) {
+    if (user && (isAdminRole || isSupportRole)) {
         return <Outlet />;
     }
 
