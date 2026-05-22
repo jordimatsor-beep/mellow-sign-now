@@ -31,7 +31,7 @@ serve(async (req: Request) => {
 
     const body = await req.text()
     const stripe = new Stripe(STRIPE_SECRET_KEY, {
-      apiVersion: '2023-10-16',
+      apiVersion: '2024-04-10',
       httpClient: Stripe.createFetchHttpClient()
     })
 

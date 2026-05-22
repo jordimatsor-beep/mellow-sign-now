@@ -140,14 +140,16 @@ serve(async (req: Request) => {
     const n8nSuccess = await triggerN8n('document.sent', n8nPayload);
 
     if (n8nSuccess) {
-      console.log('n8n triggered successfully. Proceeding to send email via Resend as primary channel.');
-    } else {
-      console.log('n8n not configured or failed. Proceeding to send email via Resend.');
+      console.log('n8n triggered successfully — skipping Resend to avoid duplicate email.');
+      return new Response(
+        JSON.stringify({ success: true, channel: 'n8n' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // --- DIRECT RESEND SENDING ---
+    console.log('n8n not configured or failed. Sending email via Resend.');
 
-    // --- RESEND FALLBACK START ---
+    // --- RESEND FALLBACK (only reached if n8n is unavailable) ---
 
     // Premium HTML Email Template
     const messageHtml = custom_message ? `

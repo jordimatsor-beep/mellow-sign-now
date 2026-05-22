@@ -546,24 +546,36 @@ export default function SignDocument() {
   }
 
   if (step === "error") {
+    const isExpired = error.includes("caducado") || error.includes("expirado");
+    const isNotFound = error.includes("no encontrado") || error.includes("inválido");
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center pt-20 px-4">
         <div className="mb-12">
           <Logo className="h-8" />
         </div>
-        <Alert variant="destructive" className="max-w-md bg-white shadow-lg border-red-100">
-          <AlertCircle className="h-5 w-5 text-red-600" />
-          <div className="ml-2">
-            <AlertTitle className="text-red-700 font-semibold text-lg">No se ha podido cargar el documento</AlertTitle>
-            <AlertDescription className="mt-2 text-red-600/90 text-sm">
-              {error}
-            </AlertDescription>
+        <div className="max-w-md w-full bg-white rounded-xl shadow-lg border border-slate-100 p-8 text-center space-y-4">
+          <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${isExpired ? 'bg-amber-50' : 'bg-red-50'}`}>
+            {isExpired
+              ? <Clock className={`h-8 w-8 text-amber-500`} />
+              : <AlertCircle className="h-8 w-8 text-red-500" />
+            }
           </div>
-        </Alert>
-        <div className="mt-8 text-center text-sm text-muted-foreground">
-          <p>Si el problema persiste, contacta con el remitente.</p>
-          <p className="mt-2 text-xs opacity-50">ID de Referencia: {token}</p>
+          <h2 className="text-xl font-semibold text-slate-900">
+            {isExpired ? "Enlace caducado" : isNotFound ? "Enlace no válido" : "No se pudo cargar el documento"}
+          </h2>
+          <p className="text-sm text-slate-500">{error}</p>
+          {isExpired && (
+            <p className="text-sm text-slate-500">
+              Solicita al remitente que te envíe un nuevo enlace de firma.
+            </p>
+          )}
+          {isNotFound && (
+            <p className="text-sm text-slate-500">
+              Comprueba que el enlace está completo o contacta con quien te lo envió.
+            </p>
+          )}
         </div>
+        <p className="mt-6 text-xs text-slate-400 font-mono">{token}</p>
       </div>
     );
   }
