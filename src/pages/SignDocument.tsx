@@ -312,57 +312,24 @@ export default function SignDocument() {
             });
         }
 
-        // Robust Signed URL generation for Private Buckets
+        // Obtain signed URLs for private bucket via Edge Function (uses service_role)
         let finalFileUrl = docRecord.file_url;
+        let finalSignedFileUrl: string | undefined;
+        let finalCertificateUrl: string | undefined;
 
         try {
-          let path = '';
-          if (docRecord.file_url) {
-            if (!docRecord.file_url.startsWith('http')) {
-              // It's a path
-              path = docRecord.file_url;
-            } else if (docRecord.file_url.includes('/documents/')) {
-              // Extract path from URL (works for public and signed URLs that contain the bucket name)
-              const parts = docRecord.file_url.split('/documents/');
-              if (parts.length > 1) path = parts[1];
-            }
-          }
-
-          if (path) {
-            const { data: signedData, error: signedError } = await supabase
-              .storage
-              .from('documents')
-              .createSignedUrl(path, 3600);
-
-            if (signedData?.signedUrl) {
-              finalFileUrl = signedData.signedUrl;
-              if (import.meta.env.DEV) console.log("Generated signed URL for recipient");
-            }
+          const { data: signingData, error: signingError } = await supabase.functions.invoke(
+            'get-file-for-signing',
+            { body: { sign_token: token } }
+          );
+          if (!signingError && signingData?.success) {
+            if (signingData.file_url) finalFileUrl = signingData.file_url;
+            if (signingData.signed_file_url) finalSignedFileUrl = signingData.signed_file_url;
+            if (signingData.certificate_url) finalCertificateUrl = signingData.certificate_url;
           }
         } catch (e) {
-          if (import.meta.env.DEV) console.error("Error signing URL for recipient", e);
+          if (import.meta.env.DEV) console.error("Error fetching signed URLs:", e);
         }
-
-
-        // Helper to sign path
-        const signIfNeeded = async (urlOrPath: string | null) => {
-          if (!urlOrPath) return undefined;
-          let path = '';
-          if (!urlOrPath.startsWith('http')) path = urlOrPath;
-          else if (urlOrPath.includes('/documents/')) {
-            const parts = urlOrPath.split('/documents/');
-            if (parts.length > 1) path = parts[1];
-          }
-
-          if (path) {
-            const { data } = await supabase.storage.from('documents').createSignedUrl(path, 3600);
-            return data?.signedUrl || urlOrPath;
-          }
-          return urlOrPath;
-        };
-
-        const finalSignedFileUrl = await signIfNeeded(docRecord.signed_file_url);
-        const finalCertificateUrl = await signIfNeeded(docRecord.certificate_url);
 
         // Transform data to match our interface
         const doc: DocumentData = {

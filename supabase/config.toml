@@ -13,16 +13,13 @@ entrypoint = "./functions/request-tsa/index.ts"
 [functions.send-invite-v2]
 verify_jwt = false
 
-[functions.sign-complete]
-verify_jwt = false
-
 [functions.sign-complete-v2]
 verify_jwt = false
 
 [functions.send-otp]
 verify_jwt = false
 
-[functions.send-daily-metrics]
+[functions.get-file-for-signing]
 verify_jwt = false
 
 [functions.clara-chat]

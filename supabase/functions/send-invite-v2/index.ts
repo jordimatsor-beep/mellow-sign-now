@@ -8,7 +8,6 @@ const ALLOWED_ORIGINS = [
   'https://firmaclara.es',
   'https://www.firmaclara.com',
   'https://www.firmaclara.es',
-  'https://mellow-sign-now.lovable.app',
   'http://localhost:8080',
   'http://localhost:3000',
   'http://localhost:5173',

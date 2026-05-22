@@ -8,7 +8,6 @@ const ALLOWED_ORIGINS = [
     'https://firmaclara.es',
     'https://www.firmaclara.com',
     'https://www.firmaclara.es',
-    'https://mellow-sign-now.lovable.app',
     'http://localhost:8080',
     'http://localhost:3000',
     'http://localhost:5173',
@@ -364,16 +363,13 @@ serve(async (req: Request) => {
 
         if (uploadError) throw new Error('Error al guardar el documento firmado: ' + uploadError.message);
 
-        const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(finalPath);
-
         // 7. Update Document Status FIRST (Optimistic Concurrency Control)
-        // Doing this before inserting the signature ensures that if the signature insert
-        // fails, the document status is already 'signed', preventing a second signing attempt.
-        // Order: update doc → insert signature (not the reverse, to avoid orphan signatures)
+        // Store the storage path (not a public URL) so callers can generate
+        // fresh signed URLs on demand — avoids storing expiring/public URLs in the DB.
         const { error: updateError, count } = await supabase.from('documents').update({
             status: 'signed',
             signed_at: signedAt.toISOString(),
-            signed_file_url: publicUrlData.publicUrl,
+            signed_file_url: finalPath,
             otp_code_hash: null,
             otp_expires_at: null
         }, { count: 'exact' })
@@ -439,7 +435,7 @@ serve(async (req: Request) => {
             event_type: 'document.signed',
             event_data: {
                 branding: 'FirmaClara',
-                pdf_url: publicUrlData.publicUrl,
+                pdf_path: finalPath,
                 signer_email: doc.signer_email,
                 signer_name: doc.signer_name,
                 owner_id: doc.user_id,

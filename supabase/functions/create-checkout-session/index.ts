@@ -15,7 +15,6 @@ const ALLOWED_ORIGINS = [
     'https://firmaclara.es',
     'https://www.firmaclara.com',
     'https://www.firmaclara.es',
-    'https://mellow-sign-now.lovable.app',
     'http://localhost:8080',
     'http://localhost:8081',
     'http://localhost:3000',
@@ -27,7 +26,6 @@ const ALLOWED_RETURN_URLS = [
     'https://firmaclara.es',
     'https://www.firmaclara.com',
     'https://www.firmaclara.es',
-    'https://mellow-sign-now.lovable.app',
     'http://localhost:8080',
     'http://localhost:8081',
     'http://localhost:3000',
@@ -55,7 +53,7 @@ serve(async (req) => {
         }
 
         const stripe = new Stripe(STRIPE_SECRET_KEY, {
-            apiVersion: '2023-10-16',
+            apiVersion: '2024-04-10',
             httpClient: Stripe.createFetchHttpClient(),
         })
 
