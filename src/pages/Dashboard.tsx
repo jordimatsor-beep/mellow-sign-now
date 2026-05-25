@@ -22,6 +22,15 @@ interface Document {
   signed_at?: string;
 }
 
+// Renders a numeric stat that shows a skeleton placeholder while loading.
+// Extracted to avoid repeating the same ternary skeleton in every stat card.
+function StatCardValue({ loading, value }: { loading: boolean; value: number }) {
+  if (loading) {
+    return <span className="inline-block h-5 w-8 animate-pulse rounded bg-slate-200" />;
+  }
+  return <>{value}</>;
+}
+
 export default function Dashboard() {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
@@ -102,7 +111,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.pending')}</p>
-              <p className="text-xl font-bold text-slate-900">{loadingDocs ? <span className="inline-block h-5 w-8 animate-pulse rounded bg-slate-200" /> : stats.pending}</p>
+              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={loadingDocs} value={stats.pending} /></p>
             </div>
           </CardContent>
         </Card>
@@ -114,7 +123,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.signed')}</p>
-              <p className="text-xl font-bold text-slate-900">{loadingDocs ? <span className="inline-block h-5 w-8 animate-pulse rounded bg-slate-200" /> : stats.signed}</p>
+              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={loadingDocs} value={stats.signed} /></p>
             </div>
           </CardContent>
         </Card>
@@ -126,7 +135,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.total')}</p>
-              <p className="text-xl font-bold text-slate-900">{loadingDocs ? <span className="inline-block h-5 w-8 animate-pulse rounded bg-slate-200" /> : stats.total}</p>
+              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={loadingDocs} value={stats.total} /></p>
             </div>
           </CardContent>
         </Card>

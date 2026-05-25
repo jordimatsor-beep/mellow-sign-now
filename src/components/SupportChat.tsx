@@ -137,6 +137,19 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
       }
     }, [step]);
 
+    // Marks chat as closed and skips rating UI if user already rated.
+    // Centralised because this is checked in 4 places (restore, initial fetch,
+    // realtime UPDATE, polling fallback) and must stay in sync.
+    const applyClosedChatState = useCallback(
+      (chatData: { status?: string | null; rating?: number | null } | null | undefined) => {
+        if (chatData?.status !== "closed") return false;
+        setIsClosed(true);
+        if ((chatData.rating ?? 0) > 0) setRatingPhase("done");
+        return true;
+      },
+      []
+    );
+
     // ── Restore session ──
     useEffect(() => {
       if (!user) return;
@@ -154,14 +167,11 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
             if (!data) { localStorage.removeItem(CHAT_STORAGE_KEY); return; }
             setChatId(parsed.chatId);
             setSubject(parsed.subject || data.subject);
-            if (data.status === "closed") {
-              setIsClosed(true);
-              if ((data.rating ?? 0) > 0) setRatingPhase("done");
-            }
+            applyClosedChatState(data);
             setStep("chat");
           });
       } catch {}
-    }, [user?.id]);
+    }, [user?.id, applyClosedChatState]);
 
     // ── Persist chatId ──
     useEffect(() => {
@@ -185,12 +195,7 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
         .select("status, rating")
         .eq("id", chatId)
         .single()
-        .then(({ data }) => {
-          if (data?.status === "closed") {
-            setIsClosed(true);
-            if ((data.rating ?? 0) > 0) setRatingPhase("done");
-          }
-        });
+        .then(({ data }) => { applyClosedChatState(data); });
 
       // Typing broadcast
       const typingChan = supabase
@@ -231,10 +236,8 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
           { event: "UPDATE", schema: "public", table: "support_chats", filter: `id=eq.${chatId}` },
           (payload) => {
             const updatedChat = payload.new as { status: string; rating?: number };
-            if (updatedChat.status === "closed") {
-              setIsClosed(true);
+            if (applyClosedChatState(updatedChat)) {
               localStorage.removeItem(CHAT_STORAGE_KEY);
-              if ((updatedChat.rating ?? 0) > 0) setRatingPhase("done");
             }
           }
         )
@@ -288,13 +291,9 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
           .select("status, rating")
           .eq("id", chatId)
           .single();
-        if (chatStatus?.status === "closed") {
-          setIsClosed(true);
-          if ((chatStatus.rating ?? 0) > 0) setRatingPhase("done");
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
-          }
+        if (applyClosedChatState(chatStatus) && pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
         }
       }, 3000);
 
@@ -304,7 +303,7 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
           pollIntervalRef.current = null;
         }
       };
-    }, [chatId, isConnected, isClosed]);
+    }, [chatId, isConnected, isClosed, applyClosedChatState]);
 
     // ── Actions ──
     const handleOpenChat = useCallback(async () => {
