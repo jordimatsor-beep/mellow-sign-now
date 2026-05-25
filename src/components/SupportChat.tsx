@@ -21,16 +21,32 @@ type RatingPhase = "stars" | "comment" | "done";
 
 const CHAT_STORAGE_KEY = "firmaclara_live_chat";
 
+/**
+ * Imperative handle exposed via `ref` so parent components can open the chat
+ * without rendering the floating trigger button.
+ *
+ * @example
+ * const chatRef = useRef<SupportChatHandle>(null);
+ * <SupportChat ref={chatRef} hideTriggerButton />
+ * <button onClick={() => chatRef.current?.open()}>Abrir chat</button>
+ */
 export interface SupportChatHandle {
+  /** Opens the chat panel. Shows subject selection if no active chat, or jumps straight to chat. */
   open: () => void;
 }
 
+/**
+ * @param hideTriggerButton - When true, the floating "Soporte" button is not rendered.
+ *   Use this when the parent page provides its own open trigger (e.g. Help page card).
+ *   The widget still mounts and maintains session state in the background.
+ */
 interface SupportChatProps {
   hideTriggerButton?: boolean;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+/** Returns "Hoy", "Ayer", or a localised date string for grouping messages by day. */
 function getDayLabel(iso: string): string {
   const d = new Date(iso);
   const today = new Date();
@@ -41,10 +57,12 @@ function getDayLabel(iso: string): string {
   return d.toLocaleDateString("es-ES", { day: "numeric", month: "long" });
 }
 
+/** Formats an ISO timestamp as HH:MM in Spanish locale. */
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
 }
 
+/** Converts **bold** markdown to "quoted" plain text for chat bubbles. */
 function stripMarkdown(text: string) {
   return text.replace(/\*\*(.*?)\*\*/g, '"$1"');
 }
@@ -57,6 +75,12 @@ interface ProcessedMessage {
   dayLabel: string;
 }
 
+/**
+ * Annotates each message with grouping metadata for the chat UI:
+ * - `isFirst` / `isLast`: whether to show avatar and tail on the bubble
+ * - `showDaySep`: whether to render a day-separator above this message
+ * - `dayLabel`: human-readable label for the separator ("Hoy", "Ayer", "14 mayo")
+ */
 function processMessages(messages: Message[]): ProcessedMessage[] {
   return messages.map((msg, i) => {
     const prev = messages[i - 1];

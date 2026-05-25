@@ -39,9 +39,22 @@ Format: [version] YYYY-MM-DD — brief description.
 - **Register page tests** — rewritten to match actual component (no confirm-password field, correct button label)
 - **SignDocument test** — fixed text matcher to match actual error message rendered by component
 
+### Performance
+- **Bundle splitting** — `tanstack` (35 KB) and `router` (36 KB) extracted from `vendor.js`; vendor reduced from 641 KB → 570 KB; chunks cached independently across deploys
+- **Dashboard query limit** — added `.limit(50)` to documents query; previously unbounded (full table scan per user)
+- **Redundant DB indexes removed** — `idx_docs_token` and `idx_documents_sign_token` dropped; unique constraint on `sign_token` already covers both; reduces write overhead
+- **Missing DB indexes added** — `idx_support_chats_user_id` and `idx_support_messages_chat_id` for support chat queries
+
+### Refactoring
+- **`StatCardValue` component** — extracted from `Dashboard.tsx`; eliminates the same skeleton-vs-value ternary repeated across 3 stat cards
+- **`applyClosedChatState` helper** — centralized "mark closed + skip rating if already rated" logic in `SupportChat.tsx`; was duplicated in 4 call sites (session restore, initial fetch, realtime UPDATE, polling fallback)
+
 ### Documentation
+- **`README.md`** — full rewrite; replaced Lovable scaffold with actual project docs (setup, architecture, deploy, security)
 - **`.env.example`** — created with all required variables and notes on live vs. test Stripe keys
 - **`CHANGELOG.md`** — this file
+- **`docs/decisions.md`** — technical decisions log (ADR-style)
+- **JSDoc** — added to `SupportChat` public API and `_shared/cors.ts` utilities
 
 ---
 
