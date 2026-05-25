@@ -1,7 +1,9 @@
+import { useRef } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Mail } from "lucide-react";
+import { ArrowLeft, Mail, MessageCircleMore } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { SupportChat, type SupportChatHandle } from "@/components/SupportChat";
 import {
   Accordion,
   AccordionContent,
@@ -38,6 +40,8 @@ const faqs = [
 ];
 
 export default function Help() {
+  const chatRef = useRef<SupportChatHandle>(null);
+
   return (
     <div className="container space-y-6 px-4 py-6">
       {/* Header */}
@@ -50,20 +54,41 @@ export default function Help() {
         <h1 className="text-2xl font-bold tracking-tight">Ayuda</h1>
       </div>
 
-      {/* Contact card */}
-      <a href="mailto:hola@firmaclara.es" className="block">
-        <Card className="cursor-pointer transition-colors hover:bg-accent border-primary/20">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <Mail className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">Contactar con soporte</p>
-              <p className="text-xs text-muted-foreground">hola@firmaclara.es</p>
-            </div>
-          </CardContent>
-        </Card>
-      </a>
+      {/* Contact options */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {/* Live chat */}
+        <button onClick={() => chatRef.current?.open()} className="block w-full text-left">
+          <Card className="cursor-pointer transition-colors hover:bg-accent border-primary/20 h-full">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <MessageCircleMore className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Chat en directo</p>
+                <p className="text-xs text-muted-foreground">Respuesta inmediata del equipo</p>
+              </div>
+            </CardContent>
+          </Card>
+        </button>
+
+        {/* Email */}
+        <a href="mailto:hola@firmaclara.es" className="block">
+          <Card className="cursor-pointer transition-colors hover:bg-accent border-primary/20 h-full">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <Mail className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Contactar por email</p>
+                <p className="text-xs text-muted-foreground">hola@firmaclara.es</p>
+              </div>
+            </CardContent>
+          </Card>
+        </a>
+      </div>
+
+      {/* Hidden SupportChat instance driven by the card button above */}
+      <SupportChat ref={chatRef} hideTriggerButton />
 
       {/* FAQs */}
       <div className="space-y-3">

@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { Header } from "./Header";
 import { BottomNavigation } from "./BottomNavigation";
 import { Sidebar } from "./Sidebar";
+import { SupportChat } from "@/components/SupportChat";
 
 export function AuthenticatedLayout() {
   return (
@@ -26,6 +27,9 @@ export function AuthenticatedLayout() {
         {/* Mobile bottom nav */}
         <BottomNavigation />
       </div>
+
+      {/* Live support chat — floating widget on all authenticated pages */}
+      <SupportChat />
     </div>
   );
 }
