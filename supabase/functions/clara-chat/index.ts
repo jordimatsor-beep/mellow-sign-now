@@ -139,7 +139,7 @@ serve(async (req: Request) => {
             timestamp: new Date().toISOString()
         }
 
-        console.log("Forwarding to n8n:", N8N_WEBHOOK_URL, "User:", user.id);
+        console.log("Forwarding to n8n webhook. User:", user.id);
 
         const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
             method: 'POST',

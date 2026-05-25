@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { getCorsHeaders, handleCorsPreflightRequest, escapeHtml } from '../_shared/cors.ts'
+import { getCorsHeaders, handleCorsPreflightRequest, escapeHtml, sanitizeErrorMessage } from '../_shared/cors.ts'
 
 interface RequestBody {
   document_id: string;
@@ -279,13 +279,10 @@ serve(async (req: Request) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Function Error:", error)
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message || 'Unknown error occurred',
-      }),
+      JSON.stringify({ success: false, error: sanitizeErrorMessage(error) }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     )
   }
