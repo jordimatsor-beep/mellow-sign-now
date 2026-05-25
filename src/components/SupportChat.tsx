@@ -440,8 +440,8 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
             <div className="bg-gradient-to-br from-primary to-primary/80 px-5 pt-5 pb-8">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2.5">
-                  <div className="h-9 w-9 rounded-full bg-white/20 backdrop-blur ring-2 ring-white/30 flex items-center justify-center shadow-sm">
-                    <span className="text-white font-bold text-sm">FC</span>
+                  <div className="h-9 w-9 rounded-full bg-white overflow-hidden ring-2 ring-white/30 flex items-center justify-center shadow-sm">
+                    <img src="/logo.jpg" alt="FirmaClara" className="h-full w-full object-cover" />
                   </div>
                   <div>
                     <p className="font-semibold text-white text-sm leading-tight">FirmaClara</p>
@@ -504,8 +504,8 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
           >
             {/* Header */}
             <div className="bg-gradient-to-br from-primary to-primary/85 px-4 py-3 flex items-center gap-3 flex-shrink-0">
-              <div className="h-9 w-9 rounded-full bg-white/20 backdrop-blur ring-2 ring-white/30 flex items-center justify-center flex-shrink-0 shadow-sm">
-                <span className="text-white font-bold text-sm">FC</span>
+              <div className="h-9 w-9 rounded-full bg-white overflow-hidden ring-2 ring-white/30 flex items-center justify-center flex-shrink-0 shadow-sm">
+                <img src="/logo.jpg" alt="FirmaClara" className="h-full w-full object-cover" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-white text-sm leading-tight">FirmaClara · Soporte</p>
