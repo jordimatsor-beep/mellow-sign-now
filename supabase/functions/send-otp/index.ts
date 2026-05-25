@@ -53,7 +53,7 @@ serve(async (req) => {
 
         const { token, channel } = body // channel: 'sms' | 'whatsapp' | 'email'
 
-        console.log(`OTP Request - Token: ${token}, Requested Channel: ${channel}`);
+        // token + channel validated below — no PII logged
 
         if (!token) throw new Error('Token is required')
 
@@ -278,7 +278,7 @@ serve(async (req) => {
                 ? (phone.startsWith('whatsapp:') ? phone : `whatsapp:${phone}`)
                 : phone;
 
-            console.log(`[OTP Request] Via: ${isWhatsApp ? 'WhatsApp' : 'SMS'} | To: ${to} | From: ${from}`);
+            // phone numbers not logged to protect signer PII
 
             if (accountSid && authToken) {
                 const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`

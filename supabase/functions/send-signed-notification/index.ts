@@ -126,10 +126,7 @@ serve(async (req) => {
       emailPayload.cc = [issuerEmail];
     }
 
-    console.log("Sending email via Resend...");
-    console.log("Subject:", emailPayload.subject);
-    console.log("To:", emailPayload.to);
-    console.log("Attachments:", JSON.stringify(attachments, null, 2));
+    // email recipient and attachment metadata not logged (PII)
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',

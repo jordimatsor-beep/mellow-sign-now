@@ -36,7 +36,6 @@ serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
 
     try {
-        console.log("Sign-complete invoked"); // Debug log
 
         // Initialize Supabase Client
         const supabaseUrl = Deno.env.get('SUPABASE_URL')

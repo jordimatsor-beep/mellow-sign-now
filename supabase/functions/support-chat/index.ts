@@ -54,7 +54,7 @@ serve(async (req: Request) => {
             type: 'support_chat'
         }
 
-        console.log("Forwarding to Support n8n:", N8N_WEBHOOK_URL, "User:", user.id);
+        // n8n URL and user ID not logged
 
         const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
             method: 'POST',
