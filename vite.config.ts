@@ -33,6 +33,8 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("@anthropic-ai")) return "ai";
           if (id.includes("date-fns")) return "dates";
           if (id.includes("zod") || id.includes("react-hook-form") || id.includes("@hookform")) return "forms";
+          if (id.includes("@tanstack")) return "tanstack";
+          if (id.includes("react-router") || id.includes("react-router-dom")) return "router";
           return "vendor";
         },
       },

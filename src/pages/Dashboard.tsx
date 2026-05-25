@@ -34,7 +34,8 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from('documents')
         .select('id, title, signer_email, status, created_at, sent_at, signed_at')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (error) throw error;
       return (data as unknown as Document[]) || [];
