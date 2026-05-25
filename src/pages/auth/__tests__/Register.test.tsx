@@ -1,10 +1,8 @@
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@/test/utils';
 import Register from '../Register';
 import { supabase } from '@/lib/supabase';
 
-// Mock dependencies
 vi.mock('@/lib/supabase', () => ({
     supabase: {
         auth: {
@@ -15,25 +13,16 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 vi.mock('@/context/AuthContext', () => ({
-    useAuth: () => ({
-        session: null,
-    }),
+    useAuth: () => ({ session: null }),
 }));
 
 vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual('react-router-dom');
-    return {
-        ...actual,
-        useNavigate: () => vi.fn(),
-    };
+    return { ...actual, useNavigate: () => vi.fn() };
 });
 
-// Mock hooks that might cause issues
 vi.mock('sonner', () => ({
-    toast: {
-        success: vi.fn(),
-        error: vi.fn(),
-    },
+    toast: { success: vi.fn(), error: vi.fn() },
 }));
 
 describe('Register Page', () => {
@@ -41,54 +30,70 @@ describe('Register Page', () => {
         vi.clearAllMocks();
     });
 
-    it('renders registration form', () => {
+    it('renders registration form with all required fields', () => {
         render(<Register />);
 
         expect(screen.getByRole('heading', { name: /crear cuenta/i })).toBeInTheDocument();
+        expect(screen.getByLabelText(/nombre completo/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/^contraseña$/i)).toBeInTheDocument();
-        expect(screen.getByLabelText(/confirmar contraseña/i)).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /registrarse/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /crear cuenta gratis/i })).toBeInTheDocument();
     });
 
-    it('validates matching passwords', async () => {
+    it('rejects passwords shorter than 12 characters', async () => {
         render(<Register />);
 
         const passwordInput = screen.getByLabelText(/^contraseña$/i);
-        const confirmInput = screen.getByLabelText(/confirmar contraseña/i);
-        const submitBtn = screen.getByRole('button', { name: /registrarse/i });
+        const submitBtn = screen.getByRole('button', { name: /crear cuenta gratis/i });
 
-        // Enter valid password but mismatching confirm
-        fireEvent.change(passwordInput, { target: { value: 'ValidPass123!' } });
-        fireEvent.change(confirmInput, { target: { value: 'Mismatch123!' } });
+        fireEvent.change(screen.getByLabelText(/nombre completo/i), { target: { value: 'Test User' } });
+        fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'test@example.com' } });
+        // "PassW0rd" = 8 chars — was valid under old 8-char rule, invalid now
+        fireEvent.change(passwordInput, { target: { value: 'PassW0rd' } });
         fireEvent.click(submitBtn);
 
         await waitFor(() => {
-            expect(screen.getByText(/las contraseñas no coinciden/i)).toBeInTheDocument();
+            expect(screen.getByText(/mínimo 12 caracteres/i)).toBeInTheDocument();
         });
+
+        expect(supabase.auth.signUp).not.toHaveBeenCalled();
     });
 
-    it('submits form with valid data', async () => {
-        // Setup mock success
+    it('rejects passwords missing uppercase, lowercase, or digit', async () => {
+        render(<Register />);
+
+        const passwordInput = screen.getByLabelText(/^contraseña$/i);
+        const submitBtn = screen.getByRole('button', { name: /crear cuenta gratis/i });
+
+        fireEvent.change(screen.getByLabelText(/nombre completo/i), { target: { value: 'Test User' } });
+        fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'test@example.com' } });
+        // 13 chars but all lowercase + digits, no uppercase
+        fireEvent.change(passwordInput, { target: { value: 'securepass123' } });
+        fireEvent.click(submitBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText(/mayúscula, minúscula y número/i)).toBeInTheDocument();
+        });
+
+        expect(supabase.auth.signUp).not.toHaveBeenCalled();
+    });
+
+    it('submits form with valid data (12+ chars, mixed case, digit)', async () => {
         (supabase.auth.signUp as any).mockResolvedValue({ error: null });
 
         render(<Register />);
 
-        const emailInput = screen.getByLabelText(/email/i);
-        const passwordInput = screen.getByLabelText(/^contraseña$/i);
-        const confirmInput = screen.getByLabelText(/confirmar contraseña/i);
-        const submitBtn = screen.getByRole('button', { name: /registrarse/i });
+        fireEvent.change(screen.getByLabelText(/nombre completo/i), { target: { value: 'María García' } });
+        fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'test@example.com' } });
+        // "ValidPass12A" = 12 chars, upper + lower + digit ✓
+        fireEvent.change(screen.getByLabelText(/^contraseña$/i), { target: { value: 'ValidPass12A' } });
 
-        fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-        fireEvent.change(passwordInput, { target: { value: 'ValidPass123!' } });
-        fireEvent.change(confirmInput, { target: { value: 'ValidPass123!' } });
-
-        fireEvent.click(submitBtn);
+        fireEvent.click(screen.getByRole('button', { name: /crear cuenta gratis/i }));
 
         await waitFor(() => {
             expect(supabase.auth.signUp).toHaveBeenCalledWith(expect.objectContaining({
                 email: 'test@example.com',
-                password: 'ValidPass123!',
+                password: 'ValidPass12A',
             }));
         });
     });

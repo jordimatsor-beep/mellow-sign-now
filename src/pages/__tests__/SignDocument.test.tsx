@@ -75,7 +75,7 @@ describe('SignDocument Page', () => {
         renderWithRouter(<SignDocument />);
 
         await waitFor(() => {
-            expect(screen.getByText(/No se ha podido cargar el documento/i)).toBeInTheDocument();
+            expect(screen.getByText(/No se pudo cargar el documento/i)).toBeInTheDocument();
         });
     });
 });

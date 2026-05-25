@@ -143,6 +143,51 @@ describe('Password Validation', () => {
     expect(result.errors).toContain('Debe incluir mayúscula');
     expect(result.errors).toContain('Debe incluir número');
   });
+
+  // ── Nuevos tests para el fix password_min_length 8 → 12 ──────────────────
+  it('rejects passwords that met old 8-char minimum but fail new 12-char minimum', () => {
+    // "PassW0rd" = 8 chars: valid under old rule, invalid now
+    expect(isValidPassword('PassW0rd').valid).toBe(false);
+    expect(isValidPassword('PassW0rd').errors).toContain('Mínimo 12 caracteres');
+  });
+
+  it('rejects 11-char passwords (boundary: one below minimum)', () => {
+    // "SecurePas1A" = 11 chars, has upper/lower/digit — only fails on length
+    expect(isValidPassword('SecurePas1A').valid).toBe(false);
+    expect(isValidPassword('SecurePas1A').errors).toContain('Mínimo 12 caracteres');
+    expect(isValidPassword('SecurePas1A').errors).not.toContain('Debe incluir mayúscula');
+    expect(isValidPassword('SecurePas1A').errors).not.toContain('Debe incluir número');
+  });
+
+  it('accepts exactly 12-char passwords (boundary: at minimum)', () => {
+    // "SecurePass1A" = 12 chars, upper/lower/digit ✓
+    expect(isValidPassword('SecurePass1A').valid).toBe(true);
+  });
+
+  // ── Nuevos tests para el fix password_required_characters ─────────────────
+  it('rejects passwords with digits+lowercase but no uppercase (separate class enforcement)', () => {
+    // "securepass123" = 13 chars but no uppercase
+    expect(isValidPassword('securepass123').valid).toBe(false);
+    expect(isValidPassword('securepass123').errors).toContain('Debe incluir mayúscula');
+  });
+
+  it('rejects passwords with digits+uppercase but no lowercase', () => {
+    // "SECUREPASS123" = 13 chars but no lowercase
+    expect(isValidPassword('SECUREPASS123').valid).toBe(false);
+    expect(isValidPassword('SECUREPASS123').errors).toContain('Debe incluir minúscula');
+  });
+
+  it('rejects passwords with upper+lowercase but no digits', () => {
+    // "SecurePasswordHere" = 18 chars but no digit
+    expect(isValidPassword('SecurePasswordHere').valid).toBe(false);
+    expect(isValidPassword('SecurePasswordHere').errors).toContain('Debe incluir número');
+  });
+
+  it('accepts passwords meeting all three character class requirements', () => {
+    // Exactly one of each class + meets length
+    expect(isValidPassword('aaaaaaaaaaA1').valid).toBe(true);  // 12 chars
+    expect(isValidPassword('AAAAAAAAAA1a').valid).toBe(true);  // 12 chars
+  });
 });
 
 describe('URL Validation', () => {
