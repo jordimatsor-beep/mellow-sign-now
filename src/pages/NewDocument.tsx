@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Upload, FileText, ArrowRight, Loader2, User, Lock, Unlock, Receipt, Wrench, FileSignature, ClipboardList, MapPin } from "lucide-react";
 import { ContactSelector } from "@/components/contacts/ContactSelector";
+import { SignaturePositionPicker } from "@/components/documents/SignaturePositionPicker";
 import { useProfile } from "@/context/ProfileContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,6 +53,7 @@ export default function NewDocument() {
   const [customMessage, setCustomMessage] = useState("");
   const [expiresInDays, setExpiresInDays] = useState("7");
   const [isContactSelectorOpen, setIsContactSelectorOpen] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   // Fetch credits
   const { data: credits = 0, isLoading: isLoadingCredits } = useQuery({
@@ -791,6 +793,26 @@ export default function NewDocument() {
                 </div>
               </RadioGroup>
 
+              {/* Visual placement picker (recommended path) */}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-primary/40 text-primary hover:bg-primary/5"
+                onClick={() => {
+                  if (!file) {
+                    toast.error("Sube primero el documento para poder previsualizarlo");
+                    return;
+                  }
+                  setIsPickerOpen(true);
+                }}
+              >
+                <MapPin className="h-4 w-4 mr-2" />
+                Elegir el lugar en el documento (recomendado)
+              </Button>
+              <p className="text-xs text-muted-foreground text-center -mt-1">
+                Verás tu documento y podrás arrastrar el recuadro de firma a la posición exacta
+              </p>
+
               {/* Position presets for last_page */}
               {signaturePosition === "last_page" && (
                 <div className="ml-6 p-3 rounded-lg bg-muted/30 space-y-3">
@@ -1063,6 +1085,23 @@ export default function NewDocument() {
       <Card className="border-muted/40 shadow-lg">
         <CardContent className="p-6">{renderStep()}</CardContent>
       </Card>
+
+      <SignaturePositionPicker
+        open={isPickerOpen}
+        onOpenChange={setIsPickerOpen}
+        file={file}
+        fileUrl={draftFileUrl}
+        initialPage={signaturePage > 0 ? signaturePage : undefined}
+        initialX={signatureX}
+        initialY={signatureY}
+        onConfirm={(pos) => {
+          setSignaturePosition("custom");
+          setSignaturePage(pos.page);
+          setSignatureX(pos.x);
+          setSignatureY(pos.y);
+          toast.success(`Firma colocada en la página ${pos.page}`);
+        }}
+      />
 
       <ContactSelector
         isOpen={isContactSelectorOpen}

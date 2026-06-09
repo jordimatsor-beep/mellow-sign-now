@@ -12,6 +12,9 @@ Format: [version] YYYY-MM-DD — brief description.
 - **Reembolso de créditos** — el rollback al fallar el envío llamaba a `consume_credit` con importe negativo (bloqueado por seguridad) y parámetro inexistente: el crédito nunca se devolvía. Nueva RPC `refund_credit()` (migración `20260609`) + llamada corregida.
 - **Página anexa de firma** — ahora incluye firmante, email, documento, fecha (Europe/Madrid) e IP; antes solo título e imagen flotante. Sanitizador WinAnsi para títulos/nombres con caracteres fuera de Latin-1.
 
+### Added
+- **Selector visual de posición de firma** — botón "Elegir el lugar en el documento" en Nuevo Documento: vista previa del PDF (pdf.js, carga diferida) con recuadro arrastrable; convierte la posición a puntos PDF exactos para cualquier tamaño de página (los presets fijos solo eran fiables en A4 vertical). Sin cambios de backend.
+
 ### Security
 - **API signature-requests** — documentos ligados a un usuario real vía `api_clients.user_id`, consumo de 1 crédito por solicitud (`consume_credit_for_user`, solo service_role), ownership en GET (`api_client_id`), validación de email y `document_url` https, `sign_token` generado explícitamente.
 - **Secretos fuera del repo** — API key y webhook secret de Nexo eliminados de la migración (rotar igualmente: estuvieron en disco fuera del gestor de secretos, aunque nunca llegaron a git); cliente `nexo` desactivado hasta rotación; plantilla `scripts/db/setup_api_client.sql`; credenciales reales retiradas de `.env.e2e`.
