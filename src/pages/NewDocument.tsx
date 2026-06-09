@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Upload, FileText, ArrowRight, Loader2, User, Lock, Unlock, Receipt, Wrench, FileSignature, ClipboardList, MapPin } from "lucide-react";
 import { ContactSelector } from "@/components/contacts/ContactSelector";
 import { SignaturePositionPicker } from "@/components/documents/SignaturePositionPicker";
 import { useProfile } from "@/context/ProfileContext";
+import { useCredits } from "@/hooks/useCredits";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,22 +55,12 @@ export default function NewDocument() {
   const [isContactSelectorOpen, setIsContactSelectorOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  // Fetch credits
-  const { data: credits = 0, isLoading: isLoadingCredits } = useQuery({
-    queryKey: ['credits-check'],
-    queryFn: async () => {
-      return withTimeout(
-        (async () => {
-          const { data } = await supabase.from('user_credit_purchases').select('credits_total, credits_used');
-          if (data) {
-            return data.reduce((acc, pack) => acc + (pack.credits_total || 0) - (pack.credits_used || 0), 0);
-          }
-          return 0;
-        })(),
-        3000, "Credits check"
-      );
-    }
-  });
+  // Fetch credits — single source of truth (RPC get_available_credits via
+  // useCredits): excludes expired packs, matching both what consume_credit
+  // can actually spend and what the sidebar badge shows. The previous local
+  // query summed user_credit_purchases without the expiry filter and showed
+  // inflated balances (e.g. 264 vs 122 real).
+  const { credits, isLoading: isLoadingCredits, refetch: refetchCredits } = useCredits();
 
   // Signature position settings
   // IMPORTANT: signaturePage must match the default selected radio ("last_page" -> -1).
@@ -452,6 +442,7 @@ export default function NewDocument() {
       }
 
       setUploadStatus("success");
+      refetchCredits(); // credit was consumed — refresh the shared balance
       toast.success("Documento enviado correctamente");
       navigate('/dashboard');
 
