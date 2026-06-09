@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_clients: {
+        Row: {
+          active: boolean
+          api_key_hash: string
+          created_at: string
+          id: string
+          last_used_at: string | null
+          name: string
+          user_id: string | null
+          webhook_secret: string
+          webhook_url: string | null
+        }
+        Insert: {
+          active?: boolean
+          api_key_hash: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          name: string
+          user_id?: string | null
+          webhook_secret: string
+          webhook_url?: string | null
+        }
+        Update: {
+          active?: boolean
+          api_key_hash?: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          name?: string
+          user_id?: string | null
+          webhook_secret?: string
+          webhook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_clients_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clara_conversations: {
         Row: {
           created_at: string | null
@@ -141,98 +185,94 @@ export type Database = {
       }
       credit_packs: {
         Row: {
-          id: string
-          slug: string
-          name: string
+          created_at: string
           credits: number
-          price: number
           description: string | null
-          popular: boolean
-          is_active: boolean
-          created_at: string | null
-          updated_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          popular: boolean | null
+          price: number
+          slug: string
+          updated_at: string
         }
         Insert: {
-          id?: string
-          slug: string
-          name: string
+          created_at?: string
           credits: number
-          price: number
           description?: string | null
-          popular?: boolean
-          is_active?: boolean
-          created_at?: string | null
-          updated_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          popular?: boolean | null
+          price: number
+          slug: string
+          updated_at?: string
         }
         Update: {
-          id?: string
-          slug?: string
-          name?: string
+          created_at?: string
           credits?: number
-          price?: number
           description?: string | null
-          popular?: boolean
-          is_active?: boolean
-          created_at?: string | null
-          updated_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          popular?: boolean | null
+          price?: number
+          slug?: string
+          updated_at?: string
         }
         Relationships: []
       }
-      user_credit_purchases: {
+      credit_transactions: {
         Row: {
-          created_at: string | null
-          credits_total: number
-          credits_used: number | null
-          expires_at: string | null
+          amount: number
+          created_at: string
+          credit_pack_id: string | null
+          description: string
+          document_id: string | null
           id: string
-          pack_type: string
-          price_paid: number | null
-          purchased_at: string | null
-          stripe_payment_id: string | null
-          stripe_session_id: string | null
-          updated_at: string | null
+          type: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
-          credits_total: number
-          credits_used?: number | null
-          expires_at?: string | null
+          amount: number
+          created_at?: string
+          credit_pack_id?: string | null
+          description: string
+          document_id?: string | null
           id?: string
-          pack_type: string
-          price_paid?: number | null
-          purchased_at?: string | null
-          stripe_payment_id?: string | null
-          stripe_session_id?: string | null
-          updated_at?: string | null
+          type: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
-          credits_total?: number
-          credits_used?: number | null
-          expires_at?: string | null
+          amount?: number
+          created_at?: string
+          credit_pack_id?: string | null
+          description?: string
+          document_id?: string | null
           id?: string
-          pack_type?: string
-          price_paid?: number | null
-          purchased_at?: string | null
-          stripe_payment_id?: string | null
-          stripe_session_id?: string | null
-          updated_at?: string | null
+          type?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "user_credit_purchases_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "credit_transactions_document_id_fkey"
+            columns: ["document_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transactions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents_with_signatures"
             referencedColumns: ["id"]
           },
         ]
       }
       documents: {
         Row: {
+          api_client_id: string | null
           cancelled_at: string | null
           certificate_url: string | null
           created_at: string | null
@@ -243,13 +283,14 @@ export type Database = {
           id: string
           otp_code_hash: string | null
           otp_expires_at: string | null
+          otp_failed_attempts: number | null
           security_level:
-          | Database["public"]["Enums"]["security_level_enum"]
-          | null
+            | Database["public"]["Enums"]["security_level_enum"]
+            | null
           sent_at: string | null
           sign_token: string | null
-          signature_type: string | null
           signature_page: number | null
+          signature_type: string | null
           signature_x: number | null
           signature_y: number | null
           signed_at: string | null
@@ -264,9 +305,9 @@ export type Database = {
           updated_at: string | null
           user_id: string
           viewed_at: string | null
-          whatsapp_verification_status: string | null
         }
         Insert: {
+          api_client_id?: string | null
           cancelled_at?: string | null
           certificate_url?: string | null
           created_at?: string | null
@@ -277,13 +318,14 @@ export type Database = {
           id?: string
           otp_code_hash?: string | null
           otp_expires_at?: string | null
+          otp_failed_attempts?: number | null
           security_level?:
-          | Database["public"]["Enums"]["security_level_enum"]
-          | null
+            | Database["public"]["Enums"]["security_level_enum"]
+            | null
           sent_at?: string | null
           sign_token?: string | null
-          signature_type?: string | null
           signature_page?: number | null
+          signature_type?: string | null
           signature_x?: number | null
           signature_y?: number | null
           signed_at?: string | null
@@ -298,9 +340,9 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           viewed_at?: string | null
-          whatsapp_verification_status?: string | null
         }
         Update: {
+          api_client_id?: string | null
           cancelled_at?: string | null
           certificate_url?: string | null
           created_at?: string | null
@@ -311,13 +353,14 @@ export type Database = {
           id?: string
           otp_code_hash?: string | null
           otp_expires_at?: string | null
+          otp_failed_attempts?: number | null
           security_level?:
-          | Database["public"]["Enums"]["security_level_enum"]
-          | null
+            | Database["public"]["Enums"]["security_level_enum"]
+            | null
           sent_at?: string | null
           sign_token?: string | null
-          signature_type?: string | null
           signature_page?: number | null
+          signature_type?: string | null
           signature_x?: number | null
           signature_y?: number | null
           signed_at?: string | null
@@ -332,9 +375,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           viewed_at?: string | null
-          whatsapp_verification_status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_api_client_id_fkey"
+            columns: ["api_client_id"]
+            isOneToOne: false
+            referencedRelation: "api_clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_user_id_fkey"
             columns: ["user_id"]
@@ -343,6 +392,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      email_queue: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          error_message: string | null
+          html_body: string
+          id: string
+          last_attempt_at: string | null
+          metadata: Json | null
+          next_retry_at: string | null
+          sent_at: string | null
+          status: string | null
+          subject: string
+          template_type: string
+          to_email: string
+          to_name: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          html_body: string
+          id?: string
+          last_attempt_at?: string | null
+          metadata?: Json | null
+          next_retry_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject: string
+          template_type: string
+          to_email: string
+          to_name?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          html_body?: string
+          id?: string
+          last_attempt_at?: string | null
+          metadata?: Json | null
+          next_retry_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject?: string
+          template_type?: string
+          to_email?: string
+          to_name?: string | null
+        }
+        Relationships: []
       }
       event_logs: {
         Row: {
@@ -399,6 +499,27 @@ export type Database = {
           },
         ]
       }
+      knowledge_vectors: {
+        Row: {
+          content: string | null
+          embedding: string | null
+          id: number
+          metadata: Json | null
+        }
+        Insert: {
+          content?: string | null
+          embedding?: string | null
+          id?: number
+          metadata?: Json | null
+        }
+        Update: {
+          content?: string | null
+          embedding?: string | null
+          id?: number
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       n8n_chat_histories: {
         Row: {
           id: number
@@ -416,6 +537,54 @@ export type Database = {
           session_id?: string
         }
         Relationships: []
+      }
+      otp_logs: {
+        Row: {
+          block_reason: string | null
+          blocked: boolean | null
+          created_at: string | null
+          document_id: string | null
+          id: string
+          ip_address: unknown
+          success: boolean | null
+          user_agent: string | null
+        }
+        Insert: {
+          block_reason?: string | null
+          blocked?: boolean | null
+          created_at?: string | null
+          document_id?: string | null
+          id?: string
+          ip_address?: unknown
+          success?: boolean | null
+          user_agent?: string | null
+        }
+        Update: {
+          block_reason?: string | null
+          blocked?: boolean | null
+          created_at?: string | null
+          document_id?: string | null
+          id?: string
+          ip_address?: unknown
+          success?: boolean | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "otp_logs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "otp_logs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents_with_signatures"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pack_types: {
         Row: {
@@ -546,6 +715,139 @@ export type Database = {
           },
         ]
       }
+      support_chats: {
+        Row: {
+          admin_read: boolean | null
+          closed_by: string | null
+          created_at: string
+          id: string
+          last_message_at: string | null
+          rating: number | null
+          rating_comment: string | null
+          status: string
+          subject: string
+          updated_at: string
+          user_email: string
+          user_id: string
+          user_read: boolean | null
+        }
+        Insert: {
+          admin_read?: boolean | null
+          closed_by?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          rating?: number | null
+          rating_comment?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+          user_email: string
+          user_id: string
+          user_read?: boolean | null
+        }
+        Update: {
+          admin_read?: boolean | null
+          closed_by?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          rating?: number | null
+          rating_comment?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_email?: string
+          user_id?: string
+          user_read?: boolean | null
+        }
+        Relationships: []
+      }
+      support_messages: {
+        Row: {
+          chat_id: string
+          content: string
+          created_at: string
+          id: string
+          sender: string
+        }
+        Insert: {
+          chat_id: string
+          content: string
+          created_at?: string
+          id?: string
+          sender: string
+        }
+        Update: {
+          chat_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          sender?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "support_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_credit_purchases: {
+        Row: {
+          created_at: string | null
+          credits_total: number
+          credits_used: number
+          expires_at: string | null
+          id: string
+          pack_type: string
+          price_paid: number | null
+          purchased_at: string | null
+          stripe_payment_id: string | null
+          stripe_session_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          credits_total: number
+          credits_used?: number
+          expires_at?: string | null
+          id?: string
+          pack_type: string
+          price_paid?: number | null
+          purchased_at?: string | null
+          stripe_payment_id?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          credits_total?: number
+          credits_used?: number
+          expires_at?: string | null
+          id?: string
+          pack_type?: string
+          price_paid?: number | null
+          purchased_at?: string | null
+          stripe_payment_id?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_credit_purchases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           address: string | null
@@ -618,19 +920,86 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          attempts: number
+          created_at: string
+          error_message: string | null
+          event_id: string
+          event_type: string
+          id: string
+          last_attempt_at: string | null
+          next_retry_at: string | null
+          payload: Json
+          processed_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          event_id: string
+          event_type: string
+          id?: string
+          last_attempt_at?: string | null
+          next_retry_at?: string | null
+          payload: Json
+          processed_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          event_id?: string
+          event_type?: string
+          id?: string
+          last_attempt_at?: string | null
+          next_retry_at?: string | null
+          payload?: Json
+          processed_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       documents_with_signatures: {
         Row: {
+          certificate_url: string | null
           created_at: string | null
+          expires_at: string | null
+          file_url: string | null
           id: string | null
+          security_level:
+            | Database["public"]["Enums"]["security_level_enum"]
+            | null
+          sent_at: string | null
+          sign_token: string | null
+          signature_hash: string | null
+          signature_type: string | null
           signed_at: string | null
+          signed_file_url: string | null
           signer_email: string | null
+          signer_ip: unknown
           signer_name: string | null
+          signer_phone: string | null
+          signer_user_agent: string | null
           status: string | null
           title: string | null
+          tsa_timestamp: string | null
+          updated_at: string | null
+          user_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "documents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_credits: {
         Row: {
@@ -650,18 +1019,109 @@ export type Database = {
       }
     }
     Functions: {
-      consume_credit:
-      | { Args: { amount: number }; Returns: undefined }
-      | {
-        Args: { p_user_id: string }
+      add_credits_with_log: {
+        Args: {
+          p_amount: number
+          p_description: string
+          p_type?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_add_credits: {
+        Args: { p_credits: number; p_note?: string; p_target_user_id: string }
+        Returns: Json
+      }
+      admin_change_role: {
+        Args: { new_role: string; target_user_id: string }
+        Returns: Json
+      }
+      admin_get_clara_conversations: {
+        Args: { page_offset?: number; page_size?: number }
         Returns: {
-          remaining: number
-          success: boolean
+          conversation_id: string
+          created_at: string
+          last_message: string
+          message_count: number
+          updated_at: string
+          user_email: string
+          user_id: string
+          user_name: string
         }[]
       }
-      get_available_credits:
-      | { Args: never; Returns: number }
-      | { Args: { p_user_id: string }; Returns: number }
+      admin_get_logs: {
+        Args: {
+          event_type_filter?: string
+          page_offset?: number
+          page_size?: number
+        }
+        Returns: {
+          created_at: string
+          document_id: string
+          document_title: string
+          event_data: Json
+          event_type: string
+          id: string
+          user_email: string
+        }[]
+      }
+      admin_get_user: { Args: { user_uuid: string }; Returns: Json }
+      admin_grant_credits: {
+        Args: {
+          credit_amount: number
+          description?: string
+          target_user_id: string
+        }
+        Returns: Json
+      }
+      admin_list_users: {
+        Args: { page_offset?: number; page_size?: number; search_term?: string }
+        Returns: {
+          available_credits: number
+          company_name: string
+          created_at: string
+          email: string
+          id: string
+          legal_accepted: boolean
+          name: string
+          onboarding_completed: boolean
+          role: string
+          total_credits: number
+          total_documents: number
+        }[]
+      }
+      admin_revoke_credits: {
+        Args: {
+          credit_amount: number
+          description?: string
+          target_user_id: string
+        }
+        Returns: Json
+      }
+      cleanup_old_drafts: { Args: never; Returns: number }
+      consume_credit: {
+        Args: { amount: number; p_description?: string }
+        Returns: undefined
+      }
+      consume_credit_for_user: {
+        Args: { p_description?: string; p_user_id: string }
+        Returns: undefined
+      }
+      get_admin_stats:
+        | { Args: never; Returns: Json }
+        | { Args: { p_period?: string }; Returns: Json }
+      get_available_credits: { Args: never; Returns: number }
+      get_credit_transactions: {
+        Args: { p_limit?: number }
+        Returns: {
+          amount: number
+          created_at: string
+          description: string
+          document_id: string
+          id: string
+          type: string
+        }[]
+      }
       get_document_by_token: {
         Args: { p_token: string }
         Returns: {
@@ -698,62 +1158,95 @@ export type Database = {
           whatsapp_verification: boolean
         }[]
       }
+      grant_credits: {
+        Args: {
+          credits_amount: number
+          description_text?: string
+          target_email: string
+        }
+        Returns: Json
+      }
+      is_admin: { Args: never; Returns: boolean }
+      is_support: { Args: never; Returns: boolean }
+      mark_document_viewed: { Args: { token_uuid: string }; Returns: undefined }
       mark_expired_documents: { Args: never; Returns: number }
-      mark_document_viewed: {
-        Args: { token_uuid: string }
-        Returns: undefined
+      match_knowledge:
+        | {
+            Args: {
+              filter?: Json
+              match_count: number
+              match_threshold?: number
+              query_embedding: string
+            }
+            Returns: {
+              content: string
+              id: number
+              metadata: Json
+              similarity: number
+            }[]
+          }
+        | {
+            Args: {
+              match_count: number
+              match_threshold: number
+              query_embedding: string
+            }
+            Returns: {
+              content: string
+              id: number
+              metadata: Json
+              similarity: number
+            }[]
+          }
+        | {
+            Args: {
+              filter?: Json
+              match_count: number
+              match_threshold: number
+              query_embedding: string
+            }
+            Returns: {
+              content: string
+              id: number
+              metadata: Json
+              similarity: number
+            }[]
+          }
+      refund_credit: { Args: { p_description?: string }; Returns: undefined }
+      set_user_role: {
+        Args: { new_role: string; target_email: string }
+        Returns: Json
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       submit_signature:
-      | {
-        Args: {
-          p_hash_sha256: string
-          p_ip_address: unknown
-          p_sign_token: string
-          p_signature_image_url: string
-          p_signer_email: string
-          p_signer_name: string
-          p_user_agent: string
-        }
-        Returns: Json
-      }
-      | {
-        Args: {
-          p_hash_sha256: string
-          p_ip_address: unknown
-          p_sign_token: string
-          p_signature_image_url: string
-          p_signer_email: string
-          p_signer_name: string
-          p_tsa_request?: string
-          p_tsa_response?: string
-          p_tsa_timestamp?: string
-          p_user_agent: string
-        }
-        Returns: Json
-      }
-      get_credit_transactions: {
-        Args: { p_limit: number }
-        Returns: {
-          id: string
-          type: "purchase" | "usage" | "gift" | "refund" | "expiry"
-          amount: number
-          description: string
-          document_id: string | null
-          created_at: string
-        }[]
-      }
-      get_admin_stats: {
-        Args: { p_period?: string }
-        Returns: Json
-      }
-      admin_add_credits: {
-        Args: {
-          p_target_user_id: string
-          p_credits: number
-          p_note?: string
-        }
-        Returns: Json
-      }
+        | {
+            Args: {
+              p_hash_sha256: string
+              p_ip_address: unknown
+              p_sign_token: string
+              p_signature_image_url: string
+              p_signer_email: string
+              p_signer_name: string
+              p_user_agent: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_hash_sha256: string
+              p_ip_address: unknown
+              p_sign_token: string
+              p_signature_image_url: string
+              p_signer_email: string
+              p_signer_name: string
+              p_tsa_request?: string
+              p_tsa_response?: string
+              p_tsa_timestamp?: string
+              p_user_agent: string
+            }
+            Returns: Json
+          }
     }
     Enums: {
       security_level_enum: "standard" | "whatsapp_otp"
@@ -770,116 +1263,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
