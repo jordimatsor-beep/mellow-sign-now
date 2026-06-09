@@ -38,6 +38,7 @@ interface DocumentData {
   signedAt?: string;
   signer_phone?: string;
   security_level?: 'standard' | 'whatsapp_otp';
+  whatsapp_verification?: boolean;
   signed_file_url?: string;
   certificate_url?: string;
   // Internal fields from RPC

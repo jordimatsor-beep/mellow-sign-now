@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             );
 
             if (error) {
-                console.error("Error fetching profile:", error);
+                if (import.meta.env.DEV) console.error("Error fetching profile:", error);
                 return null;
             }
 
@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             return profile;
         } catch (error) {
-            console.error("Error fetching profile (timeout/catch):", error);
+            if (import.meta.env.DEV) console.error("Error fetching profile (timeout/catch):", error);
             // If timeout or error, return null so we don't crash or hang
             return null;
         }
@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Failsafe: if everything hangs, force stop loading after 15s
         const safetyTimer = setTimeout(() => {
             if (mounted && loading) {
-                console.warn("Auth load safety timeout triggered");
+                if (import.meta.env.DEV) console.warn("Auth load safety timeout triggered");
                 setLoading(false);
             }
         }, 15000);
@@ -122,12 +122,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             const profileData = await fetchProfile(currentUser.id);
                             if (mounted) setProfileAndRef(profileData);
                         } catch (e) {
-                            console.error("Profile fetch error", e);
+                            if (import.meta.env.DEV) console.error("Profile fetch error", e);
                         }
                     }
                 }
             } catch (error) {
-                console.error("Auth initialization error or timeout:", error);
+                if (import.meta.env.DEV) console.error("Auth initialization error or timeout:", error);
             } finally {
                 if (mounted) {
                     setLoading(false);
@@ -193,7 +193,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             // Currently using window.location to be absolutely sure all memory is cleared
             window.location.href = '/login';
         } catch (error) {
-            console.error("Error signing out:", error);
+            if (import.meta.env.DEV) console.error("Error signing out:", error);
             setIsLoggingOut(false); // Only reset if error, otherwise we are redirecting
         }
     };

@@ -18,18 +18,31 @@ export default function StealthLogin() {
         setLoading(true);
 
         try {
-            const { error } = await supabase.auth.signInWithPassword({
+            const { data: authData, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             });
 
             if (error) throw error;
 
-            // Optional: Check role immediately or let AdminRoute handle it
-            // We just let them "in", AdminRoute will decide if they see Dashboard or Fruit Shop again (if not admin)
+            // Verify the role BEFORE navigating: a normal user with valid
+            // credentials must never reach the admin layout, not even briefly.
+            const { data: profile } = await supabase
+                .from('users')
+                .select('role')
+                .eq('id', authData.user?.id ?? '')
+                .single();
+
+            const role = (profile as { role?: string } | null)?.role;
+            if (role !== 'admin' && role !== 'support') {
+                await supabase.auth.signOut();
+                throw new Error('not-authorized');
+            }
+
             navigate("/shobdgohs/dashboard");
         } catch (error: any) {
-            console.error("Login failed:", error);
+            if (import.meta.env.DEV) console.error("Login failed:", error);
+            // Same generic message for bad credentials and non-admin accounts.
             toast.error("Error de credenciales de empleado.");
         } finally {
             setLoading(false);

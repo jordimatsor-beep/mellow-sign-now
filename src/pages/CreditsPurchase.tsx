@@ -42,7 +42,8 @@ export default function CreditsPurchase() {
     try {
       await buyCredits(packSlug);
     } catch (e) {
-      console.error(e);
+      // buyCredits() already surfaces the error to the user via toast
+      if (import.meta.env.DEV) console.error(e);
     } finally {
       setBuyingPackId(null);
     }

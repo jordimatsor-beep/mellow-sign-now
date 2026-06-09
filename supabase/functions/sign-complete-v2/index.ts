@@ -244,6 +244,11 @@ serve(async (req: Request) => {
         const pdfDoc = await PDFDocument.load(pdfBytes);
         const timesRoman = await pdfDoc.embedFont(StandardFonts.TimesRoman);
 
+        // Standard fonts only support WinAnsi (Latin-1). Strip anything else
+        // (e.g. emojis in titles/names) so drawText can never crash the signing.
+        const winAnsiSafe = (s: unknown): string =>
+            String(s ?? '-').replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '?');
+
         // FIX: pdf-lib's embedPng needs raw PNG bytes, NOT a data URL string.
         // Convert the base64 data URL to a Uint8Array for correct embedding.
         const pngBase64 = base64Data; // Already extracted above (line 67)
@@ -305,6 +310,29 @@ serve(async (req: Request) => {
                 height: pngDims.height,
             });
 
+            // Signer metadata block (the annex used to contain only the floating
+            // signature image, which looked broken and had no evidentiary context)
+            const annexLines = [
+                `Firmante: ${winAnsiSafe(doc.signer_name)}`,
+                `Email: ${winAnsiSafe(doc.signer_email)}`,
+                `Documento: ${winAnsiSafe(doc.title)}`,
+                `Fecha de firma: ${signedAt.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })} (hora peninsular)`,
+                `Direccion IP: ${winAnsiSafe(ip_address)}`,
+            ];
+            let annexY = pageHeight - 300;
+            for (const line of annexLines) {
+                targetPage.drawText(line, {
+                    x: 50, y: annexY, size: 11, font: timesRoman, color: rgb(0.2, 0.2, 0.2),
+                });
+                annexY -= 18;
+            }
+            targetPage.drawText('Este anexo forma parte integrante del documento. El certificado de auditoria completo', {
+                x: 50, y: annexY - 10, size: 8, font: timesRoman, color: rgb(0.45, 0.45, 0.45),
+            });
+            targetPage.drawText('(hash, sello de tiempo y trazabilidad) se emite como documento separado.', {
+                x: 50, y: annexY - 22, size: 8, font: timesRoman, color: rgb(0.45, 0.45, 0.45),
+            });
+
         } else if (sigPageSetting === -1) {
             // --- USE LAST PAGE (NEW DEFAULT) ---
             targetPage = pages[pages.length - 1];
@@ -335,9 +363,9 @@ serve(async (req: Request) => {
                 height: pngDims.height,
             });
 
-            // Draw minimal metadata below signature
-            const metaY = finalY - 15;
-            const dateText = `Firmado: ${signedAt.toLocaleString('es-ES')}`;
+            // Draw minimal metadata below signature (clamped so it never goes off-page)
+            const metaY = Math.max(finalY - 15, 8);
+            const dateText = `Firmado por ${winAnsiSafe(doc.signer_name)} - ${signedAt.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}`;
             targetPage.drawText(dateText, {
                 x: finalX,
                 y: metaY,

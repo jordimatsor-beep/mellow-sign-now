@@ -71,8 +71,11 @@ export default function NewDocument() {
   });
 
   // Signature position settings
+  // IMPORTANT: signaturePage must match the default selected radio ("last_page" -> -1).
+  // 0 means "annex page" in the backend; a 0 default caused signatures to land on an
+  // appended page even though the UI showed "Ultima pagina" selected (bug fix 2026-06).
   const [signaturePosition, setSignaturePosition] = useState<"new_page" | "last_page" | "custom">("last_page");
-  const [signaturePage, setSignaturePage] = useState(0);
+  const [signaturePage, setSignaturePage] = useState(-1);
   const [signatureX, setSignatureX] = useState(0);
   const [signatureY, setSignatureY] = useState(0);
   const [signaturePreset, setSignaturePreset] = useState<string>("bottom-center");
@@ -102,7 +105,7 @@ export default function NewDocument() {
 
       if (error) {
         toast.error("Error al cargar el borrador");
-        console.error(error);
+        if (import.meta.env.DEV) console.error(error);
         return;
       }
 
@@ -117,15 +120,15 @@ export default function NewDocument() {
         setSignerPhone(draft.signer_phone || '');
         setCustomMessage(draft.custom_message || '');
 
-        // Restore signature position
-        if (draft.signature_page !== undefined) setSignaturePage(draft.signature_page);
-        if (draft.signature_x !== undefined) setSignatureX(draft.signature_x);
-        if (draft.signature_y !== undefined) setSignatureY(draft.signature_y);
+        // Restore signature position (guard against null from pre-migration rows)
+        if (typeof draft.signature_page === 'number') setSignaturePage(draft.signature_page);
+        if (typeof draft.signature_x === 'number') setSignatureX(draft.signature_x);
+        if (typeof draft.signature_y === 'number') setSignatureY(draft.signature_y);
 
         // Restore specific position logic if possible (e.g. preset)
         if (draft.signature_page === 0) setSignaturePosition("new_page");
-        else if (draft.signature_page === -1) setSignaturePosition("last_page");
-        else setSignaturePosition("custom");
+        else if (typeof draft.signature_page === 'number' && draft.signature_page > 0) setSignaturePosition("custom");
+        else setSignaturePosition("last_page"); // -1 or null -> default
 
         // Restore security settings
         if (draft.security_level) {
@@ -352,7 +355,7 @@ export default function NewDocument() {
       );
 
       if (creditError) {
-        console.error("Credit Error Details:", creditError);
+        if (import.meta.env.DEV) console.error("Credit Error Details:", creditError);
         toast.error(`Error de créditos: ${creditError.message || creditError.details || 'Desconocido'}`);
 
         if (creditError.message && creditError.message.includes('Insufficient credits')) {
@@ -384,12 +387,15 @@ export default function NewDocument() {
       const emailSent = !fnError && fnData?.success !== false;
 
       if (!emailSent) {
-        console.error("Error sending email:", fnError || fnData);
+        if (import.meta.env.DEV) console.error("Error sending email:", fnError || fnData);
 
         // 2.1 ROLLBACK: Devolver el crédito si el email falló
-        const { error: refundError } = await supabase.rpc('consume_credit', { amount: -1, description: 'Reembolso por fallo de envío' });
+        // consume_credit rejects negative amounts (security fix 2026-05-25);
+        // refunds go through the dedicated refund_credit() RPC.
+        // Cast until Supabase types are regenerated to include the new RPC.
+        const { error: refundError } = await (supabase.rpc as CallableFunction)('refund_credit', { p_description: 'Reembolso por fallo de envío' });
         if (refundError) {
-          console.error("Credit refund failed:", refundError);
+          if (import.meta.env.DEV) console.error("Credit refund failed:", refundError);
         }
         const creditMsg = refundError
           ? " No se pudo devolver el crédito automáticamente — contacta con soporte."
@@ -420,7 +426,7 @@ export default function NewDocument() {
         // El usuario verá el documento como 'draft' pero el firmante recibió el correo.
         // Es un estado inconsistente pero preferible a que el firmante firme y no valga, 
         // o que enviemos 2 emails.
-        console.error("Error updating document status after sending email:", updateError);
+        if (import.meta.env.DEV) console.error("Error updating document status after sending email:", updateError);
         toast.error("El email se envió pero hubo un error actualizando el estado. Contacta con soporte.");
       }
 
@@ -440,7 +446,7 @@ export default function NewDocument() {
           3000, "Event log"
         );
       } catch (logErr) {
-        console.warn("Event log failed (non-critical):", logErr);
+        if (import.meta.env.DEV) console.warn("Event log failed (non-critical):", logErr);
       }
 
       setUploadStatus("success");
@@ -449,7 +455,7 @@ export default function NewDocument() {
 
     } catch (error: unknown) {
       const err = error as Error;
-      console.error("Critical error in handleSendDocument:", err);
+      if (import.meta.env.DEV) console.error("Critical error in handleSendDocument:", err);
 
       // Intentar devolver crédito si falló algo inesperado después del consumo
       // Nota: Esto es arriesgado si no sabemos si el email salió, 
@@ -751,6 +757,10 @@ export default function NewDocument() {
                     setSignatureY(0);
                   } else if (value === "last_page") {
                     setSignaturePage(-1); // -1 = última página
+                    handleSignaturePreset(signaturePreset);
+                  } else if (value === "custom") {
+                    // Ensure a valid page number (>0); 0/-1 belong to the other modes
+                    setSignaturePage((prev) => (prev > 0 ? prev : 1));
                     handleSignaturePreset(signaturePreset);
                   }
                 }}

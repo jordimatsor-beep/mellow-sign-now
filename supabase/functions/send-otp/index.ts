@@ -322,7 +322,21 @@ serve(async (req) => {
 
     } catch (error: any) {
         console.error("Send-OTP Error:", error)
-        const message = error instanceof Error ? error.message : 'Error desconocido';
+        // Only expose messages that are meaningful (and safe) for the signer.
+        // Internal errors (Security Check, Database, Configuration, provider
+        // responses) must never reach the client.
+        const SAFE_MESSAGES = [
+            'Token is required',
+            'Documento no encontrado',
+            'Este documento no requiere',
+            'El email del firmante',
+            'El teléfono del firmante',
+            'Demasiad', // rate-limit messages ("Demasiadas solicitudes...")
+        ];
+        const raw = error instanceof Error ? error.message : '';
+        const message = SAFE_MESSAGES.some(p => raw.includes(p))
+            ? raw
+            : 'No se pudo enviar el código. Inténtalo de nuevo en unos minutos.';
 
         return new Response(
             JSON.stringify({

@@ -108,8 +108,10 @@ serve(async (req) => {
         )
 
     } catch (error) {
+        console.error('delete-account error:', error)
+        // Never expose internal error details on a destructive operation.
         return new Response(
-            JSON.stringify({ error: error.message }),
+            JSON.stringify({ error: 'No se pudo eliminar la cuenta. Contacta con soporte.' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         )
     }

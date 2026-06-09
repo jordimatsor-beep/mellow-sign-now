@@ -5,6 +5,29 @@ Format: [version] YYYY-MM-DD — brief description.
 
 ---
 
+## [Unreleased] — 2026-06-09
+
+### Fixed
+- **Posición de la firma** — el selector mostraba "Última página" pero guardaba el modo anexo (default 0 + handler sin rama `custom`): la firma del cliente nunca aparecía en la posición configurada (bug reportado por cliente). Defaults alineados y rama `custom` añadida en `NewDocument.tsx`.
+- **Reembolso de créditos** — el rollback al fallar el envío llamaba a `consume_credit` con importe negativo (bloqueado por seguridad) y parámetro inexistente: el crédito nunca se devolvía. Nueva RPC `refund_credit()` (migración `20260609`) + llamada corregida.
+- **Página anexa de firma** — ahora incluye firmante, email, documento, fecha (Europe/Madrid) e IP; antes solo título e imagen flotante. Sanitizador WinAnsi para títulos/nombres con caracteres fuera de Latin-1.
+
+### Security
+- **API signature-requests** — documentos ligados a un usuario real vía `api_clients.user_id`, consumo de 1 crédito por solicitud (`consume_credit_for_user`, solo service_role), ownership en GET (`api_client_id`), validación de email y `document_url` https, `sign_token` generado explícitamente.
+- **Secretos fuera del repo** — API key y webhook secret de Nexo eliminados de la migración (rotar igualmente: estuvieron en disco fuera del gestor de secretos, aunque nunca llegaron a git); cliente `nexo` desactivado hasta rotación; plantilla `scripts/db/setup_api_client.sql`; credenciales reales retiradas de `.env.e2e`.
+- **Errores sanitizados** — `send-otp`, `delete-account` y `generate-audit-trail` ya no exponen mensajes internos (Security Check, Database, proveedores).
+- **Webhook n8n firmado** — HMAC-SHA256 en `X-FirmaClara-Signature` si `N8N_WEBHOOK_SECRET` está configurado.
+- **CSP sin `unsafe-inline` en scripts** — script de Clarity fijado por hash sha256; dominios de Clarity añadidos (antes la propia CSP lo bloqueaba). `Cache-Control: no-store` en `/sign/*`.
+- **StealthLogin** — verifica rol admin/support antes de navegar; un usuario normal ya no llega a renderizar el panel.
+- **Consolas silenciadas en producción** — `console.error/warn` tras `import.meta.env.DEV` en AuthContext, NewDocument, CreditsPurchase, StealthLogin; `ErrorBoundary` usa `import.meta.env.DEV` (antes `process.env`, que no aplica en Vite).
+
+### Pending (manual)
+- Rotar claves Stripe/Resend/Nexo y cambiar contraseña expuesta en `.env.e2e` antiguo.
+- Aplicar migración `20260609_api_credits_and_refund.sql` y desplegar funciones `sign-complete-v2`, `signature-requests`, `send-otp`, `delete-account`, `generate-audit-trail`.
+- Regenerar `src/integrations/supabase/types.ts` (`npx supabase gen types typescript --project-id pmzfwwtgjvlvuawxguiw`) — elimina los 40 errores restantes de typecheck.
+
+---
+
 ## [Unreleased] — 2026-05-25
 
 ### Security
