@@ -3,13 +3,13 @@ import { test, expect, Page } from '@playwright/test';
 /**
  * SMOKE TEST COMPLETO - FirmaClara
  * Basado en Vibe Testing.pdf
- * 
- * Credenciales: jormattor@gmail.com / 15082004J
+ *
+ * Credenciales: definir en .env.e2e (nunca en código)
  * Ejecutar con: npx playwright test e2e/smoke-test.spec.ts --headed
  */
 
-const TEST_EMAIL = 'jormattor@gmail.com';
-const TEST_PASSWORD = '15082004J';
+const TEST_EMAIL = process.env.E2E_TEST_EMAIL ?? '';
+const TEST_PASSWORD = process.env.E2E_TEST_PASSWORD ?? '';
 
 // Helper para hacer login
 async function login(page: Page) {

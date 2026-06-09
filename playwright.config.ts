@@ -1,4 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import { config } from 'dotenv';
+
+// Load test credentials from .env.e2e (gitignored, never commit real passwords)
+config({ path: '.env.e2e' });
 
 export default defineConfig({
     testDir: './e2e',

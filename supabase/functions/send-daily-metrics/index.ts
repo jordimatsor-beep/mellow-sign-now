@@ -153,7 +153,7 @@ serve(async (req: Request) => {
             },
             body: JSON.stringify({
                 from: 'FirmaClara Bot <noreply@firmaclara.es>',
-                to: ['jormattor@gmail.com', 'jordimatsor@gmail.com'],
+                to: (Deno.env.get('ADMIN_METRICS_EMAILS') ?? '').split(',').map(e => e.trim()).filter(Boolean),
                 subject: `📊 Metricas Diarias - ${dateStr}`,
                 html: html
             })

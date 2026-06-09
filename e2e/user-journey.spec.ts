@@ -19,8 +19,8 @@ const TEST_USER = {
 
 // Credenciales del usuario existente (para tests que requieren cuenta con datos)
 const EXISTING_USER = {
-    email: 'jormattor@gmail.com',
-    password: '15082004J'
+    email: process.env.E2E_TEST_EMAIL ?? '',
+    password: process.env.E2E_TEST_PASSWORD ?? ''
 };
 
 // Helper para hacer login

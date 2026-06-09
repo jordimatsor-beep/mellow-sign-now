@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib@1.17.1'
 import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
 import { triggerN8n } from '../_shared/n8n.ts'
+import { dispatchWebhook } from '../_shared/webhook-dispatch.ts'
 
 // --- INLINED CORS LOGIC (No external dependencies) ---
 const ALLOWED_ORIGINS = [
@@ -106,21 +107,64 @@ serve(async (req: Request) => {
         if (doc.security_level === 'whatsapp_otp' || doc.whatsapp_verification === true) {
             if (!otp_code) throw new Error('Se requiere código OTP para firmar este documento')
 
-            // Hash incoming code
-            const msgUint8 = new TextEncoder().encode(otp_code);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const inputHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-            // Verify
-            if (inputHash !== doc.otp_code_hash) {
-                throw new Error('Código OTP incorrecto')
-            }
-
-            // Check Expiry
+            // Check Expiry first (cheaper check)
             if (doc.otp_expires_at && new Date(doc.otp_expires_at) < new Date()) {
                 throw new Error('Código OTP expirado. Solicita uno nuevo.')
             }
+
+            // Timing-safe comparison to prevent timing attacks
+            function timingSafeEqual(a: string, b: string): boolean {
+                if (a.length !== b.length) return false;
+                const aB = new TextEncoder().encode(a);
+                const bB = new TextEncoder().encode(b);
+                let result = 0;
+                for (let i = 0; i < aB.length; i++) result |= aB[i] ^ bB[i];
+                return result === 0;
+            }
+
+            // Support new salt:hash format and legacy plain SHA-256
+            const storedHash = doc.otp_code_hash as string;
+            const isNewFormat = storedHash?.includes(':');
+            let inputHash: string;
+            let expectedHash: string;
+
+            if (isNewFormat) {
+                const colonIdx = storedHash.indexOf(':');
+                const salt = storedHash.slice(0, colonIdx);
+                expectedHash = storedHash.slice(colonIdx + 1);
+                const msgUint8 = new TextEncoder().encode(salt + otp_code);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+                inputHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+            } else {
+                expectedHash = storedHash;
+                const msgUint8 = new TextEncoder().encode(otp_code);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+                inputHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+
+            if (!timingSafeEqual(inputHash, expectedHash)) {
+                // Brute-force lockout: invalidate OTP after 5 failed attempts
+                const attempts = (doc.otp_failed_attempts ?? 0) + 1;
+                const MAX_ATTEMPTS = 5;
+
+                if (attempts >= MAX_ATTEMPTS) {
+                    await supabase.from('documents')
+                        .update({ otp_code_hash: null, otp_expires_at: null, otp_failed_attempts: 0 })
+                        .eq('id', doc.id);
+                    throw new Error('Demasiados intentos incorrectos. Solicita un nuevo código.');
+                }
+
+                await supabase.from('documents')
+                    .update({ otp_failed_attempts: attempts })
+                    .eq('id', doc.id);
+
+                throw new Error(`Código OTP incorrecto. Intentos restantes: ${MAX_ATTEMPTS - attempts}`);
+            }
+
+            // OTP correct — reset counter
+            await supabase.from('documents')
+                .update({ otp_failed_attempts: 0 })
+                .eq('id', doc.id);
 
             otpVerified = true;
         }
@@ -347,7 +391,22 @@ serve(async (req: Request) => {
             console.error("Trigger n8n error:", e);
         }
 
-        // 10.5 Trigger Send Signed Notification (Email)
+        // 10.5 Dispatch signed webhook to external API clients (e.g. Nexo)
+        // Payload matches the shape Nexo's /api/webhooks/firmaclara expects.
+        try {
+            await dispatchWebhook({
+                event: 'signature.completed',
+                signature_request_id: doc.id,          // Nexo stores this as nda_firmaclara_id
+                signed_document_url: publicUrlData.publicUrl,
+                signer_email: doc.signer_email,
+                signer_name: doc.signer_name,
+                signed_at: signedAt.toISOString(),
+            });
+        } catch (e) {
+            console.error('dispatchWebhook error:', e);
+        }
+
+        // 10.6 Trigger Send Signed Notification (Email)
         try {
             console.log("Triggering send-signed-notification for doc:", doc.id);
             await fetch(`${supabaseUrl}/functions/v1/send-signed-notification`, {
@@ -394,8 +453,7 @@ serve(async (req: Request) => {
         return new Response(
             JSON.stringify({
                 success: false,
-                error: error.message || 'Error desconocido al procesar la firma',
-                details: JSON.stringify(error)
+                error: error.message || 'Error desconocido al procesar la firma'
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );

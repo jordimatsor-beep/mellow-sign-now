@@ -6,8 +6,8 @@ import { test, expect, Page } from '@playwright/test';
  */
 
 const USER = {
-    email: 'jormattor@gmail.com',
-    password: '15082004J'
+    email: process.env.E2E_TEST_EMAIL ?? '',
+    password: process.env.E2E_TEST_PASSWORD ?? ''
 };
 
 // Helper para aceptar cookies si aparecen
