@@ -34,29 +34,35 @@ serve(async (req) => {
 
     if (docError || !doc) throw new Error('Document not found')
 
-    // 2. Prepare Email Content
+    // 2. Prepare recipients
     const signerEmail = doc.signer_email
-    const issuerEmail = doc.users?.email
+    const signerName = escapeHtml(doc.signer_name || 'El firmante')
+    let issuerEmail = doc.users?.email
+
+    // Fallback: if the embedded join didn't return the issuer (FK/relation edge
+    // cases), fetch the issuer directly so the sender ALWAYS gets their copy.
+    if (!issuerEmail && doc.user_id) {
+      const { data: issuer } = await supabase
+        .from('users')
+        .select('email')
+        .eq('id', doc.user_id)
+        .single()
+      if (issuer?.email) issuerEmail = issuer.email
+    }
+
     const docTitleRaw = doc.title || 'Documento Firmado'
     const docTitle = escapeHtml(docTitleRaw)
 
-    // STRICT: Only use SIGNED url. If missing, it's a bug or race condition that shouldn't happen with new flow.
+    // STRICT: Only use SIGNED url. If missing, it's a bug or race condition.
     const signedFileUrl = doc.signed_file_url;
     if (!signedFileUrl) {
       throw new Error("Critical: signed_file_url is missing in notification step.");
     }
 
     const certificateUrl = doc.certificate_url;
-    // We try to attach certificate. If missing, we might want to warn but not fail?
-    // User requirement: "El destinatario debe recibir copia del certificado".
-    // So if it's missing, we should probably throw or handle gracefully.
-    // Since we chained it, it SHOULD be there.
 
-    // Determine sender name
-    const senderName = doc.users?.company_name || doc.users?.name || 'FirmaClara'
-
-    // HTML Template
-    const html = `
+    // Shared HTML template (the intro line is customised per recipient).
+    const buildHtml = (intro: string) => `
       <!DOCTYPE html>
       <html>
         <head>
@@ -73,17 +79,15 @@ serve(async (req) => {
         <body>
           <div class="container">
             <div class="header">
-              <h1 style="margin:0; font-size: 24px;">Contrato Firmado</h1>
+              <h1 style="margin:0; font-size: 24px;">Documento Firmado</h1>
             </div>
             <div class="content">
-              <p>Hola,</p>
-              <p>El documento <strong>"${docTitle}"</strong> ha sido firmado y certificado correctamente.</p>
+              <p>${intro}</p>
               <p>Se adjuntan a este correo:</p>
               <ul style="color: #4b5563; font-size: 14px;">
-                <li><strong>Copia Firmada:</strong> El contrato con la firma estampada en anexo.</li>
+                <li><strong>Copia Firmada:</strong> El documento con la firma estampada.</li>
                 <li><strong>Certificado de Evidencia:</strong> Documento técnico validador (Audit Trail).</li>
               </ul>
-              
               <div style="text-align: center;">
                 <a href="${signedFileUrl}" class="button">Ver Documento Online</a>
               </div>
@@ -96,17 +100,12 @@ serve(async (req) => {
       </html>
     `
 
-    // 3. Send Emails (To Signer AND Issuer)
-    // We send separate emails or use cc/bcc. 
-    // Recommended: Send to Signer, CC Issuer so both have same thread and attachments.
-
-    const attachments = [
+    const attachments: { filename: string; path: string }[] = [
       {
         filename: `${docTitle.replace(/[^a-z0-9]/gi, '_')}_signed.pdf`,
         path: signedFileUrl
       }
     ];
-
     if (certificateUrl) {
       attachments.push({
         filename: `Certificado_Evidencia_${doc.id.substring(0, 8)}.pdf`,
@@ -114,36 +113,60 @@ serve(async (req) => {
       });
     }
 
-    const emailPayload: any = {
-      from: 'FirmaClara <noreply@firmaclara.es>',
-      to: [signerEmail],
-      subject: `[Firmado] ${docTitle} - Contrato y Certificado`,
-      html: html,
-      attachments: attachments
+    // 3. Send SEPARATE emails to signer and issuer. Separate (not CC) gives
+    // better deliverability and privacy: neither party sees the other's email.
+    // Each send is independent so one failure does not block the other.
+    const sendEmail = async (to: string, subject: string, intro: string): Promise<boolean> => {
+      try {
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${RESEND_API_KEY}`
+          },
+          body: JSON.stringify({
+            from: 'FirmaClara <noreply@firmaclara.es>',
+            to: [to],
+            subject,
+            html: buildHtml(intro),
+            attachments
+          })
+        })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          console.error('Resend send failed:', JSON.stringify(body))
+          return false
+        }
+        return true
+      } catch (e) {
+        console.error('Resend send threw:', e)
+        return false
+      }
     }
 
-    if (issuerEmail) {
-      emailPayload.cc = [issuerEmail];
+    const signerOk = signerEmail
+      ? await sendEmail(
+          signerEmail,
+          `[Firmado] ${docTitle} - Tu copia y certificado`,
+          `Hola, has firmado correctamente el documento <strong>"${docTitle}"</strong>. Aquí tienes tu copia firmada y el certificado.`
+        )
+      : false
+
+    let issuerOk = false
+    if (issuerEmail && issuerEmail !== signerEmail) {
+      issuerOk = await sendEmail(
+        issuerEmail,
+        `[Firmado] ${docTitle} - Firmado por ${doc.signer_name || 'el firmante'}`,
+        `<strong>${signerName}</strong> ha firmado el documento <strong>"${docTitle}"</strong>. Adjuntamos la copia firmada y el certificado de evidencias.`
+      )
     }
 
-    // email recipient and attachment metadata not logged (PII)
+    // Non-PII diagnostics so we can see in logs whether the issuer was notified.
+    console.log(`signed-notification sent — signer:${signerOk} issuer_present:${!!issuerEmail} issuer:${issuerOk}`)
 
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`
-      },
-      body: JSON.stringify(emailPayload)
-    })
-
-    const data = await res.json()
-
-    if (!res.ok) {
-      console.error("Resend Error", data);
-      throw new Error("Failed to send email");
+    if (!signerOk && !issuerOk) {
+      throw new Error("Failed to send signed notification emails");
     }
-
 
     // 4. Send SMS (Twilio) - Optional but good for UX since we used SMS for OTP
     if (doc.signer_phone) {
@@ -185,7 +208,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, id: data.id }),
+      JSON.stringify({ success: true, signer: signerOk, issuer: issuerOk }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 

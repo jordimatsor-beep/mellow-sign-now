@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { Check, Download, Eraser, Loader2, AlertCircle, Shield, Clock, Hash, Smartphone, Eye } from "lucide-react";
+import { Check, Download, Eraser, Loader2, AlertCircle, Shield, Clock, Hash, Smartphone, Eye, PenLine, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,7 @@ export default function SignDocument() {
   const [hasSignature, setHasSignature] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const signFormRef = useRef<HTMLDivElement>(null);
 
   const [docData, setDocData] = useState<any>(null);
   const [error, setError] = useState<string>("");
@@ -618,9 +619,13 @@ export default function SignDocument() {
     );
   }
 
+  // Mobile sticky-CTA state: keeps the signing action visible at all times.
+  const canSubmit = accepted && !!name.trim() && hasSignature;
+  const scrollToSign = () => signFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
   return (
     <>
-      <div className="container space-y-6 px-4 py-6 max-w-5xl mx-auto">
+      <div className="container space-y-6 px-4 pt-6 pb-28 lg:py-6 max-w-5xl mx-auto">
         {/* Document info */}
         <div className="flex items-center justify-between">
           <div>
@@ -739,7 +744,7 @@ export default function SignDocument() {
           </div>
 
           {/* Signing form */}
-          <div className="space-y-6">
+          <div ref={signFormRef} className="space-y-6 scroll-mt-4">
             <div className="bg-card rounded-lg border p-6 shadow-sm">
               <h2 className="font-semibold text-lg mb-4">Firmar Documento</h2>
 
@@ -924,6 +929,30 @@ export default function SignDocument() {
         title={docData?.title || "Documento"}
         filename={safeFilename(docData?.title)}
       />
+
+      {/* Sticky CTA (mobile): the signing action is never out of sight. */}
+      {(step === "view" || step === "signing") && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden">
+          {!canAccept ? (
+            <div className="flex items-center justify-center gap-2 text-sm font-medium text-amber-700">
+              <ArrowDown className="h-4 w-4 animate-bounce" />
+              Desliza para leer el documento
+            </div>
+          ) : canSubmit ? (
+            <Button className="w-full" size="lg" disabled={step === "signing"} onClick={handleSign}>
+              {step === "signing" ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Firmando...</>
+              ) : (
+                <><PenLine className="mr-2 h-4 w-4" /> Firmar documento</>
+              )}
+            </Button>
+          ) : (
+            <Button className="w-full" size="lg" onClick={scrollToSign}>
+              <PenLine className="mr-2 h-4 w-4" /> Ir a firmar
+            </Button>
+          )}
+        </div>
+      )}
     </>
   );
 }
