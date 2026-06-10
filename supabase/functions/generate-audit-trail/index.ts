@@ -131,6 +131,7 @@ serve(async (req: Request) => {
         drawText(`Titulo: ${doc.title}`)
         drawText(`Ref. ID: ${doc.id}`)
         drawText(`Hash (SHA-256): ${doc.file_hash?.substring(0, 32) || 'N/A'}...`) // Created at/Sent at?
+        if (doc.original_format) drawText(`Formato original: .${doc.original_format} (convertido a PDF automaticamente)`)
         drawText(`Fecha Creación: ${new Date(doc.created_at).toUTCString()}`)
         y -= 20
 

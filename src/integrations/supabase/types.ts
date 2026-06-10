@@ -284,6 +284,7 @@ export type Database = {
           otp_code_hash: string | null
           otp_expires_at: string | null
           otp_failed_attempts: number | null
+          original_format: string | null
           security_level:
             | Database["public"]["Enums"]["security_level_enum"]
             | null
@@ -319,6 +320,7 @@ export type Database = {
           otp_code_hash?: string | null
           otp_expires_at?: string | null
           otp_failed_attempts?: number | null
+          original_format?: string | null
           security_level?:
             | Database["public"]["Enums"]["security_level_enum"]
             | null
@@ -354,6 +356,7 @@ export type Database = {
           otp_code_hash?: string | null
           otp_expires_at?: string | null
           otp_failed_attempts?: number | null
+          original_format?: string | null
           security_level?:
             | Database["public"]["Enums"]["security_level_enum"]
             | null

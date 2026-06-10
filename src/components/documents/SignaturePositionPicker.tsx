@@ -230,6 +230,11 @@ export function SignaturePositionPicker({
 
         {!loading && pdf && (
           <div className="space-y-3">
+            <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 p-2.5 text-xs font-medium text-primary">
+              <span className="text-base leading-none">👆</span>
+              <span>Arrastra el recuadro «✍ Firma aquí» hasta donde firmará el cliente y pulsa «Confirmar posición».</span>
+            </div>
+
             {numPages > 1 && (
               <div className="flex items-center justify-center gap-3">
                 <Button type="button" variant="outline" size="sm" disabled={pageNum <= 1}

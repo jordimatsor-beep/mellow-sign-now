@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Upload, FileText, ArrowRight, Loader2, User, Lock, Unlock, Receipt, Wrench, FileSignature, ClipboardList, MapPin } from "lucide-react";
+import { ArrowLeft, Upload, FileText, ArrowRight, Loader2, User, Lock, Unlock, Receipt, Wrench, FileSignature, ClipboardList, MapPin, Check } from "lucide-react";
 import { ContactSelector } from "@/components/contacts/ContactSelector";
 import { SignaturePositionPicker } from "@/components/documents/SignaturePositionPicker";
 import { useProfile } from "@/context/ProfileContext";
@@ -9,15 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { PdfPreviewDialog } from "@/components/documents/PdfPreviewDialog";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
 import { sanitizeFileName } from "@/lib/utils";
+import { ACCEPTED_OFFICE_FORMATS, OFFICE_MIME_TYPES, getOriginalFormat } from "@/lib/documentFormats";
 
 type Step = "doctype" | "upload" | "signer" | "options" | "confirm";
 type DocType = "presupuesto" | "parte" | "contrato" | "otro";
@@ -55,6 +56,12 @@ export default function NewDocument() {
   const [isContactSelectorOpen, setIsContactSelectorOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
+  // Multi-format upload. When `convertedFrom` is set, `file` is a PDF produced
+  // from a non-PDF source (Word/Excel/etc.) by the convert-to-pdf edge function.
+  const [isConverting, setIsConverting] = useState(false);
+  const [convertedFrom, setConvertedFrom] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
   // Fetch credits — single source of truth (RPC get_available_credits via
   // useCredits): excludes expired packs, matching both what consume_credit
   // can actually spend and what the sidebar badge shows. The previous local
@@ -68,9 +75,12 @@ export default function NewDocument() {
   // appended page even though the UI showed "Ultima pagina" selected (bug fix 2026-06).
   const [signaturePosition, setSignaturePosition] = useState<"new_page" | "last_page" | "custom">("last_page");
   const [signaturePage, setSignaturePage] = useState(-1);
-  const [signatureX, setSignatureX] = useState(0);
-  const [signatureY, setSignatureY] = useState(0);
-  const [signaturePreset, setSignaturePreset] = useState<string>("bottom-center");
+  // Sensible default when the user doesn't open the picker: bottom-center of the
+  // last page (A4 points). The visual picker overrides these on confirm.
+  const [signatureX, setSignatureX] = useState(200);
+  const [signatureY, setSignatureY] = useState(80);
+  // Default preset; the visual picker sets exact coordinates instead.
+  const signaturePreset = "bottom-center";
 
   // Fields are optional for "presupuesto" type
   const isPresupuesto = docType === "presupuesto";
@@ -144,76 +154,110 @@ export default function NewDocument() {
     loadDraft();
   }, [draftId]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      if (selectedFile.type !== 'application/pdf') {
-        toast.error("Solo se permiten archivos PDF");
-        return;
+  // Calls the convert-to-pdf edge function (Gotenberg backend) and returns a
+  // PDF File. Uses raw fetch (not supabase.functions.invoke) because the
+  // response is binary; aborts after 90s to survive Gotenberg cold starts.
+  const convertFileToPdf = async (originalFile: File): Promise<File> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Sesión expirada, vuelve a iniciar sesión");
+
+    const formData = new FormData();
+    formData.append("file", originalFile);
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90_000);
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/convert-to-pdf`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: formData,
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        let msg = `Error ${res.status}`;
+        try { msg = (await res.json()).error ?? msg; } catch { /* respuesta no-JSON */ }
+        throw new Error(msg);
       }
-      // Validate file size (max 10MB)
-      const maxSizeBytes = 10 * 1024 * 1024; // 10MB
-      if (selectedFile.size > maxSizeBytes) {
-        toast.error("El archivo es demasiado grande. Máximo 10MB.");
-        return;
+      const blob = await res.blob();
+      if (blob.size === 0) throw new Error("La conversión devolvió un archivo vacío");
+      const pdfName = originalFile.name.replace(/\.[^.]+$/, ".pdf");
+      return new File([blob], pdfName, { type: "application/pdf" });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        throw new Error("La conversión tardó demasiado. Inténtalo de nuevo.");
       }
-      setFile(selectedFile);
-      if (!title) {
-        setTitle(selectedFile.name.replace('.pdf', ''));
-      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
     }
+  };
+
+  // Shared handler for file selection (input + drag&drop). PDFs are accepted
+  // directly. Supported Office formats are auto-converted to PDF and
+  // auto-accepted (seamless) so the user proceeds exactly as if they had
+  // uploaded a PDF — only the original file format is recorded as evidence.
+  const processSelectedFile = async (selectedFile: File) => {
+    const lowerName = selectedFile.name.toLowerCase();
+    const isPdf = selectedFile.type === "application/pdf" || lowerName.endsWith(".pdf");
+    const isOffice =
+      OFFICE_MIME_TYPES.includes(selectedFile.type) ||
+      ACCEPTED_OFFICE_FORMATS.some((ext) => lowerName.endsWith(ext));
+
+    if (!isPdf && !isOffice) {
+      toast.error("Formato no soportado", {
+        description: "Acepta PDF, Word, Excel, PowerPoint, OpenDocument, RTF, TXT o CSV.",
+      });
+      return;
+    }
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      toast.error("El archivo es demasiado grande. Máximo 10MB.");
+      return;
+    }
+
+    // Native PDF: same behaviour as before.
+    if (isPdf) {
+      setFile(selectedFile);
+      setConvertedFrom(null);
+      if (!title) setTitle(selectedFile.name.replace(/\.pdf$/i, ""));
+      return;
+    }
+
+    // Non-PDF supported format: inform, auto-convert, auto-accept.
+    const originalFormat = getOriginalFormat(selectedFile);
+    toast.info("Este archivo no es un PDF. Lo convertimos automáticamente a PDF…");
+    setIsConverting(true);
+    try {
+      const pdfFile = await convertFileToPdf(selectedFile);
+      setFile(pdfFile);
+      setConvertedFrom(originalFormat);
+      if (!title) setTitle(selectedFile.name.replace(/\.[^.]+$/, ""));
+      toast.success(`Convertido a PDF desde .${originalFormat}. Listo para continuar.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error en la conversión";
+      toast.error(`No se pudo convertir el archivo: ${msg}`);
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) processSelectedFile(selectedFile);
+    // Reset so re-selecting the same file fires onChange again.
+    e.target.value = "";
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const selectedFile = e.dataTransfer.files[0];
-      if (selectedFile.type !== 'application/pdf') {
-        toast.error("Solo se permiten archivos PDF");
-        return;
-      }
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        toast.error("El archivo es demasiado grande. Máximo 10MB.");
-        return;
-      }
-      setFile(selectedFile);
-      if (!title) {
-        setTitle(selectedFile.name.replace('.pdf', ''));
-      }
-    }
+    if (isConverting) return;
+    const selectedFile = e.dataTransfer.files?.[0];
+    if (selectedFile) processSelectedFile(selectedFile);
   };
 
   const handleWhatsappToggle = (checked: boolean) => {
     setWhatsappVerification(checked);
     setSecurityLevel(checked ? "whatsapp_otp" : "standard");
-  };
-
-  // Signature position presets (based on A4: 595 x 841 points)
-  const handleSignaturePreset = (preset: string) => {
-    setSignaturePreset(preset);
-    // Standard A4 dimensions: 595.28 x 841.89 points
-    // Signature area: ~200x100 points
-    switch (preset) {
-      case "bottom-left":
-        setSignatureX(50);
-        setSignatureY(80);
-        break;
-      case "bottom-center":
-        setSignatureX(200); // Centered for ~200px signature
-        setSignatureY(80);
-        break;
-      case "bottom-right":
-        setSignatureX(350);
-        setSignatureY(80);
-        break;
-      case "center":
-        setSignatureX(200);
-        setSignatureY(400);
-        break;
-      default:
-        setSignatureX(200);
-        setSignatureY(80);
-    }
   };
 
   const handleCreateDocument = async () => {
@@ -280,7 +324,8 @@ export default function NewDocument() {
             security_level: securityLevel,
             signature_page: signaturePage,
             signature_x: signatureX,
-            signature_y: signatureY
+            signature_y: signatureY,
+            original_format: convertedFrom
           })
           .eq('id', draftId)
           .select()
@@ -309,7 +354,8 @@ export default function NewDocument() {
             security_level: securityLevel,
             signature_page: signaturePage,
             signature_x: signatureX,
-            signature_y: signatureY
+            signature_y: signatureY,
+            original_format: convertedFrom
           })
           .select()
           .single();
@@ -514,7 +560,7 @@ export default function NewDocument() {
                 <FileText className="h-6 w-6 text-muted-foreground" />
               </div>
               <p className="mb-2 text-sm text-muted-foreground">
-                Arrastra un PDF aquí o
+                Arrastra tu documento aquí o
               </p>
               <Label htmlFor="file-upload" className="cursor-pointer">
                 <Button variant="secondary" size="sm" asChild>
@@ -524,18 +570,63 @@ export default function NewDocument() {
               <Input
                 id="file-upload"
                 type="file"
-                accept=".pdf"
+                accept=".pdf,.docx,.doc,.odt,.rtf,.xlsx,.xls,.ods,.pptx,.ppt,.odp,.txt,.csv"
                 className="hidden"
                 onChange={handleFileChange}
+                disabled={isConverting}
               />
-              <p className="mt-2 text-xs text-muted-foreground">Máximo 10MB</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                PDF, Word, Excel, PowerPoint y más · Máximo 10MB
+              </p>
             </div>
 
+            {isConverting && (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-amber-600" />
+                <span className="text-sm text-amber-800">Convirtiendo tu documento a PDF…</span>
+              </div>
+            )}
+
             {file && (
-              <div className="flex items-center gap-2 rounded-lg bg-muted p-3">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-                <span className="flex-1 text-sm truncate">{file.name}</span>
-                <Button variant="ghost" size="sm" onClick={() => setFile(null)} className="h-auto p-1">Cambiar</Button>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 rounded-lg bg-muted p-3">
+                  <FileText className="h-5 w-5 text-muted-foreground" />
+                  <span className="flex-1 truncate text-sm">{file.name}</span>
+                  {convertedFrom && (
+                    <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
+                      .{convertedFrom} → PDF
+                    </span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-1"
+                    onClick={() => {
+                      setFile(null);
+                      setConvertedFrom(null);
+                    }}
+                  >
+                    Cambiar
+                  </Button>
+                </div>
+
+                {convertedFrom && (
+                  <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+                    <p className="text-sm font-medium text-green-800">
+                      Convertido a PDF desde .{convertedFrom}
+                    </p>
+                    <p className="mt-0.5 text-xs text-green-700">
+                      Revisa que el contenido se ve bien antes de enviarlo.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsPreviewOpen(true)}
+                      className="mt-1 inline-flex text-xs text-green-700 underline hover:text-green-900"
+                    >
+                      Ver PDF para revisar →
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -549,7 +640,7 @@ export default function NewDocument() {
               />
             </div>
 
-            <Button className="w-full" disabled={!file || !title} onClick={() => setStep("signer")}>
+            <Button className="w-full" disabled={!file || !title || isConverting} onClick={() => setStep("signer")}>
               Continuar
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -733,138 +824,78 @@ export default function NewDocument() {
               </div>
             </div>
 
-            {/* Signature Position Selector */}
+            {/* Signature Position — visual picker only */}
             <div className="space-y-3">
               <Label className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                Posición de la firma
+                ¿Dónde firma el cliente?
               </Label>
 
-              <RadioGroup
-                value={signaturePosition}
-                onValueChange={(value: "new_page" | "last_page" | "custom") => {
-                  setSignaturePosition(value);
-                  if (value === "new_page") {
-                    setSignaturePage(0);
-                    setSignatureX(0);
-                    setSignatureY(0);
-                  } else if (value === "last_page") {
-                    setSignaturePage(-1); // -1 = última página
-                    handleSignaturePreset(signaturePreset);
-                  } else if (value === "custom") {
-                    // Ensure a valid page number (>0); 0/-1 belong to the other modes
-                    setSignaturePage((prev) => (prev > 0 ? prev : 1));
-                    handleSignaturePreset(signaturePreset);
-                  }
-                }}
-                className="space-y-2"
-              >
-                <div className={`flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-all ${signaturePosition === "new_page" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
-                  <RadioGroupItem value="new_page" id="pos-new" />
-                  <Label htmlFor="pos-new" className="cursor-pointer flex-1">
-                    <span className="font-medium">Página nueva (recomendado)</span>
-                    <p className="text-xs text-muted-foreground">Añade una página al final con la firma y certificado</p>
-                  </Label>
-                </div>
-
-                <div className={`flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-all ${signaturePosition === "last_page" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
-                  <RadioGroupItem value="last_page" id="pos-last" />
-                  <Label htmlFor="pos-last" className="cursor-pointer flex-1">
-                    <span className="font-medium">Última página del documento</span>
-                    <p className="text-xs text-muted-foreground">Coloca la firma en una posición específica</p>
-                  </Label>
-                </div>
-
-                <div className={`flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-all ${signaturePosition === "custom" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
-                  <RadioGroupItem value="custom" id="pos-custom" />
-                  <Label htmlFor="pos-custom" className="cursor-pointer flex-1">
-                    <span className="font-medium">Página específica</span>
-                    <p className="text-xs text-muted-foreground">Elige página y coordenadas exactas</p>
-                  </Label>
-                </div>
-              </RadioGroup>
-
-              {/* Visual placement picker (recommended path) */}
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full border-primary/40 text-primary hover:bg-primary/5"
-                onClick={() => {
-                  if (!file) {
-                    toast.error("Sube primero el documento para poder previsualizarlo");
-                    return;
-                  }
-                  setIsPickerOpen(true);
-                }}
-              >
-                <MapPin className="h-4 w-4 mr-2" />
-                Elegir el lugar en el documento (recomendado)
-              </Button>
-              <p className="text-xs text-muted-foreground text-center -mt-1">
-                Verás tu documento y podrás arrastrar el recuadro de firma a la posición exacta
-              </p>
-
-              {/* Position presets for last_page */}
-              {signaturePosition === "last_page" && (
-                <div className="ml-6 p-3 rounded-lg bg-muted/30 space-y-3">
-                  <Label className="text-sm">Posición en la página:</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { value: "bottom-left", label: "Abajo izq." },
-                      { value: "bottom-center", label: "Abajo centro" },
-                      { value: "bottom-right", label: "Abajo der." },
-                    ].map((preset) => (
-                      <Button
-                        key={preset.value}
-                        type="button"
-                        variant={signaturePreset === preset.value ? "default" : "outline"}
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => handleSignaturePreset(preset.value)}
-                      >
-                        {preset.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Custom position inputs */}
-              {signaturePosition === "custom" && (
-                <div className="ml-6 p-3 rounded-lg bg-muted/30 space-y-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Número de página</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={signaturePage || 1}
-                      onChange={(e) => setSignaturePage(parseInt(e.target.value) || 1)}
-                      className="h-9 w-24"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-sm">Posición en la página:</Label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { value: "bottom-left", label: "Abajo izq." },
-                        { value: "bottom-center", label: "Abajo centro" },
-                        { value: "bottom-right", label: "Abajo der." },
-                        { value: "center", label: "Centro" },
-                      ].map((preset) => (
-                        <Button
-                          key={preset.value}
-                          type="button"
-                          variant={signaturePreset === preset.value ? "default" : "outline"}
-                          size="sm"
-                          className="text-xs"
-                          onClick={() => handleSignaturePreset(preset.value)}
-                        >
-                          {preset.label}
-                        </Button>
-                      ))}
+              {signaturePosition === "custom" && signaturePage > 0 ? (
+                /* Posición ya elegida con el picker */
+                <div className="rounded-xl border-2 border-green-500/60 bg-green-50/60 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100">
+                      <Check className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-green-800">¡Posición de la firma elegida!</p>
+                      <p className="text-xs text-green-700">
+                        Página {signaturePage} · puedes cambiarla cuando quieras
+                      </p>
                     </div>
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3 w-full border-primary/40 text-primary hover:bg-primary/5"
+                    onClick={() => {
+                      if (!file) { toast.error("Sube primero el documento"); return; }
+                      setIsPickerOpen(true);
+                    }}
+                  >
+                    <MapPin className="mr-2 h-4 w-4" />
+                    Cambiar posición
+                  </Button>
+                </div>
+              ) : (
+                /* Aún no elegida: mini-tutorial + botón principal */
+                <div className="space-y-3 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-4">
+                  <p className="text-sm font-medium text-foreground">
+                    Coloca la firma justo donde la quieres en tu documento
+                  </p>
+                  <ol className="space-y-2 text-xs text-muted-foreground">
+                    <li className="flex items-start gap-2">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">1</span>
+                      Pulsa el botón de abajo para ver tu documento
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">2</span>
+                      <span>
+                        Arrastra el recuadro{" "}
+                        <span className="mx-0.5 whitespace-nowrap rounded border border-dashed border-primary bg-primary/10 px-1 font-medium text-primary">✍ Firma aquí</span>{" "}
+                        hasta el sitio exacto
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">3</span>
+                      Pulsa «Confirmar posición» y listo
+                    </li>
+                  </ol>
+                  <Button
+                    type="button"
+                    className="w-full"
+                    onClick={() => {
+                      if (!file) { toast.error("Sube primero el documento"); return; }
+                      setIsPickerOpen(true);
+                    }}
+                  >
+                    <MapPin className="mr-2 h-4 w-4" />
+                    Elegir dónde firma el cliente
+                  </Button>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Si no eliges, la firma irá abajo en la última página.
+                  </p>
                 </div>
               )}
             </div>
@@ -984,6 +1015,21 @@ export default function NewDocument() {
                   {signaturePosition === "custom" && `Pág. ${signaturePage} (${signatureX}, ${signatureY})`}
                 </span>
               </div>
+              {convertedFrom && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Formato original</span>
+                  <span className="flex items-center gap-1">
+                    .{convertedFrom} → PDF
+                    <button
+                      type="button"
+                      onClick={() => setIsPreviewOpen(true)}
+                      className="underline"
+                    >
+                      revisar
+                    </button>
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className={`rounded-lg p-3 text-center ${credits <= 0 && !isLoadingCredits ? 'bg-destructive/10' : 'bg-primary/5'}`}>
@@ -1098,6 +1144,14 @@ export default function NewDocument() {
         isOpen={isContactSelectorOpen}
         onClose={() => setIsContactSelectorOpen(false)}
         onSelect={handleContactSelect}
+      />
+
+      {/* Preview del PDF convertido renderizado con pdf.js (sin descargas) */}
+      <PdfPreviewDialog
+        open={isPreviewOpen}
+        onOpenChange={setIsPreviewOpen}
+        file={file}
+        label={convertedFrom ? `convertido desde .${convertedFrom}` : undefined}
       />
     </div>
   );
