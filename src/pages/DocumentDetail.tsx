@@ -11,6 +11,26 @@ import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { downloadUrl, safeFilename } from "@/lib/download";
+
+/**
+ * Resolves a stored document reference (a storage path OR a public Supabase URL)
+ * into a freshly-signed, fetchable URL. The `documents` bucket is private, so
+ * the stored public URLs do not work directly — they must be re-signed.
+ */
+async function resolveStorageUrl(target: string): Promise<string> {
+  let path = target;
+  if (target.startsWith("http")) {
+    if (target.includes("/documents/")) {
+      path = target.split("/documents/")[1].split("?")[0];
+    } else {
+      return target; // external URL — use as-is
+    }
+  }
+  path = decodeURIComponent(path);
+  const { data } = await supabase.storage.from("documents").createSignedUrl(path, 3600);
+  return data?.signedUrl || target;
+}
 
 type TimelineEvent = {
   date: string;
@@ -241,29 +261,20 @@ export default function DocumentDetail() {
           className="w-full justify-start gap-2"
           onClick={async () => {
             const target = doc.signed_file_url || doc.file_url;
-            if (!target) return;
-
-            let finalUrl = target;
-            // Detect if it is a path or Supabase URL
-            const isPath = !target.startsWith('http');
-            const isSupabase = target.includes('supabase');
-
-            if (isPath || isSupabase) {
-              try {
-                let path = target;
-                if (target.startsWith('http') && target.includes('/documents/')) {
-                  path = target.split('/documents/')[1];
-                }
-
-                if (path) {
-                  const { data } = await supabase.storage.from('documents').createSignedUrl(path, 3600, { download: true });
-                  if (data?.signedUrl) finalUrl = data.signedUrl;
-                }
-              } catch (e) {
-                console.error("Error signing URL:", e);
-              }
+            if (!target) {
+              toast.error("No hay documento disponible para descargar");
+              return;
             }
-            window.open(finalUrl, '_blank');
+            const toastId = toast.loading("Preparando descarga...");
+            try {
+              const url = await resolveStorageUrl(target);
+              const suffix = doc.status === "signed" ? "-firmado" : "";
+              await downloadUrl(url, safeFilename(`${doc.title || "documento"}${suffix}`));
+              toast.dismiss(toastId);
+            } catch (e) {
+              if (import.meta.env.DEV) console.error("Error downloading document:", e);
+              toast.error("No se pudo descargar el documento", { id: toastId });
+            }
           }}
         >
           <Download className="h-4 w-4" />
@@ -275,25 +286,40 @@ export default function DocumentDetail() {
           <Button
             variant="outline"
             className="w-full justify-start gap-2"
-            disabled={!doc.certificate_url}
             onClick={async () => {
-              if (!doc.certificate_url) return;
-              let finalUrl = doc.certificate_url;
-
+              const toastId = toast.loading("Preparando certificado...");
+              const filename = safeFilename(`certificado-${doc.title || "evidencias"}`);
               try {
-                let path = doc.certificate_url;
-                if (path.startsWith('http') && path.includes('/documents/')) {
-                  path = path.split('/documents/')[1];
+                // Primary path: the certificate URL is already stored on the document.
+                if (doc.certificate_url) {
+                  const url = await resolveStorageUrl(doc.certificate_url);
+                  await downloadUrl(url, filename);
+                  toast.dismiss(toastId);
+                  return;
                 }
 
-                if (path) {
-                  const { data } = await supabase.storage.from('documents').createSignedUrl(path, 3600, { download: true });
-                  if (data?.signedUrl) finalUrl = data.signedUrl;
+                // Fallback: the certificate may have been generated after this row
+                // was cached, or stored only behind the signing endpoint. Ask it
+                // for a fresh signed certificate URL using the document's token.
+                if (doc.sign_token) {
+                  const { data } = await supabase.functions.invoke("get-file-for-signing", {
+                    body: { sign_token: doc.sign_token },
+                  });
+                  if (data?.certificate_url) {
+                    await downloadUrl(data.certificate_url, filename);
+                    toast.dismiss(toastId);
+                    return;
+                  }
                 }
+
+                toast.error(
+                  "El certificado de evidencias aún se está generando. Inténtalo de nuevo en unos minutos.",
+                  { id: toastId }
+                );
               } catch (e) {
-                console.error("Error signing cert:", e);
+                if (import.meta.env.DEV) console.error("Error downloading certificate:", e);
+                toast.error("No se pudo descargar el certificado", { id: toastId });
               }
-              window.open(finalUrl, '_blank');
             }}
           >
             <FileText className="h-4 w-4" />

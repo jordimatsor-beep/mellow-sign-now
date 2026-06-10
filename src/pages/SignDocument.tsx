@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { Check, Download, Eraser, Loader2, AlertCircle, Shield, Clock, Hash, Smartphone } from "lucide-react";
+import { Check, Download, Eraser, Loader2, AlertCircle, Shield, Clock, Hash, Smartphone, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,9 @@ import { es } from "date-fns/locale";
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
 import type { DocumentForSigning } from "@/integrations/supabase/helpers";
+import { PdfViewer } from "@/components/pdf/PdfViewer";
+import { PdfModal } from "@/components/pdf/PdfModal";
+import { downloadUrl, safeFilename } from "@/lib/download";
 
 
 
@@ -59,13 +62,16 @@ export default function SignDocument() {
   const [hasSignature, setHasSignature] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const pdfContainerRef = useRef<HTMLDivElement>(null);
 
   const [docData, setDocData] = useState<any>(null);
   const [error, setError] = useState<string>("");
   const [otpCode, setOtpCode] = useState("");
   const [otpError, setOtpError] = useState("");
+  const [otpChannel, setOtpChannel] = useState<"sms" | "email">("sms");
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  // In-app PDF viewer modal
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   // Blob URL state
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
@@ -106,27 +112,51 @@ export default function SignDocument() {
     }
   }, [resendCooldown]);
 
-  const handleResendOtp = async (channel: 'sms' | 'email') => {
-    if (resendCooldown > 0) return;
-
-    setResendCooldown(60); // Start 60s cooldown
-    const toastId = toast.loading(`Reenviando código por ${channel === 'sms' ? 'SMS' : 'Email'}...`);
-
-    try {
-      const { error } = await supabase.functions.invoke('send-otp', {
-        body: { token, channel }
-      });
-
-      if (error) {
-        throw new Error("Error al reenviar código");
+  // Extracts a human-readable error from a Supabase Edge Function response.
+  // `supabase.functions.invoke` returns the error in `error.context` (a Response)
+  // for non-2xx replies, OR inside `data` ({ success:false, error }) for 2xx.
+  const extractFnError = async (fnError: any, fnData: any): Promise<string | null> => {
+    if (fnError) {
+      let body: any = null;
+      try {
+        const ctx = fnError.context;
+        if (ctx && typeof ctx.json === "function") body = await ctx.json();
+      } catch {
+        /* response body not JSON */
       }
-
-      toast.success(`Código reenviado por ${channel === 'sms' ? 'SMS' : 'Email'}`, { id: toastId });
-    } catch (err) {
-      // Remove console.error for prod
-      toast.error("Error al reenviar el código", { id: toastId });
-      setResendCooldown(0); // Reset cooldown on error
+      return body?.error || body?.message || fnError.message || "Error al enviar el código";
     }
+    if (fnData && (fnData.success === false || fnData.error)) {
+      return fnData.error || "Error al enviar el código";
+    }
+    return null;
+  };
+
+  // Sends the OTP through the given channel. Returns true on success.
+  const sendOtp = async (channel: "sms" | "email"): Promise<boolean> => {
+    const label = channel === "sms" ? "SMS" : "email";
+    const toastId = toast.loading(`Enviando código de seguridad por ${label}...`);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-otp", {
+        body: { token, channel },
+      });
+      const message = await extractFnError(error, data);
+      if (message) throw new Error(message);
+
+      toast.success(`Código enviado por ${label}`, { id: toastId });
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "No se pudo enviar el código";
+      toast.error(message, { id: toastId });
+      return false;
+    }
+  };
+
+  const handleResendOtp = async (channel: "sms" | "email") => {
+    if (resendCooldown > 0) return;
+    setResendCooldown(60); // Start 60s cooldown
+    const ok = await sendOtp(channel);
+    if (!ok) setResendCooldown(0); // Reset cooldown on error so they can retry
   };
 
 
@@ -235,35 +265,14 @@ export default function SignDocument() {
     setHasSignature(true);
   }, [isDrawing, getPointerPos]);
 
-  // Scroll trap - enable acceptance only after scrolling to bottom
-  const handleScroll = useCallback(() => {
-    const container = pdfContainerRef.current;
-    if (!container) return;
-
-    const iframe = container.querySelector('iframe');
-    if (iframe) {
-      // For iframes, we can't easily detect scroll, so enable after 5 seconds as fallback
-      return;
-    }
-
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 50;
-
-    if (isAtBottom && !canAccept) {
-      setCanAccept(true);
-      toast.success("Ahora puedes aceptar el documento");
-    }
-  }, [canAccept]);
-
-  // Auto-enable after timeout for PDF iframe (can't detect scroll in cross-origin iframe)
-  useEffect(() => {
-    if (step === 'view' && !canAccept) {
-      const timer = setTimeout(() => {
-        setCanAccept(true);
-      }, 5000); // 5 second reading time
-      return () => clearTimeout(timer);
-    }
-  }, [step, canAccept]);
+  // Scroll trap - enable acceptance once the reader reaches the end of the PDF.
+  // The PdfViewer renders to canvas and reports this reliably across browsers.
+  const handleReachedEnd = useCallback(() => {
+    setCanAccept((prev) => {
+      if (!prev) toast.success("Ahora puedes aceptar el documento");
+      return true;
+    });
+  }, []);
 
   // Initialize canvas when showing drawing area
   useEffect(() => {
@@ -388,37 +397,22 @@ export default function SignDocument() {
     const requiresOtp = docData.security_level === 'whatsapp_otp';
 
     if (requiresOtp) {
-      // Logic to determine channel:
-      // If no phone, force email.
-      // If phone exists, default to SMS (legacy) but allow switching in UI (via resend).
-      // Ideally we should ask, but to keep it simple and fix the "blocker":
+      // Auto-select the delivery channel instead of hard-requiring a phone:
+      // use SMS when a phone is available, otherwise fall back to email
+      // (signer_email is always present). This prevents a missing phone from
+      // blocking the entire signature when email verification is possible.
+      const channel: "sms" | "email" = docData.signer_phone ? "sms" : "email";
 
-      let channel: 'sms' | 'whatsapp' | 'email' = 'sms';
-
-      if (!docData.signer_phone) {
-        toast.error("Error: Este documento requiere firma avanzada pero no tiene un teléfono asociado para el SMS de seguridad. Contacta con el emisor.");
+      if (channel === "email" && !docData.signer_email) {
+        toast.error(
+          "Este documento requiere verificación, pero no hay teléfono ni email del firmante. Contacta con el emisor."
+        );
         return;
       }
 
-      const toastId = toast.loading(`Enviando código de seguridad por ${channel === 'sms' ? 'SMS' : 'Email'}...`);
-      try {
-        const { error } = await supabase.functions.invoke('send-otp', {
-          body: { token, channel }
-        });
-
-        if (error) {
-          const body = await error.context?.json().catch(() => ({}));
-          throw new Error(body.error || error.message || "Error al enviar OTP");
-        }
-
-        toast.dismiss(toastId);
-        setStep("otp");
-        toast.info("Código enviado por SMS a tu móvil");
-      } catch (err: unknown) {
-        const error = err as Error;
-        if (import.meta.env.DEV) console.error(error);
-        toast.error(error.message, { id: toastId });
-      }
+      setOtpChannel(channel);
+      const ok = await sendOtp(channel);
+      if (ok) setStep("otp");
       return;
     }
 
@@ -600,7 +594,13 @@ export default function SignDocument() {
                 Hemos enviado una copia del documento firmado a tu correo electrónico <strong>{docData?.signer_email}</strong>.
               </p>
               <Button
-                onClick={() => window.open(docData?.signed_file_url || docData?.file_url, '_blank')}
+                onClick={() => {
+                  const target = docData?.signed_file_url || docData?.file_url;
+                  if (!target) return;
+                  downloadUrl(target, safeFilename(`${docData?.title || "documento"}-firmado`)).catch(
+                    () => toast.error("No se pudo descargar el documento. Inténtalo de nuevo.")
+                  );
+                }}
                 variant="outline"
                 className="w-full gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary"
               >
@@ -702,32 +702,24 @@ export default function SignDocument() {
               )}
             </div>
 
-            {/* Fallback for PDF visibility - Primary Action now */}
+            {/* Open the document in an in-app modal (does not leave the app) */}
             <div className="flex justify-end mb-2">
-              <Button className="gap-2 w-full sm:w-auto" disabled={!pdfBlobUrl} onClick={() => pdfBlobUrl && window.open(pdfBlobUrl, '_blank')}>
-                <Download className="h-4 w-4" />
+              <Button variant="outline" className="gap-2 w-full sm:w-auto" disabled={!pdfBlobUrl} onClick={() => setViewerOpen(true)}>
+                <Eye className="h-4 w-4" />
                 Abrir Documento
               </Button>
             </div>
             <Card
-              ref={pdfContainerRef}
               className={`h-[600px] w-full overflow-hidden transition-all ${canAccept ? 'bg-muted/10 ring-2 ring-green-200' : 'bg-muted/20'
                 }`}
-              onScroll={handleScroll}
             >
               {pdfBlobUrl ? (
-                <object
-                  data={pdfBlobUrl}
-                  type="application/pdf"
-                  className="w-full h-full min-h-[600px]"
-                >
-                  <div className="flex flex-col items-center justify-center h-full p-8 text-center text-muted-foreground">
-                    <p className="mb-4">Tu navegador no puede mostrar este PDF aquí visualmente.</p>
-                    <Button variant="outline" onClick={() => window.open(pdfBlobUrl || '', '_blank')}>
-                      Abrir documento en nueva pestaña
-                    </Button>
-                  </div>
-                </object>
+                <PdfViewer
+                  url={pdfBlobUrl}
+                  downloadName={safeFilename(docData?.title)}
+                  onReachedEnd={handleReachedEnd}
+                  className="h-full w-full"
+                />
               ) : (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -871,7 +863,7 @@ export default function SignDocument() {
               Verificación de Seguridad
             </DialogTitle>
             <DialogDescription>
-              Por seguridad, introduce el código de 6 dígitos que hemos enviado por SMS.
+              Por seguridad, introduce el código de 6 dígitos que hemos enviado por {otpChannel === "sms" ? "SMS" : "email"}.
             </DialogDescription>
           </DialogHeader>
 
@@ -902,11 +894,13 @@ export default function SignDocument() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleResendOtp('sms')}
+                onClick={() => handleResendOtp(otpChannel)}
                 disabled={resendCooldown > 0}
                 className={resendCooldown > 0 ? "opacity-50" : ""}
               >
-                {resendCooldown > 0 ? `Reenviar en ${resendCooldown}s` : "Reenviar por SMS"}
+                {resendCooldown > 0
+                  ? `Reenviar en ${resendCooldown}s`
+                  : `Reenviar por ${otpChannel === "sms" ? "SMS" : "email"}`}
               </Button>
             </div>
           </div>
@@ -921,6 +915,15 @@ export default function SignDocument() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* In-app document viewer (keeps the user inside the signing flow) */}
+      <PdfModal
+        open={viewerOpen}
+        onOpenChange={setViewerOpen}
+        url={pdfBlobUrl}
+        title={docData?.title || "Documento"}
+        filename={safeFilename(docData?.title)}
+      />
     </>
   );
 }
