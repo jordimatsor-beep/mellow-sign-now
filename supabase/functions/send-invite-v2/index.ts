@@ -127,7 +127,8 @@ serve(async (req: Request) => {
     //   • 'signed' | 'cancelled' | otro → no enviable.
     const docStatus = (doc.status ?? 'draft') as string;
     if (docStatus === 'draft') {
-      const { error: creditErr } = await supabase.rpc('consume_credit', { amount: 1 });
+      // QW-03: ligar el débito al documento concreto para el historial de créditos.
+      const { error: creditErr } = await supabase.rpc('consume_credit', { amount: 1, p_document_id: document_id });
       if (creditErr) {
         const insufficient = (creditErr.message || '').includes('Insufficient');
         return new Response(

@@ -18,6 +18,7 @@ interface CreditTransaction {
   amount: number;
   description: string;
   document_id: string | null;
+  document_title: string | null;
   created_at: string;
 }
 
@@ -136,7 +137,19 @@ export default function Credits() {
                     {getTransactionIcon(item.type)}
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{item.description}</p>
+                    {/* QW-03: si el débito está ligado a un documento que sigue
+                        existiendo, enlazamos a su detalle; si se borró
+                        (document_title NULL) cae a la descripción en texto plano. */}
+                    {item.document_id && item.document_title ? (
+                      <Link
+                        to={`/documents/${item.document_id}`}
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
+                        {item.document_title}
+                      </Link>
+                    ) : (
+                      <p className="text-sm font-medium">{item.description}</p>
+                    )}
                     <p className="text-xs text-muted-foreground">{formatDate(item.created_at)}</p>
                   </div>
                 </div>
