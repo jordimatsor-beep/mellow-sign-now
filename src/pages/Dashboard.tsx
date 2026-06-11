@@ -11,6 +11,8 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useCredits } from "@/hooks/useCredits";
+import { WelcomeBanner } from "@/components/dashboard/WelcomeBanner";
+import { LOW_CREDITS_THRESHOLD } from "@/lib/constants";
 
 interface Document {
   id: string;
@@ -63,6 +65,11 @@ export default function Dashboard() {
     credits: credits
   };
 
+  // Un documento "enviado" deja de ser draft (sent/viewed/signed/...). Se usa
+  // para distinguir cuentas nuevas (banner de bienvenida) de cuentas con uso
+  // real (alerta de saldo bajo). Así ambos avisos nunca aparecen a la vez.
+  const hasSentDocument = documents.some(d => d.status !== 'draft');
+
   const recentDocuments = documents.slice(0, 5);
 
   return (
@@ -82,8 +89,31 @@ export default function Dashboard() {
         </Button>
       </div>
 
-      {/* Low Credits Warning */}
-      {!loadingCredits && credits < 3 && (
+      {/* Banner de bienvenida (QW-01) — solo cuentas nuevas sin envíos */}
+      {!loadingCredits && <WelcomeBanner credits={credits} hasSentDocument={hasSentDocument} />}
+
+      {/* Saldo agotado (QW-04) — más prominente; el envío ya queda bloqueado en NewDocument */}
+      {!loadingCredits && hasSentDocument && credits === 0 && (
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardContent className="p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-medium text-destructive">Te has quedado sin créditos</h3>
+                <p className="text-sm text-destructive/80">Recarga un pack para volver a enviar documentos.</p>
+              </div>
+            </div>
+            <Button size="sm" asChild>
+              <Link to="/credits/purchase">Comprar créditos</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Saldo bajo (QW-04) — entre 1 y el umbral, solo con uso real previo */}
+      {!loadingCredits && hasSentDocument && credits > 0 && credits <= LOW_CREDITS_THRESHOLD && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">

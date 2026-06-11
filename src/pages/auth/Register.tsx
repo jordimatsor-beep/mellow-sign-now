@@ -4,8 +4,9 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Loader2, MailCheck, ArrowLeft } from "lucide-react";
+import { Loader2, MailCheck, ArrowLeft, Gift } from "lucide-react";
 import { AuthLayout } from "@/components/auth/AuthLayout";
+import { WELCOME_CREDITS } from "@/lib/constants";
 import { useAuth } from "@/context/AuthContext";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -81,6 +82,10 @@ export default function Register() {
                             Hemos enviado un enlace de confirmación a <span className="font-medium text-foreground">{form.getValues("email")}</span>.
                             Revisa tu bandeja de entrada para activar tu cuenta.
                         </p>
+                        <p className="flex items-center justify-center gap-1.5 text-sm font-medium text-primary">
+                            <Gift className="h-4 w-4" />
+                            Tu cuenta incluye {WELCOME_CREDITS} firmas gratuitas para empezar
+                        </p>
                     </div>
                     <Button
                         variant="outline"
@@ -101,6 +106,11 @@ export default function Register() {
             subtitle="Empieza a firmar documentos digitalmente"
             mode="register"
         >
+            <div className="mb-5 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-primary">
+                <Gift className="h-4 w-4 shrink-0" />
+                <span>Tu cuenta incluye <strong>{WELCOME_CREDITS} firmas gratuitas</strong> para empezar.</span>
+            </div>
+
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField

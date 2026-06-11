@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Upload, FileText, ArrowRight, Loader2, User, Lock, Unlock, Receipt, Wrench, FileSignature, ClipboardList, MapPin, Check } from "lucide-react";
 import { ContactSelector } from "@/components/contacts/ContactSelector";
+import { ContactEmailAutocomplete } from "@/components/contacts/ContactEmailAutocomplete";
 import { SignaturePositionPicker } from "@/components/documents/SignaturePositionPicker";
 import { useProfile } from "@/context/ProfileContext";
 import { useCredits } from "@/hooks/useCredits";
@@ -92,6 +93,45 @@ export default function NewDocument() {
     if (contact.nif) setSignerNif(contact.nif);
     if (contact.address) setSignerAddress(contact.address);
     toast.success("Datos importados de la agenda");
+  };
+
+  // QW-05: tras un envío correcto, si el email no estaba en la agenda, ofrecer
+  // guardarlo. Fire-and-forget: no debe bloquear ni retrasar la navegación.
+  const offerSaveContact = async () => {
+    try {
+      const email = signerEmail.trim();
+      if (!email) return;
+      // RLS limita la consulta a los contactos del propio usuario.
+      const { data: existing } = await supabase
+        .from("contacts")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+      if (existing) return;
+
+      toast("¿Guardar este firmante en tu agenda?", {
+        description: signerName ? `${signerName} · ${email}` : email,
+        action: {
+          label: "Guardar contacto",
+          onClick: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { error } = await supabase.from("contacts").insert({
+              user_id: user.id,
+              name: signerName || email.split("@")[0],
+              email,
+              phone: signerPhone || null,
+              nif: signerNif || null,
+              address: signerAddress || null,
+            });
+            if (error) toast.error("No se pudo guardar el contacto");
+            else toast.success("Contacto guardado en tu agenda");
+          },
+        },
+      });
+    } catch {
+      /* el guardado de contacto nunca debe romper el flujo de envío */
+    }
   };
 
   // Load draft data
@@ -432,6 +472,7 @@ export default function NewDocument() {
       setUploadStatus("success");
       refetchCredits(); // el saldo cambió en el servidor — refresca el badge
       toast.success("Documento enviado correctamente");
+      offerSaveContact(); // QW-05: ofrecer guardar el firmante (no bloqueante)
       navigate('/dashboard');
 
     } catch (error: unknown) {
@@ -608,12 +649,12 @@ export default function NewDocument() {
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Email *</Label>
-                  <Input
+                  <ContactEmailAutocomplete
                     id="email"
-                    type="email"
                     placeholder="Ej: juan@email.com"
                     value={signerEmail}
-                    onChange={(e) => setSignerEmail(e.target.value)}
+                    onChange={setSignerEmail}
+                    onSelect={handleContactSelect}
                   />
                 </div>
               </div>
@@ -1015,11 +1056,16 @@ export default function NewDocument() {
     }
   };
 
-  const getSteps = () => {
-    return ["doctype", "upload", "signer", "options", "confirm"];
-  };
-
-  const steps = getSteps();
+  // Pasos del flujo con etiqueta visible (QW-02: numeración + nombre, N1 Nielsen).
+  const STEPS: { key: Step; label: string }[] = [
+    { key: "doctype", label: "Tipo" },
+    { key: "upload", label: "Documento" },
+    { key: "signer", label: "Firmante" },
+    { key: "options", label: "Opciones" },
+    { key: "confirm", label: "Revisión" },
+  ];
+  const steps = STEPS.map((s) => s.key);
+  const currentIndex = steps.indexOf(step);
 
   return (
     <div className="mx-auto max-w-xl py-4 space-y-6">
@@ -1029,7 +1075,6 @@ export default function NewDocument() {
           size="icon"
           className="h-8 w-8"
           onClick={() => {
-            const currentIndex = steps.indexOf(step);
             if (currentIndex === 0) {
               navigate("/dashboard");
             } else {
@@ -1043,16 +1088,35 @@ export default function NewDocument() {
         <h1 className="text-xl font-bold tracking-tight">Nuevo Documento</h1>
       </div>
 
-      <div className="mx-1 flex gap-2">
-        {steps.map((s, i) => (
-          <div
-            key={s}
-            className={`h-1.5 flex-1 rounded-full transition-colors ${steps.indexOf(step) >= i
-              ? "bg-primary"
-              : "bg-slate-200"
-              }`}
-          />
-        ))}
+      {/* Stepper con número y nombre de paso (QW-02). En móvil basta la línea
+          "Paso X de N · Nombre"; en >=sm se muestra además la etiqueta bajo cada barra. */}
+      <div className="mx-1 space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-slate-500">
+            Paso {currentIndex + 1} de {steps.length}
+          </p>
+          <p className="text-sm font-semibold text-primary">
+            {STEPS[currentIndex].label}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {STEPS.map((s, i) => (
+            <div key={s.key} className="flex-1">
+              <div
+                className={`h-1.5 rounded-full transition-colors ${
+                  currentIndex >= i ? "bg-primary" : "bg-slate-200"
+                }`}
+              />
+              <span
+                className={`mt-1 hidden text-[10px] sm:block ${
+                  currentIndex === i ? "font-semibold text-primary" : "text-slate-400"
+                }`}
+              >
+                {i + 1}. {s.label}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <Card className="border-muted/40 shadow-lg">
