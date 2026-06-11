@@ -64,6 +64,11 @@ serve(async (req: Request) => {
 
   console.log("Send-document-invitation V2 invoked");
 
+  // Estado de cobro accesible desde el catch para poder reembolsar si algo
+  // falla después de haber consumido el crédito.
+  let charged = false;
+  let userSupabase: ReturnType<typeof createClient> | null = null;
+
   try {
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
     if (!RESEND_API_KEY) {
@@ -71,7 +76,7 @@ serve(async (req: Request) => {
       throw new Error('Internal Server Error: Missing Configuration')
     }
 
-    const supabase = createClient(
+    const supabase = userSupabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
@@ -101,7 +106,7 @@ serve(async (req: Request) => {
     // Verify ownership
     const { data: doc, error: docError } = await supabase
       .from('documents')
-      .select('user_id')
+      .select('user_id, status')
       .eq('id', document_id)
       .single()
 
@@ -113,6 +118,76 @@ serve(async (req: Request) => {
     if (doc.user_id !== user.id) {
       throw new Error('Unauthorized: You do not own this document')
     }
+
+    // ── Cobro server-side (CRIT-1) ────────────────────────────────────
+    // El crédito se consume AQUÍ, atado al envío, no en el cliente (que
+    // antes podía saltárselo y enviar gratis). Reglas por estado:
+    //   • 'draft'                       → primer envío: consume 1 crédito.
+    //   • 'sent' | 'viewed' | 'expired' → reenvío: NO se vuelve a cobrar.
+    //   • 'signed' | 'cancelled' | otro → no enviable.
+    const docStatus = (doc.status ?? 'draft') as string;
+    if (docStatus === 'draft') {
+      const { error: creditErr } = await supabase.rpc('consume_credit', { amount: 1 });
+      if (creditErr) {
+        const insufficient = (creditErr.message || '').includes('Insufficient');
+        return new Response(
+          JSON.stringify({
+            success: false,
+            code: insufficient ? 'insufficient_credits' : 'credit_error',
+            error: insufficient
+              ? 'No te quedan créditos disponibles'
+              : 'No se pudo procesar el crédito',
+          }),
+          { status: insufficient ? 402 : 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      charged = true;
+    } else if (!['sent', 'viewed', 'expired'].includes(docStatus)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          code: 'invalid_status',
+          error: 'El documento no se puede enviar en su estado actual',
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Cliente service_role: necesario para llevar el documento a 'sent'
+    // (el trigger guard_document_status bloquea esa transición en contexto
+    // de usuario; service_role tiene auth.uid() NULL y sí puede).
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const markSentAndRespond = async (channel: string) => {
+      await supabaseAdmin.from('documents')
+        .update({ status: 'sent', sent_at: new Date().toISOString() })
+        .eq('id', document_id);
+      await supabaseAdmin.from('event_logs').insert({
+        user_id: user.id,
+        document_id,
+        event_type: 'document.sent',
+        event_data: { channel, charged },
+      });
+      return new Response(
+        JSON.stringify({ success: true, channel }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    };
+
+    const onSendFailure = async (message: string) => {
+      if (charged) {
+        try { await supabase.rpc('refund_credit', { p_description: 'Reembolso por fallo de envío' }); }
+        catch (e) { console.error('Refund failed:', e); }
+        charged = false;
+      }
+      return new Response(
+        JSON.stringify({ success: false, error: message }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    };
 
     const siteUrl = Deno.env.get('SITE_URL') || 'https://firmaclara.es';
     const signUrl = `${siteUrl}/sign/${sign_token}`
@@ -140,10 +215,7 @@ serve(async (req: Request) => {
 
     if (n8nSuccess) {
       console.log('n8n triggered successfully — skipping Resend to avoid duplicate email.');
-      return new Response(
-        JSON.stringify({ success: true, channel: 'n8n' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return await markSentAndRespond('n8n');
     }
 
     console.log('n8n not configured or failed. Sending email via Resend.');
@@ -344,19 +416,21 @@ serve(async (req: Request) => {
 
     if (!res.ok) {
       console.error('Resend Error Response:', data)
-      throw new Error(data.message || 'Error sending email with Resend')
+      // Email falló → reembolsa el crédito si se cobró y deja el doc en draft.
+      return await onSendFailure(data.message || 'Error al enviar el email')
     }
 
     console.log("Email sent successfully:", data.id);
 
-    return new Response(
-      JSON.stringify({ success: true, id: data.id }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return await markSentAndRespond('resend');
 
   } catch (error: any) {
     console.error("Function Error:", error)
-    // RETURN 200 OK even on error to bypass supabase-js strict checks
+    // Si se cobró un crédito y reventó algo después, devuélvelo.
+    if (charged && userSupabase) {
+      try { await userSupabase.rpc('refund_credit', { p_description: 'Reembolso por error en envío' }); }
+      catch (e) { console.error('Refund on catch failed:', e); }
+    }
     return new Response(
       JSON.stringify({
         success: false,

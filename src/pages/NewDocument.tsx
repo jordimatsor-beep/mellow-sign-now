@@ -384,26 +384,12 @@ export default function NewDocument() {
     }
   };
 
-  const handleSendDocument = async (docId: string, userId: string, signToken: string) => {
+  const handleSendDocument = async (docId: string, _userId: string, signToken: string) => {
     try {
-      // 1. Consumir crédito
-      const { error: creditError } = await withTimeout(
-        supabase.rpc('consume_credit', { amount: 1 }),
-        3000, "Credit consume"
-      );
-
-      if (creditError) {
-        if (import.meta.env.DEV) console.error("Credit Error Details:", creditError);
-        toast.error(`Error de créditos: ${creditError.message || creditError.details || 'Desconocido'}`);
-
-        if (creditError.message && creditError.message.includes('Insufficient credits')) {
-          setTimeout(() => navigate('/credits/purchase'), 2000);
-        }
-        setUploadStatus("error");
-        return;
-      }
-
-      // 2. Intentar enviar el email (CRITICO: Si falla, devolvemos el crédito)
+      // El consumo de crédito y la transición del documento a 'sent' ocurren
+      // DENTRO de send-invite-v2 (server-side), de forma atómica con el envío.
+      // El cliente ya no consume créditos ni cambia el estado: así es imposible
+      // enviar saltándose el cobro (antes era trivial desde la consola).
       const payload = {
         document_id: docId,
         signer_email: signerEmail,
@@ -415,94 +401,44 @@ export default function NewDocument() {
       };
 
       const { data: fnData, error: fnError } = await withTimeout(
-        supabase.functions.invoke('send-invite-v2', {
-          body: payload
-        }),
-        15000, "Send invite" // Aumentado timeout para email
+        supabase.functions.invoke('send-invite-v2', { body: payload }),
+        20000, "Send invite"
       );
 
-      // Verificación estricta del envío
-      const emailSent = !fnError && fnData?.success !== false;
+      const result = fnData as { success?: boolean; code?: string; error?: string } | null;
 
-      if (!emailSent) {
-        if (import.meta.env.DEV) console.error("Error sending email:", fnError || fnData);
+      if (fnError || result?.success !== true) {
+        const code = result?.code;
 
-        // 2.1 ROLLBACK: Devolver el crédito si el email falló
-        // consume_credit rejects negative amounts (security fix 2026-05-25);
-        // refunds go through the dedicated refund_credit() RPC.
-        // Cast until Supabase types are regenerated to include the new RPC.
-        const { error: refundError } = await (supabase.rpc as CallableFunction)('refund_credit', { p_description: 'Reembolso por fallo de envío' });
-        if (refundError) {
-          if (import.meta.env.DEV) console.error("Credit refund failed:", refundError);
+        // Sin créditos → llevar a la compra
+        if (code === 'insufficient_credits') {
+          setUploadStatus("error");
+          toast.error("No te quedan créditos disponibles.");
+          setTimeout(() => navigate('/credits/purchase'), 1500);
+          return;
         }
-        const creditMsg = refundError
-          ? " No se pudo devolver el crédito automáticamente — contacta con soporte."
-          : " El crédito ha sido devuelto.";
 
-        const errorMsg = fnError?.message || fnData?.error || "Error desconocido al enviar email";
-        toast.error(`No se pudo enviar el email: ${errorMsg}.${creditMsg}`);
+        // Cualquier otro fallo: el servidor ya reembolsó el crédito (si lo cobró)
+        // y dejó el documento como borrador.
+        const errorMsg = result?.error || fnError?.message || "Error desconocido al enviar";
+        if (import.meta.env.DEV) console.error("Error sending document:", fnError || result);
+        toast.error(`No se pudo enviar: ${errorMsg}`);
         toast.info("El documento se ha guardado como borrador. Inténtalo de nuevo.");
-
         setUploadStatus("error");
-        // No actualizamos a 'sent', se queda en 'draft'
-        setTimeout(() => navigate('/dashboard'), 4000);
+        setTimeout(() => navigate('/dashboard'), 3500);
         return;
       }
 
-      // 3. Email enviado correctamente -> Actualizar estado a 'sent'
-      const { error: updateError } = await withTimeout(
-        supabase.from('documents').update({
-          status: 'sent',
-          sent_at: new Date().toISOString()
-        }).eq('id', docId),
-        3000, "Document status update"
-      );
-
-      if (updateError) {
-        // Edge case: Email se envió pero falló actualizar la BBDD. 
-        // En este caso NO devolvemos crédito porque el email sí salió.
-        // El usuario verá el documento como 'draft' pero el firmante recibió el correo.
-        // Es un estado inconsistente pero preferible a que el firmante firme y no valga, 
-        // o que enviemos 2 emails.
-        if (import.meta.env.DEV) console.error("Error updating document status after sending email:", updateError);
-        toast.error("El email se envió pero hubo un error actualizando el estado. Contacta con soporte.");
-      }
-
-      // Registrar el evento
-      try {
-        await withTimeout(
-          supabase.from('event_logs').insert({
-            user_id: userId,
-            event_type: 'document.sent',
-            event_data: {
-              credits_consumed: 1,
-              email_sent: true,
-              document_id: docId,
-              signer_email: signerEmail
-            }
-          }),
-          3000, "Event log"
-        );
-      } catch (logErr) {
-        if (import.meta.env.DEV) console.warn("Event log failed (non-critical):", logErr);
-      }
-
       setUploadStatus("success");
-      refetchCredits(); // credit was consumed — refresh the shared balance
+      refetchCredits(); // el saldo cambió en el servidor — refresca el badge
       toast.success("Documento enviado correctamente");
       navigate('/dashboard');
 
     } catch (error: unknown) {
       const err = error as Error;
       if (import.meta.env.DEV) console.error("Critical error in handleSendDocument:", err);
-
-      // Intentar devolver crédito si falló algo inesperado después del consumo
-      // Nota: Esto es arriesgado si no sabemos si el email salió, 
-      // pero asumimos que si saltó al catch, el email probablemente falló o es el timeout.
-      // Por seguridad, solo devolvemos si no hemos llegado al punto de "emailSent = true".
-      // Como es complejo saberlo aquí, mejor pedimos al usuario que contacte si ha perdido créditos.
-
-      toast.error("Error crítico al enviar: " + err.message);
+      // Si se cobró un crédito, send-invite-v2 lo reembolsa ante el fallo.
+      toast.error("Error al enviar: " + err.message);
       setUploadStatus("error");
       navigate('/dashboard');
     }

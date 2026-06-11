@@ -336,7 +336,10 @@ export default function DocumentDetail() {
             onClick={async () => {
               setResending(true);
               try {
-                // Regenerate sign token
+                // Regenerate sign token + expiry. NO tocamos 'status' aquí:
+                // el trigger guard_document_status bloquea que el cliente lleve
+                // un documento a 'sent'. Esa transición la hace send-invite-v2
+                // (server-side) en el camino de reenvío, sin cobrar crédito.
                 const newToken = crypto.randomUUID();
                 const newExpiry = new Date();
                 newExpiry.setDate(newExpiry.getDate() + 7);
@@ -345,9 +348,7 @@ export default function DocumentDetail() {
                   .from('documents')
                   .update({
                     sign_token: newToken,
-                    expires_at: newExpiry.toISOString(),
-                    status: 'sent',
-                    sent_at: new Date().toISOString()
+                    expires_at: newExpiry.toISOString()
                   })
                   .eq('id', doc.id);
 

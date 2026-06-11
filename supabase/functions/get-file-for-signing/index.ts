@@ -58,7 +58,9 @@ serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({ success: true, file_url: fileUrl, signed_file_url: signedFileUrl, certificate_url: certificateUrl }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      // no-store: las URLs firmadas son temporales y dan acceso al documento;
+      // no deben quedar cacheadas en proxies/CDN intermedios.
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }
     );
 
   } catch (error: any) {
