@@ -119,6 +119,19 @@ serve(async (req: Request) => {
       throw new Error('Unauthorized: You do not own this document')
     }
 
+    // ME-03: branding del remitente para personalizar el email al firmante.
+    const { data: brand } = await supabase
+      .from('users')
+      .select('brand_logo_url, brand_color, brand_sender_name')
+      .eq('id', user.id)
+      .single();
+    const brandColor = (brand?.brand_color as string) || '#2563eb';
+    const brandLogoUrl = (brand?.brand_logo_url as string) || '';
+    // Saneado para cabeceras de email (sin comillas, comas, < > ni saltos).
+    const brandSenderName = ((brand?.brand_sender_name as string) || '')
+      .replace(/["<>\r\n,]/g, '')
+      .trim();
+
     // ── Cobro server-side (CRIT-1) ────────────────────────────────────
     // El crédito se consume AQUÍ, atado al envío, no en el cliente (que
     // antes podía saltárselo y enviar gratis). Reglas por estado:
@@ -193,9 +206,10 @@ serve(async (req: Request) => {
     const siteUrl = Deno.env.get('SITE_URL') || 'https://firmaclara.es';
     const signUrl = `${siteUrl}/sign/${sign_token}`
 
-    // Escape user-provided content
+    // Escape user-provided content. El nombre de marca (si existe) tiene
+    // prioridad sobre el sender_name que envía el cliente.
     const docTitle = escapeHtml(title) || 'Documento sin título'
-    const sender = escapeHtml(sender_name) || 'FirmaClara'
+    const sender = escapeHtml(brandSenderName || sender_name) || 'FirmaClara'
     const safeSignerName = escapeHtml(signer_name)
 
     // --- N8N / RESEND LOGIC START ---
@@ -209,7 +223,11 @@ serve(async (req: Request) => {
       sign_url: signUrl,
       // Default expiration 7 days from now if not present
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      custom_message: "Documento enviado desde FirmaClara"
+      custom_message: "Documento enviado desde FirmaClara",
+      // ME-03: branding para que la plantilla de n8n pueda aplicarlo.
+      brand_logo_url: brandLogoUrl,
+      brand_color: brandColor,
+      brand_sender_name: brandSenderName || sender,
     };
 
     const n8nSuccess = await triggerN8n('document.sent', n8nPayload);
@@ -358,7 +376,9 @@ serve(async (req: Request) => {
           <div class="wrapper">
             <div class="container">
               <div class="header">
-                <a href="${siteUrl}" class="logo">Firma<span>Clara</span></a>
+                ${brandLogoUrl
+                  ? `<img src="${brandLogoUrl}" alt="${sender}" style="max-height: 40px; max-width: 180px; object-fit: contain;" />`
+                  : `<a href="${siteUrl}" class="logo">Firma<span>Clara</span></a>`}
               </div>
 
               <div class="content">
@@ -374,7 +394,7 @@ serve(async (req: Request) => {
                 </div>
 
                 <div class="btn-container">
-                  <a href="${signUrl}" class="button">Revisar y Firmar</a>
+                  <a href="${signUrl}" class="button" style="background-color: ${brandColor};">Revisar y Firmar</a>
                 </div>
 
                 <p style="text-align: center; font-size: 14px;">
@@ -406,7 +426,8 @@ serve(async (req: Request) => {
         'Authorization': `Bearer ${RESEND_API_KEY}`
       },
       body: JSON.stringify({
-        from: 'FirmaClara <noreply@firmaclara.es>',
+        // ME-03: "[Empresa] vía FirmaClara" si hay marca configurada.
+        from: `${brandSenderName ? `${brandSenderName} vía FirmaClara` : 'FirmaClara'} <noreply@firmaclara.es>`,
         to: [signer_email],
         subject: `FirmaClara: ${sender} solicita tu firma en "${docTitle}"`,
         html: html

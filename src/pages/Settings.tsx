@@ -14,6 +14,7 @@ import { withTimeout } from "@/lib/withTimeout";
 import { toast } from "sonner";
 import { useDataExport } from "@/hooks/useDataExport";
 import { useProfile } from "@/context/ProfileContext";
+import { BrandSettings } from "@/components/settings/BrandSettings";
 
 const settingsItems = [
   { icon: User, label: "Perfil", description: "Nombre, email, empresa", to: "#profile" },
@@ -340,7 +341,10 @@ export default function Settings() {
 
       <Separator />
 
+      {/* ME-03: Personalización de marca en emails */}
+      <BrandSettings />
 
+      <Separator />
 
       {/* Security Section */}
       <div className="space-y-4 transition-colors duration-500 rounded-lg p-2 -mx-2" id="security">
