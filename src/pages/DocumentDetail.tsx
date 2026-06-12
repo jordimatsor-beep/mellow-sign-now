@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, FileText, User, Mail, Check, Award, Loader2, AlertCircle, RotateCw } from "lucide-react";
+import { ArrowLeft, Download, FileText, User, Mail, Check, Award, Loader2, AlertCircle, RotateCw, FileStack } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -45,6 +45,7 @@ export default function DocumentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [resending, setResending] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   const { data: doc, isLoading, error } = useQuery({
     queryKey: queryKeys.documents.detail(id!),
@@ -409,6 +410,50 @@ export default function DocumentDetail() {
             Reenviar invitación
           </Button>
         )}
+
+        {/* ME-04: guardar como plantilla para reutilizar este documento */}
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-2"
+          disabled={savingTemplate}
+          onClick={async () => {
+            setSavingTemplate(true);
+            try {
+              const { error } = await supabase.from('documents').insert({
+                user_id: doc.user_id,
+                title: doc.title,
+                file_url: doc.file_url,
+                status: 'draft',
+                is_template: true,
+                signer_name: doc.signer_name,
+                signer_email: doc.signer_email,
+                signer_phone: doc.signer_phone,
+                signer_tax_id: doc.signer_tax_id,
+                signer_address: doc.signer_address,
+                custom_message: doc.custom_message,
+                signature_type: doc.signature_type,
+                security_level: doc.security_level,
+                signature_page: doc.signature_page,
+                signature_x: doc.signature_x,
+                signature_y: doc.signature_y,
+                original_format: doc.original_format,
+              });
+              if (error) throw error;
+              toast.success("Guardado como plantilla", {
+                description: "Lo encontrarás en la sección Plantillas.",
+                action: { label: "Ver", onClick: () => navigate('/templates') },
+              });
+            } catch (e) {
+              if (import.meta.env.DEV) console.error(e);
+              toast.error("No se pudo guardar como plantilla");
+            } finally {
+              setSavingTemplate(false);
+            }
+          }}
+        >
+          {savingTemplate ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileStack className="h-4 w-4" />}
+          Guardar como plantilla
+        </Button>
       </div>
     </div>
   );

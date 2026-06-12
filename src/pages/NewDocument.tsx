@@ -30,6 +30,7 @@ export default function NewDocument() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const draftId = searchParams.get('draftId');
+  const templateId = searchParams.get('templateId');
   const { profile } = useProfile();
   const [step, setStep] = useState<Step>("doctype");
   const [docType, setDocType] = useState<DocType | null>(null);
@@ -193,6 +194,60 @@ export default function NewDocument() {
 
     loadDraft();
   }, [draftId]);
+
+  // ME-04: usar una plantilla → se prerrellena un documento NUEVO (sin draftId,
+  // así handleCreateDocument hace INSERT) reutilizando el archivo y los datos de
+  // la plantilla. El archivo original es inmutable, por lo que referenciar el
+  // mismo file_url no produce modificación cruzada.
+  useEffect(() => {
+    if (!templateId) return;
+
+    const loadTemplate = async () => {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('id', templateId)
+        .single();
+
+      if (error || !data) {
+        toast.error("No se pudo cargar la plantilla");
+        if (import.meta.env.DEV) console.error(error);
+        return;
+      }
+
+      const tpl = data as any;
+      setTitle(tpl.title || '');
+      setSignerName(tpl.signer_name || '');
+      setSignerEmail(tpl.signer_email || '');
+      setSignerNif(tpl.signer_tax_id || '');
+      setSignerAddress(tpl.signer_address || '');
+      setSignerPhone(tpl.signer_phone || '');
+      setCustomMessage(tpl.custom_message || '');
+
+      if (typeof tpl.signature_page === 'number') setSignaturePage(tpl.signature_page);
+      if (typeof tpl.signature_x === 'number') setSignatureX(tpl.signature_x);
+      if (typeof tpl.signature_y === 'number') setSignatureY(tpl.signature_y);
+      if (tpl.signature_page === 0) setSignaturePosition("new_page");
+      else if (typeof tpl.signature_page === 'number' && tpl.signature_page > 0) setSignaturePosition("custom");
+      else setSignaturePosition("last_page");
+
+      if (tpl.security_level) {
+        setSecurityLevel(tpl.security_level);
+        setWhatsappVerification(tpl.security_level === 'whatsapp_otp');
+      }
+
+      if (tpl.file_url) {
+        setDraftFileUrl(tpl.file_url);
+        setFile(new File([], tpl.title ? `${tpl.title}.pdf` : "documento.pdf", { type: "application/pdf" }));
+        setDocType('otro');
+        setStep('signer');
+      }
+
+      toast.success("Plantilla cargada. Revisa el firmante y envía.");
+    };
+
+    loadTemplate();
+  }, [templateId]);
 
   // Calls the convert-to-pdf edge function (Gotenberg backend) and returns a
   // PDF File. Uses raw fetch (not supabase.functions.invoke) because the

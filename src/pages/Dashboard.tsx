@@ -45,6 +45,7 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from('documents')
         .select('id, title, signer_email, status, created_at, sent_at, signed_at')
+        .eq('is_template', false) // ME-04: las plantillas no son envíos
         .order('created_at', { ascending: false })
         .limit(50);
 
