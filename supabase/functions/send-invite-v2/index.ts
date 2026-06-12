@@ -65,9 +65,13 @@ serve(async (req: Request) => {
   console.log("Send-document-invitation V2 invoked");
 
   // Estado de cobro accesible desde el catch para poder reembolsar si algo
-  // falla después de haber consumido el crédito.
+  // falla después de haber consumido el crédito. El reembolso se hace SIEMPRE
+  // con service_role (revertir_firma ya no es invocable por el cliente, para
+  // evitar el exploit "consumir y reembolsar" = envío gratis).
   let charged = false;
   let userSupabase: ReturnType<typeof createClient> | null = null;
+  let chargedUserId: string | null = null;
+  let chargedDocId: string | null = null;
 
   try {
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
@@ -170,6 +174,8 @@ serve(async (req: Request) => {
         );
       }
       charged = true;
+      chargedUserId = user.id;
+      chargedDocId = document_id;
     } else if (!['sent', 'viewed', 'expired'].includes(docStatus)) {
       return new Response(
         JSON.stringify({
@@ -207,8 +213,13 @@ serve(async (req: Request) => {
 
     const onSendFailure = async (message: string) => {
       if (charged) {
-        try { await supabase.rpc('refund_credit', { p_description: 'Reembolso por fallo de envío' }); }
-        catch (e) { console.error('Refund failed:', e); }
+        try {
+          await supabaseAdmin.rpc('revertir_firma', {
+            p_user_id: user.id,
+            p_document_id: document_id,
+            p_description: 'Reembolso por fallo de envío',
+          });
+        } catch (e) { console.error('Refund failed:', e); }
         charged = false;
       }
       return new Response(
@@ -462,10 +473,20 @@ serve(async (req: Request) => {
 
   } catch (error: any) {
     console.error("Function Error:", error)
-    // Si se cobró un crédito y reventó algo después, devuélvelo.
-    if (charged && userSupabase) {
-      try { await userSupabase.rpc('refund_credit', { p_description: 'Reembolso por error en envío' }); }
-      catch (e) { console.error('Refund on catch failed:', e); }
+    // Si se cobró un crédito y reventó algo después, devuélvelo (vía service_role,
+    // con el id de usuario/documento guardados antes del cobro).
+    if (charged && chargedUserId) {
+      try {
+        const admin = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        );
+        await admin.rpc('revertir_firma', {
+          p_user_id: chargedUserId,
+          p_document_id: chargedDocId,
+          p_description: 'Reembolso por error en envío',
+        });
+      } catch (e) { console.error('Refund on catch failed:', e); }
     }
     return new Response(
       JSON.stringify({

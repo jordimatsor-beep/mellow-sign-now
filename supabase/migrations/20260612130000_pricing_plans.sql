@@ -301,8 +301,12 @@ BEGIN
 END;
 $$;
 
+-- revertir_firma NO se concede a authenticated/anon: si el cliente pudiera
+-- invocarla, podría consumir y reembolsarse (envío gratis). Solo service_role
+-- (send-invite-v2 la llama con la service key para reembolsar fallos de envío).
 REVOKE EXECUTE ON FUNCTION public.revertir_firma(uuid, uuid, text) FROM PUBLIC;
-GRANT  EXECUTE ON FUNCTION public.revertir_firma(uuid, uuid, text) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.revertir_firma(uuid, uuid, text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.revertir_firma(uuid, uuid, text) FROM authenticated;
 GRANT  EXECUTE ON FUNCTION public.revertir_firma(uuid, uuid, text) TO service_role;
 
 -- ════════════════════════════════════════════════════════════════════
@@ -382,8 +386,11 @@ BEGIN
 END;
 $$;
 
+-- refund_credit solo service_role (mismo motivo que revertir_firma).
 REVOKE EXECUTE ON FUNCTION public.refund_credit(text) FROM PUBLIC;
-GRANT  EXECUTE ON FUNCTION public.refund_credit(text) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.refund_credit(text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.refund_credit(text) FROM authenticated;
+GRANT  EXECUTE ON FUNCTION public.refund_credit(text) TO service_role;
 
 -- ════════════════════════════════════════════════════════════════════
 -- 9) get_available_credits()  — repuntada al nuevo modelo
