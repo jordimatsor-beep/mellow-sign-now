@@ -160,6 +160,9 @@ DECLARE
   v_plan_efectivo text;
   v_limite        integer;
 BEGIN
+  -- Marca de confianza para el guard de columnas de facturación (ver §15).
+  PERFORM set_config('app.billing_ctx', 'on', true);
+
   -- Resolución segura del titular: un usuario autenticado solo puede consumir
   -- para sí mismo; el service_role (auth.uid() NULL) usa el p_user_id explícito.
   v_caller := auth.uid();
@@ -247,6 +250,8 @@ DECLARE
   v_tx     public.credit_transactions%ROWTYPE;
   v_net    integer;
 BEGIN
+  PERFORM set_config('app.billing_ctx', 'on', true);
+
   v_caller := auth.uid();
   IF v_caller IS NOT NULL THEN
     p_user_id := v_caller;
@@ -473,6 +478,8 @@ AS $$
 DECLARE
   v_count integer;
 BEGIN
+  PERFORM set_config('app.billing_ctx', 'on', true);
+
   UPDATE public.users
   SET firmas_usadas_mes = 0,
       plan_renewed_at   = now()
@@ -565,6 +572,8 @@ AS $$
 DECLARE
   v_marker text := 'stripe_session:' || COALESCE(p_session, '');
 BEGIN
+  PERFORM set_config('app.billing_ctx', 'on', true);
+
   IF p_credits IS NULL OR p_credits <= 0 THEN
     RAISE EXCEPTION 'add_firmas_creditos: invalid credit amount';
   END IF;
@@ -594,5 +603,67 @@ $$;
 
 REVOKE EXECUTE ON FUNCTION public.add_firmas_creditos(uuid, integer, text, text) FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION public.add_firmas_creditos(uuid, integer, text, text) TO service_role;
+
+-- ════════════════════════════════════════════════════════════════════
+-- 15) Guard de columnas de facturación (SEGURIDAD)
+--     La RLS de users solo comprueba auth.uid()=id, y el guard previo (lista
+--     negra) no cubría las columnas nuevas → un usuario podría auto-asignarse
+--     plan/creditos con un UPDATE directo. Extiende guard_user_update para
+--     bloquear esos campos salvo admin / service_role / flag app.billing_ctx
+--     (que marcan las funciones de facturación SECURITY DEFINER de arriba).
+-- ════════════════════════════════════════════════════════════════════
+CREATE OR REPLACE FUNCTION public.guard_user_update()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_is_admin BOOLEAN;
+  v_trusted  BOOLEAN;
+BEGIN
+  v_is_admin := public.is_admin();
+  v_trusted := COALESCE(auth.role(), '') = 'service_role'
+            OR COALESCE(current_setting('app.billing_ctx', true), '') = 'on';
+
+  IF NOT v_is_admin AND NEW.role IS DISTINCT FROM OLD.role THEN
+    RAISE EXCEPTION 'Permission denied: cannot modify role';
+  END IF;
+
+  IF NOT v_is_admin THEN
+    IF NEW.email IS DISTINCT FROM OLD.email THEN
+      RAISE EXCEPTION 'Permission denied: cannot modify email';
+    END IF;
+    IF NEW.id IS DISTINCT FROM OLD.id THEN
+      RAISE EXCEPTION 'Permission denied: cannot modify id';
+    END IF;
+    IF NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+      RAISE EXCEPTION 'Permission denied: cannot modify created_at';
+    END IF;
+  END IF;
+
+  -- Campos de facturación: solo admin, service_role o funciones de facturación.
+  IF NOT v_is_admin AND NOT v_trusted THEN
+    IF NEW.plan_id               IS DISTINCT FROM OLD.plan_id
+       OR NEW.firmas_creditos    IS DISTINCT FROM OLD.firmas_creditos
+       OR NEW.firmas_usadas_mes  IS DISTINCT FROM OLD.firmas_usadas_mes
+       OR NEW.stripe_customer_id IS DISTINCT FROM OLD.stripe_customer_id
+       OR NEW.stripe_subscription_id IS DISTINCT FROM OLD.stripe_subscription_id
+       OR NEW.subscription_status IS DISTINCT FROM OLD.subscription_status
+       OR NEW.grace_until        IS DISTINCT FROM OLD.grace_until
+       OR NEW.plan_renewed_at    IS DISTINCT FROM OLD.plan_renewed_at THEN
+      RAISE EXCEPTION 'Permission denied: cannot modify billing fields';
+    END IF;
+  END IF;
+
+  IF OLD.role = 'admin' AND NEW.role != 'admin' THEN
+    IF (SELECT COUNT(*) FROM public.users WHERE role = 'admin' AND id != OLD.id) = 0 THEN
+      RAISE EXCEPTION 'Cannot remove the last admin';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
 
 COMMIT;
