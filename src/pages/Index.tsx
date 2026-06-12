@@ -107,7 +107,7 @@ export default function Index() {
 
               <p className="text-lg text-muted-foreground max-w-lg">
                 Firma contratos, presupuestos y documentos online con validez legal.
-                Plataforma de firma digital con cumplimiento eIDAS. Sin instalación. Sin cuotas fijas.
+                Plataforma de firma digital con cumplimiento eIDAS. Sin instalación. Empieza gratis.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -123,7 +123,7 @@ export default function Index() {
               </div>
 
               <p className="text-sm text-muted-foreground">
-                Sin tarjeta de crédito · 2 créditos gratis
+                Sin tarjeta de crédito · 2 firmas gratis al mes
               </p>
             </div>
 
@@ -390,106 +390,103 @@ export default function Index() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-foreground mb-3">
-              Precios transparentes
+              Planes y precios
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Paga solo por lo que usas. Sin cuotas mensuales fijas.
-              Los créditos no caducan nunca.
+              Empieza gratis con 2 firmas al mes. Sube de plan cuando lo necesites y cancela cuando quieras.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Starter Pack */}
-            <Card className="bg-background border border-border shadow-sm hover:shadow-md transition-all relative overflow-hidden">
-              <CardContent className="p-8">
-                <h3 className="font-semibold text-lg text-foreground mb-2">Pack Básico</h3>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto items-stretch">
+            {/* Gratis */}
+            <Card className="bg-background border border-border shadow-sm hover:shadow-md transition-all flex flex-col">
+              <CardContent className="p-6 flex flex-col flex-1">
+                <h3 className="font-semibold text-lg text-foreground mb-1">Gratis</h3>
+                <p className="text-sm text-muted-foreground mb-4">Para empezar</p>
                 <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-bold text-foreground">15€</span>
-                  <span className="text-muted-foreground">/ pack</span>
+                  <span className="text-4xl font-bold text-foreground">0€</span>
+                  <span className="text-muted-foreground">/mes</span>
                 </div>
-                <ul className="space-y-3 mb-8 text-sm">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    <span>10 documentos (1.50€ / doc)</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    <span>Créditos sin caducidad</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    <span>Certificado de evidencias</span>
-                  </li>
+                <ul className="space-y-3 mb-8 text-sm flex-1">
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /><span>2 firmas al mes</span></li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /><span>Asistente Clara incluido</span></li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /><span>Sin tarjeta de crédito</span></li>
                 </ul>
-                <Button className="w-full" asChild>
-                  <Link to="/register">Empezar ahora</Link>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link to="/register">Empezar gratis</Link>
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Pro Pack - Highlighted */}
-            <Card className="bg-background border-2 border-primary shadow-xl scale-105 relative overflow-hidden">
+            {/* Básico */}
+            <Card className="bg-background border border-border shadow-sm hover:shadow-md transition-all flex flex-col">
+              <CardContent className="p-6 flex flex-col flex-1">
+                <h3 className="font-semibold text-lg text-foreground mb-1">Básico</h3>
+                <p className="text-sm text-muted-foreground mb-4">Para uso regular</p>
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className="text-4xl font-bold text-foreground">9€</span>
+                  <span className="text-muted-foreground">/mes</span>
+                </div>
+                <ul className="space-y-3 mb-8 text-sm flex-1">
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /><span>10 firmas al mes</span></li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /><span>Sello de tiempo y auditoría</span></li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /><span>Soporte por email</span></li>
+                </ul>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link to="/register">Contratar</Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Profesional - Highlighted */}
+            <Card className="bg-background border-2 border-primary shadow-xl relative overflow-hidden flex flex-col">
               <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">
                 MÁS POPULAR
               </div>
-              <CardContent className="p-8">
-                <h3 className="font-semibold text-lg text-foreground mb-2">Pack Profesional</h3>
+              <CardContent className="p-6 flex flex-col flex-1">
+                <h3 className="font-semibold text-lg text-foreground mb-1">Profesional</h3>
+                <p className="text-sm text-muted-foreground mb-4">Para uso intensivo</p>
                 <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-bold text-foreground">60€</span>
-                  <span className="text-muted-foreground">/ pack</span>
+                  <span className="text-4xl font-bold text-foreground">19€</span>
+                  <span className="text-muted-foreground">/mes</span>
                 </div>
-                <ul className="space-y-3 mb-8 text-sm">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    <span>50 documentos (1.20€ / doc)</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    <span>Ahorras un 20%</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    <span>Soporte prioritario</span>
-                  </li>
+                <ul className="space-y-3 mb-8 text-sm flex-1">
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /><span>50 firmas al mes</span></li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /><span>Firmas extra a 0,40€</span></li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /><span>Personalización de marca</span></li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /><span>Soporte prioritario</span></li>
                 </ul>
-                <Button className="w-full bg-primary hover:bg-primary/90" size="lg" asChild>
-                  <Link to="/register">Comprar Pack</Link>
+                <Button className="w-full bg-primary hover:bg-primary/90" asChild>
+                  <Link to="/register">Contratar</Link>
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Business Pack */}
-            <Card className="bg-background border border-border shadow-sm hover:shadow-md transition-all relative overflow-hidden">
-              <CardContent className="p-8">
-                <h3 className="font-semibold text-lg text-foreground mb-2">Pack Empresa</h3>
+            {/* Pack puntual */}
+            <Card className="bg-background border border-border shadow-sm hover:shadow-md transition-all flex flex-col">
+              <CardContent className="p-6 flex flex-col flex-1">
+                <h3 className="font-semibold text-lg text-foreground mb-1">Pack puntual</h3>
+                <p className="text-sm text-muted-foreground mb-4">Sin compromiso</p>
                 <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-bold text-foreground">100€</span>
-                  <span className="text-muted-foreground">/ pack</span>
+                  <span className="text-4xl font-bold text-foreground">15€</span>
+                  <span className="text-muted-foreground">una vez</span>
                 </div>
-                <ul className="space-y-3 mb-8 text-sm">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    <span>100 documentos (1.00€ / doc)</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    <span>Ahorras un 33%</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    <span>API disponible (beta)</span>
-                  </li>
+                <ul className="space-y-3 mb-8 text-sm flex-1">
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /><span>15 firmas que no caducan</span></li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /><span>Se suma a cualquier plan</span></li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /><span>Se consume antes que tu cuota</span></li>
                 </ul>
-                <ContactSalesDialog
-                  trigger={
-                    <Button className="w-full">
-                      Contactar Ventas
-                    </Button>
-                  }
-                />
+                <Button variant="secondary" className="w-full" asChild>
+                  <Link to="/register">Comprar pack</Link>
+                </Button>
               </CardContent>
             </Card>
           </div>
+
+          <p className="text-center text-sm text-muted-foreground mt-8">
+            A partir de la firma 51 en Profesional, cada firma extra cuesta 0,40 €. ¿Necesitas más volumen?{" "}
+            <ContactSalesDialog trigger={<button className="text-primary font-medium hover:underline">Habla con nosotros</button>} />
+          </p>
         </div>
       </section>
 
@@ -514,7 +511,7 @@ export default function Index() {
               },
               {
                 q: "¿Cuánto cuesta firmar documentos online con FirmaClara?",
-                a: "FirmaClara ofrece 2 créditos gratis para probar. Los packs empiezan desde 15€ por 10 documentos (1,50€/documento). Sin cuotas mensuales ni compromisos. Los créditos no caducan nunca."
+                a: "FirmaClara tiene un plan Gratis permanente con 2 firmas al mes. Si necesitas más, hay suscripciones de 9€/mes (10 firmas) y 19€/mes (50 firmas), y un pack puntual de 15€ por 15 firmas que no caducan. Puedes cambiar de plan o cancelar cuando quieras."
               },
               {
                 q: "¿FirmaClara cumple con el RGPD y eIDAS?",
@@ -544,7 +541,7 @@ export default function Index() {
             Empieza a firmar documentos online hoy
           </h2>
           <p className="text-background/70 mb-8 max-w-xl mx-auto">
-            Prueba nuestra plataforma de firma electrónica gratis. Sin compromisos. Sin tarjeta de crédito. 2 créditos gratis.
+            Prueba nuestra plataforma de firma electrónica gratis. Sin compromisos. Sin tarjeta de crédito. 2 firmas gratis al mes.
           </p>
           <Button size="lg" asChild className="bg-background text-foreground hover:bg-background/90 shadow-xl shadow-black/10 hover:shadow-black/20 transition-all duration-300 hover:scale-105 active:scale-95">
             <Link to="/register">

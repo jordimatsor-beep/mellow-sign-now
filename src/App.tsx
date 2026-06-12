@@ -32,7 +32,6 @@ const DocumentDetail = lazy(() => import("@/pages/DocumentDetail"));
 const NewDocument = lazy(() => import("@/pages/NewDocument"));
 const Templates = lazy(() => import("@/pages/Templates"));
 const Credits = lazy(() => import("@/pages/Credits"));
-const CreditsPurchase = lazy(() => import("@/pages/CreditsPurchase"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Help = lazy(() => import("@/pages/Help"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
@@ -114,7 +113,8 @@ const App = () => (
                       <Route path="/templates" element={<Templates />} />
                       <Route path="/documents/:id" element={<DocumentDetail />} />
                       <Route path="/credits" element={<Credits />} />
-                      <Route path="/credits/purchase" element={<CreditsPurchase />} />
+                      {/* Catálogo de packs antiguo reemplazado por la página de planes */}
+                      <Route path="/credits/purchase" element={<Navigate to="/precios" replace />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/help" element={<Help />} />
                       <Route path="/clara" element={<Clara />} />

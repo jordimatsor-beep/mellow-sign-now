@@ -74,7 +74,7 @@ export default function Legal() {
                         <div className="rounded-lg bg-slate-50 p-6">
                             <h4 className="mb-2 text-lg font-semibold">¿FirmaClara es una alternativa a DocuSign en España?</h4>
                             <p className="text-slate-600">
-                                Sí. FirmaClara está diseñada específicamente para autónomos y pymes en España, con precios más accesibles (desde 1,50€/documento), sin cuotas mensuales, y con soporte en español. Incluye verificación OTP, asistente IA y certificado de auditoría.
+                                Sí. FirmaClara está diseñada específicamente para autónomos y pymes en España, con precios accesibles (plan Gratis con 2 firmas al mes y suscripciones desde 9€/mes), y con soporte en español. Incluye verificación OTP, asistente IA y certificado de auditoría.
                             </p>
                         </div>
                     </div>

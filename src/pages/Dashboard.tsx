@@ -111,7 +111,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <h3 className="font-medium text-destructive">Te has quedado sin créditos</h3>
-                <p className="text-sm text-destructive/80">Recarga un pack para volver a enviar documentos.</p>
+                <p className="text-sm text-destructive/80">Mejora tu plan o compra un pack para volver a enviar documentos.</p>
               </div>
             </div>
             <Button size="sm" asChild>
