@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, FileText, User, Mail, Check, Award, Loader2, AlertCircle, RotateCw, FileStack } from "lucide-react";
+import { ArrowLeft, Download, FileText, User, Mail, Check, Award, Loader2, AlertCircle, RotateCw, FileStack, Eye, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { downloadUrl, safeFilename } from "@/lib/download";
+import { PdfPreviewDialog } from "@/components/documents/PdfPreviewDialog";
 
 /**
  * Resolves a stored document reference (a storage path OR a public Supabase URL)
@@ -46,6 +47,10 @@ export default function DocumentDetail() {
   const navigate = useNavigate();
   const [resending, setResending] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
 
   const { data: doc, isLoading, error } = useQuery({
     queryKey: queryKeys.documents.detail(id!),
@@ -257,6 +262,39 @@ export default function DocumentDetail() {
 
       {/* Actions */}
       <div className="space-y-2">
+        {/* ME-10: vista previa inline (sin descargar) */}
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-2"
+          disabled={loadingPreview}
+          onClick={async () => {
+            const target = doc.signed_file_url || doc.file_url;
+            if (!target) {
+              toast.error("No hay documento para previsualizar");
+              return;
+            }
+            setLoadingPreview(true);
+            try {
+              const url = await resolveStorageUrl(target);
+              const res = await fetch(url);
+              if (!res.ok) throw new Error("fetch failed");
+              const blob = await res.blob();
+              setPreviewFile(
+                new File([blob], `${doc.title || "documento"}.pdf`, { type: "application/pdf" })
+              );
+              setPreviewOpen(true);
+            } catch (e) {
+              if (import.meta.env.DEV) console.error("Error loading preview:", e);
+              toast.error("No se pudo cargar la vista previa");
+            } finally {
+              setLoadingPreview(false);
+            }
+          }}
+        >
+          {loadingPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+          Vista previa
+        </Button>
+
         <Button
           variant="outline"
           className="w-full justify-start gap-2"
@@ -411,6 +449,39 @@ export default function DocumentDetail() {
           </Button>
         )}
 
+        {/* ME-08: anular un documento ya enviado (no firmado) */}
+        {(doc.status === 'sent' || doc.status === 'viewed') && (
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2 border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive"
+            disabled={cancelling}
+            onClick={async () => {
+              if (!window.confirm("¿Anular este documento? El firmante ya no podrá firmarlo y esta acción no se puede deshacer.")) return;
+              setCancelling(true);
+              try {
+                // El trigger guard_document_status permite la transición a
+                // 'cancelled' desde contexto de usuario (a diferencia de
+                // 'sent'/'signed', que son server-side).
+                const { error } = await supabase
+                  .from('documents')
+                  .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+                  .eq('id', doc.id);
+                if (error) throw error;
+                toast.success("Documento anulado");
+                navigate(0);
+              } catch (e) {
+                if (import.meta.env.DEV) console.error("Error cancelling document:", e);
+                toast.error("No se pudo anular el documento");
+              } finally {
+                setCancelling(false);
+              }
+            }}
+          >
+            {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+            Anular documento
+          </Button>
+        )}
+
         {/* ME-04: guardar como plantilla para reutilizar este documento */}
         <Button
           variant="outline"
@@ -455,6 +526,9 @@ export default function DocumentDetail() {
           Guardar como plantilla
         </Button>
       </div>
+
+      {/* ME-10: diálogo de vista previa del PDF (renderizado con pdf.js) */}
+      <PdfPreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} file={previewFile} />
     </div>
   );
 }
