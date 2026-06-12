@@ -34,3 +34,6 @@ test-results/
 .env.*.local
 .env.e2e
 supabase/.env
+
+# Registro local del envío de anuncios (contiene emails de usuarios)
+scripts/.announcement_sent.json

@@ -18,7 +18,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, writeFileSync } from "node:fs";
 
 // Node no carga .env.local solo (a diferencia de Vite). Lo leemos nosotros.
 function fromEnvLocal(key) {
@@ -39,10 +39,23 @@ const SUBJECT = "Cambiamos cómo funcionan los créditos en FirmaClara (y no pie
 
 const args = process.argv.slice(2);
 const confirm = args.includes("--confirm");
+const resetLedger = args.includes("--reset-ledger");
 const testIdx = args.indexOf("--test");
 const testEmail = testIdx !== -1 ? args[testIdx + 1] : null;
 const limitIdx = args.indexOf("--limit");
 const limit = limitIdx !== -1 ? parseInt(args[limitIdx + 1], 10) : null;
+
+// Registro local anti-duplicados: guarda a quién ya se le envió, para que
+// reejecutar --confirm NO vuelva a mandar el correo a los mismos.
+const LEDGER_PATH = "scripts/.announcement_sent.json";
+function loadSent() {
+  if (resetLedger || !existsSync(LEDGER_PATH)) return new Set();
+  try { return new Set(JSON.parse(readFileSync(LEDGER_PATH, "utf8")).map((e) => e.toLowerCase())); }
+  catch { return new Set(); }
+}
+function saveSent(set) {
+  writeFileSync(LEDGER_PATH, JSON.stringify([...set], null, 0));
+}
 
 function escapeHtml(t) {
   return String(t || "").replace(/[&<>"']/g, (c) =>
@@ -136,20 +149,34 @@ async function main() {
   }
 
   const users = await listUsers();
-  const recipients = (users || []).filter((u) => u.email);
-  console.log(`Destinatarios: ${recipients.length}`);
+  const sent = loadSent();
+  if (resetLedger) console.log("↺ Registro anti-duplicados reiniciado (--reset-ledger).");
+
+  // Deduplica destinatarios por email y omite los que ya recibieron el correo.
+  const seen = new Set();
+  const recipients = (users || []).filter((u) => {
+    const e = (u.email || "").toLowerCase();
+    if (!e || seen.has(e)) return false;
+    seen.add(e);
+    return true;
+  });
+  const pendientes = recipients.filter((u) => !sent.has(u.email.toLowerCase()));
+
+  console.log(`Destinatarios únicos: ${recipients.length} · Ya enviados antes: ${recipients.length - pendientes.length} · Pendientes: ${pendientes.length}`);
 
   if (!confirm) {
     console.log("\n⚠  DRY-RUN: no se ha enviado nada. Añade --confirm para enviar de verdad.");
-    console.log("   Muestra:", recipients.slice(0, 3).map((u) => u.email).join(", "));
+    if (pendientes.length) console.log("   Muestra pendientes:", pendientes.slice(0, 3).map((u) => u.email).join(", "));
     return;
   }
 
   let ok = 0;
   let fail = 0;
-  for (const u of recipients) {
+  for (const u of pendientes) {
     try {
       await sendEmail(u.email, u.name);
+      sent.add(u.email.toLowerCase());
+      saveSent(sent); // persiste tras cada envío: si se corta, no reenvía a los ya hechos
       ok++;
       if (ok % 25 === 0) console.log(`  …${ok} enviados`);
     } catch (e) {
@@ -158,7 +185,7 @@ async function main() {
     }
     await sleep(120); // respeta el rate limit de Resend (~10/s)
   }
-  console.log(`\n✓ Hecho. Enviados: ${ok} · Fallos: ${fail}`);
+  console.log(`\n✓ Hecho. Enviados ahora: ${ok} · Fallos: ${fail} · Omitidos (ya enviados): ${recipients.length - pendientes.length}`);
 }
 
 main().catch((e) => {
