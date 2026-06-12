@@ -16,27 +16,30 @@ vi.mock('react-i18next', () => ({
 const mockSelect = vi.fn();
 const mockOrder = vi.fn();
 
-vi.mock('@/lib/supabase', () => ({
-    supabase: {
-        from: (table: string) => ({
-            select: (...args: any[]) => {
-                mockSelect(...args);
-                return {
-                    order: (...orderArgs: any[]) => {
-                        mockOrder(...orderArgs);
-                        return Promise.resolve({
-                            data: [
-                                { id: '1', title: 'Contract 1', status: 'sent', created_at: '2024-01-01', signer_email: 'a@a.com' },
-                                { id: '2', title: 'Contract 2', status: 'signed', created_at: '2024-01-02', signer_email: 'b@b.com' }
-                            ],
-                            error: null
-                        });
-                    }
-                };
-            }
-        })
-    }
-}));
+vi.mock('@/lib/supabase', () => {
+    const data = [
+        { id: '1', title: 'Contract 1', status: 'sent', created_at: '2024-01-01', signer_email: 'a@a.com' },
+        { id: '2', title: 'Contract 2', status: 'signed', created_at: '2024-01-02', signer_email: 'b@b.com' }
+    ];
+    return {
+        supabase: {
+            from: (_table: string) => ({
+                select: (...args: any[]) => {
+                    mockSelect(...args);
+                    // Builder encadenable: soporta .eq(...) (p.ej. is_template) antes de .order()
+                    const builder: any = {
+                        eq: () => builder,
+                        order: (...orderArgs: any[]) => {
+                            mockOrder(...orderArgs);
+                            return Promise.resolve({ data, error: null });
+                        }
+                    };
+                    return builder;
+                }
+            })
+        }
+    };
+});
 
 const renderWithRouter = (component: React.ReactElement) => {
     const queryClient = new QueryClient({
