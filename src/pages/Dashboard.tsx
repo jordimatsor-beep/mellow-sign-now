@@ -15,6 +15,7 @@ import { WelcomeBanner } from "@/components/dashboard/WelcomeBanner";
 import { LOW_CREDITS_THRESHOLD } from "@/lib/constants";
 import { PlanUsageCard } from "@/components/plan/PlanUsageCard";
 import { OverageBanner } from "@/components/plan/OverageBanner";
+import { usePlanStatus } from "@/hooks/usePlanStatus";
 
 interface Document {
   id: string;
@@ -60,6 +61,11 @@ export default function Dashboard() {
   // Fetch credits with shared hook - cached for 5 minutes
   const { credits, isLoading: loadingCredits } = useCredits();
 
+  // Profesional tiene overage: nunca se queda "sin saldo", así que sus avisos de
+  // saldo agotado/bajo no aplican (el OverageBanner cubre su estado real).
+  const { data: planStatus } = usePlanStatus();
+  const isProfesional = planStatus?.plan_id === 'profesional';
+
   // Calculate stats — safe even when data is still loading (defaults to 0/[])
   const stats = {
     pending: documents.filter(d => ['sent', 'viewed'].includes(d.status)).length,
@@ -102,7 +108,7 @@ export default function Dashboard() {
       <PlanUsageCard />
 
       {/* Saldo agotado (QW-04) — más prominente; el envío ya queda bloqueado en NewDocument */}
-      {!loadingCredits && hasSentDocument && credits === 0 && (
+      {!loadingCredits && hasSentDocument && credits === 0 && !isProfesional && (
         <Card className="border-destructive/30 bg-destructive/5">
           <CardContent className="p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -122,7 +128,7 @@ export default function Dashboard() {
       )}
 
       {/* Saldo bajo (QW-04) — entre 1 y el umbral, solo con uso real previo */}
-      {!loadingCredits && hasSentDocument && credits > 0 && credits <= LOW_CREDITS_THRESHOLD && (
+      {!loadingCredits && hasSentDocument && credits > 0 && credits <= LOW_CREDITS_THRESHOLD && !isProfesional && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">

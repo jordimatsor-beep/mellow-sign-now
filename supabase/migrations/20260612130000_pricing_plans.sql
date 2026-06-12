@@ -145,7 +145,7 @@ $$;
 --    (solo Profesional)  4) bloqueo.
 -- ════════════════════════════════════════════════════════════════════
 CREATE OR REPLACE FUNCTION public.consumir_firma(
-  p_user_id     uuid,
+  p_user_id     uuid DEFAULT NULL,
   p_document_id uuid DEFAULT NULL,
   p_description text DEFAULT 'Envío de documento'
 )

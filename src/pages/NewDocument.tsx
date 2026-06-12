@@ -6,6 +6,7 @@ import { ContactEmailAutocomplete } from "@/components/contacts/ContactEmailAuto
 import { SignaturePositionPicker } from "@/components/documents/SignaturePositionPicker";
 import { useProfile } from "@/context/ProfileContext";
 import { useCredits } from "@/hooks/useCredits";
+import { usePlanStatus } from "@/hooks/usePlanStatus";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -78,6 +79,12 @@ export default function NewDocument() {
   // query summed user_credit_purchases without the expiry filter and showed
   // inflated balances (e.g. 264 vs 122 real).
   const { credits, isLoading: isLoadingCredits, refetch: refetchCredits } = useCredits();
+
+  // Profesional puede seguir enviando aunque agote la cuota (overage 0,40€/firma),
+  // así que el saldo 0 NO debe bloquearle el envío. Gratis/Básico sí se bloquean.
+  const { data: planStatus } = usePlanStatus();
+  const isProfesional = planStatus?.plan_id === 'profesional';
+  const canSend = credits > 0 || isProfesional;
 
   // Signature position settings
   // IMPORTANT: signaturePage must match the default selected radio ("last_page" -> -1).
@@ -366,11 +373,11 @@ export default function NewDocument() {
   const handleCreateDocument = async () => {
     if (!file || !title || !signerEmail || !signerName) return;
 
-    if (credits <= 0) {
-      toast.error("No tienes créditos suficientes", {
-        description: "Necesitas al menos 1 crédito para enviar un documento.",
+    if (!canSend) {
+      toast.error("Has alcanzado el límite de tu plan", {
+        description: "Mejora de plan o compra un pack para enviar este documento.",
         action: {
-          label: "Comprar créditos",
+          label: "Ver planes",
           onClick: () => navigate('/precios')
         }
       });
@@ -1072,20 +1079,25 @@ export default function NewDocument() {
               )}
             </div>
 
-            <div className={`rounded-lg p-3 text-center ${credits <= 0 && !isLoadingCredits ? 'bg-destructive/10' : 'bg-primary/5'}`}>
+            <div className={`rounded-lg p-3 text-center ${!canSend && !isLoadingCredits ? 'bg-destructive/10' : 'bg-primary/5'}`}>
               {isLoadingCredits ? (
-                <p className="text-sm text-muted-foreground">Verificando créditos disponibles...</p>
-              ) : credits <= 0 ? (
+                <p className="text-sm text-muted-foreground">Verificando saldo disponible...</p>
+              ) : !canSend ? (
                 <>
-                  <p className="text-sm text-destructive font-medium">Sin créditos disponibles</p>
+                  <p className="text-sm text-destructive font-medium">Has alcanzado el límite de tu plan</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    <button className="underline" onClick={() => navigate('/precios')}>Comprar créditos</button> para enviar este documento
+                    <button className="underline" onClick={() => navigate('/precios')}>Ver planes</button> para enviar este documento
                   </p>
+                </>
+              ) : isProfesional && credits <= 0 ? (
+                <>
+                  <p className="text-sm">⚠️ Esta firma se cobrará como <strong>extra (0,40 €)</strong></p>
+                  <p className="text-xs text-muted-foreground">Has superado las 50 firmas incluidas de tu plan</p>
                 </>
               ) : (
                 <>
                   <p className="text-sm">
-                    💳 Se usará <strong>1 crédito</strong> · Disponibles: <strong>{credits}</strong>
+                    💳 Se usará <strong>1 firma</strong> · Disponibles: <strong>{credits}</strong>
                   </p>
                   <p className="text-xs text-muted-foreground">(Se descontará al enviar)</p>
                 </>
@@ -1096,7 +1108,7 @@ export default function NewDocument() {
               className="w-full"
               size="lg"
               onClick={handleCreateDocument}
-              disabled={isSubmitting || isLoadingCredits || credits <= 0}
+              disabled={isSubmitting || isLoadingCredits || !canSend}
             >
               {isSubmitting ? (
                 <>
@@ -1106,10 +1118,10 @@ export default function NewDocument() {
               ) : isLoadingCredits ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Verificando créditos...
+                  Verificando saldo...
                 </>
-              ) : credits <= 0 ? (
-                'Sin créditos disponibles'
+              ) : !canSend ? (
+                'Límite alcanzado'
               ) : (
                 'Enviar documento'
               )}
