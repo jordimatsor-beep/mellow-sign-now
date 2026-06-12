@@ -140,19 +140,33 @@ serve(async (req: Request) => {
     //   • 'signed' | 'cancelled' | otro → no enviable.
     const docStatus = (doc.status ?? 'draft') as string;
     if (docStatus === 'draft') {
-      // QW-03: ligar el débito al documento concreto para el historial de créditos.
-      const { error: creditErr } = await supabase.rpc('consume_credit', { amount: 1, p_document_id: document_id });
+      // Consumo unificado por el núcleo del modelo de planes: 1) crédito de
+      // pack, 2) cuota del plan, 3) overage (solo Profesional), 4) bloqueo.
+      // Devuelve plan + límite para que el front muestre el modal de upgrade.
+      const { data: consumo, error: creditErr } = await supabase.rpc('consumir_firma', {
+        p_document_id: document_id,
+        p_description: 'Envío de documento',
+      });
+
       if (creditErr) {
-        const insufficient = (creditErr.message || '').includes('Insufficient');
+        console.error('consumir_firma error:', creditErr);
+        return new Response(
+          JSON.stringify({ success: false, code: 'credit_error', error: 'No se pudo procesar el envío' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!consumo || consumo.ok !== true) {
+        // Límite del plan alcanzado (Gratis/Básico sin crédito de pack).
         return new Response(
           JSON.stringify({
             success: false,
-            code: insufficient ? 'insufficient_credits' : 'credit_error',
-            error: insufficient
-              ? 'No te quedan créditos disponibles'
-              : 'No se pudo procesar el crédito',
+            code: 'limite_alcanzado',
+            plan: consumo?.plan ?? null,
+            limite: consumo?.limite ?? null,
+            error: 'Has alcanzado el límite de firmas de tu plan',
           }),
-          { status: insufficient ? 402 : 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       charged = true;

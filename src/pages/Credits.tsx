@@ -152,7 +152,7 @@ export default function Credits() {
           )}
           <p className="text-primary-foreground/80">créditos disponibles</p>
           <Button asChild variant="secondary" className="mt-4">
-            <Link to="/credits/purchase">Comprar más</Link>
+            <Link to="/precios">Comprar más</Link>
           </Button>
         </CardContent>
       </Card>

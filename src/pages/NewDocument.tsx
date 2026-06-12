@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { PdfPreviewDialog } from "@/components/documents/PdfPreviewDialog";
+import { LimitReachedModal } from "@/components/plan/LimitReachedModal";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
@@ -36,6 +37,13 @@ export default function NewDocument() {
   const [docType, setDocType] = useState<DocType | null>(null);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "creating_record" | "sending" | "success" | "error">("idle");
   const isSubmitting = uploadStatus !== "idle" && uploadStatus !== "error" && uploadStatus !== "success";
+
+  // Modal de límite de plan alcanzado (HTTP 402 desde send-invite-v2)
+  const [limitModal, setLimitModal] = useState<{ open: boolean; plan: "gratis" | "basico" | null; limite: number | null }>({
+    open: false,
+    plan: null,
+    limite: null,
+  });
 
   // Form Data
   const [file, setFile] = useState<File | null>(null);
@@ -363,7 +371,7 @@ export default function NewDocument() {
         description: "Necesitas al menos 1 crédito para enviar un documento.",
         action: {
           label: "Comprar créditos",
-          onClick: () => navigate('/credits/purchase')
+          onClick: () => navigate('/precios')
         }
       });
       return;
@@ -500,16 +508,16 @@ export default function NewDocument() {
         20000, "Send invite"
       );
 
-      const result = fnData as { success?: boolean; code?: string; error?: string } | null;
+      const result = fnData as { success?: boolean; code?: string; error?: string; plan?: string; limite?: number } | null;
 
       if (fnError || result?.success !== true) {
         const code = result?.code;
 
-        // Sin créditos → llevar a la compra
-        if (code === 'insufficient_credits') {
+        // Límite del plan alcanzado → modal de upgrade (pack / mejorar plan).
+        if (code === 'limite_alcanzado' || code === 'insufficient_credits') {
           setUploadStatus("error");
-          toast.error("No te quedan créditos disponibles.");
-          setTimeout(() => navigate('/credits/purchase'), 1500);
+          const plan = result?.plan === 'basico' ? 'basico' : result?.plan === 'gratis' ? 'gratis' : null;
+          setLimitModal({ open: true, plan, limite: result?.limite ?? null });
           return;
         }
 
@@ -1071,7 +1079,7 @@ export default function NewDocument() {
                 <>
                   <p className="text-sm text-destructive font-medium">Sin créditos disponibles</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    <button className="underline" onClick={() => navigate('/credits/purchase')}>Comprar créditos</button> para enviar este documento
+                    <button className="underline" onClick={() => navigate('/precios')}>Comprar créditos</button> para enviar este documento
                   </p>
                 </>
               ) : (
@@ -1207,6 +1215,14 @@ export default function NewDocument() {
         onOpenChange={setIsPreviewOpen}
         file={file}
         label={convertedFrom ? `convertido desde .${convertedFrom}` : undefined}
+      />
+
+      {/* Límite de plan alcanzado al enviar → opciones de pack / upgrade */}
+      <LimitReachedModal
+        open={limitModal.open}
+        onOpenChange={(open) => setLimitModal((s) => ({ ...s, open }))}
+        plan={limitModal.plan}
+        limite={limitModal.limite}
       />
     </div>
   );

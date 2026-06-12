@@ -47,6 +47,7 @@ const Legal = lazy(() => import("@/pages/Legal"));
 const Terms = lazy(() => import("@/pages/Terms"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const HowItWorks = lazy(() => import("@/pages/HowItWorks"));
+const Precios = lazy(() => import("@/pages/Precios"));
 
 // Admin pages (lazy — only for admins)
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
@@ -99,6 +100,7 @@ const App = () => (
                     <Route path="/terms" element={<Terms />} />
                     <Route path="/privacy" element={<Privacy />} />
                     <Route path="/how-it-works" element={<HowItWorks />} />
+                    <Route path="/precios" element={<Precios />} />
                   </Route>
 
                   {/* Authenticated routes */}

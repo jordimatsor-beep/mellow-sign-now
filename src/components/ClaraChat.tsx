@@ -174,7 +174,7 @@ export function ClaraChat({
                 description: "Compra un pack de créditos para usar el asistente.",
                 action: {
                     label: "Comprar",
-                    onClick: () => navigate('/credits/purchase')
+                    onClick: () => navigate('/precios')
                 }
             });
             return;

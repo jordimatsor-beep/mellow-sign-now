@@ -13,6 +13,8 @@ import { queryKeys } from "@/lib/queryKeys";
 import { useCredits } from "@/hooks/useCredits";
 import { WelcomeBanner } from "@/components/dashboard/WelcomeBanner";
 import { LOW_CREDITS_THRESHOLD } from "@/lib/constants";
+import { PlanUsageCard } from "@/components/plan/PlanUsageCard";
+import { OverageBanner } from "@/components/plan/OverageBanner";
 
 interface Document {
   id: string;
@@ -93,6 +95,12 @@ export default function Dashboard() {
       {/* Banner de bienvenida (QW-01) — solo cuentas nuevas sin envíos */}
       {!loadingCredits && <WelcomeBanner credits={credits} hasSentDocument={hasSentDocument} />}
 
+      {/* Aviso de overage activo (plan Profesional) */}
+      <OverageBanner />
+
+      {/* Bloque de uso del plan: cuota mensual, créditos de pack y renovación */}
+      <PlanUsageCard />
+
       {/* Saldo agotado (QW-04) — más prominente; el envío ya queda bloqueado en NewDocument */}
       {!loadingCredits && hasSentDocument && credits === 0 && (
         <Card className="border-destructive/30 bg-destructive/5">
@@ -107,7 +115,7 @@ export default function Dashboard() {
               </div>
             </div>
             <Button size="sm" asChild>
-              <Link to="/credits/purchase">Comprar créditos</Link>
+              <Link to="/precios">Comprar créditos</Link>
             </Button>
           </CardContent>
         </Card>
@@ -127,7 +135,7 @@ export default function Dashboard() {
               </div>
             </div>
             <Button size="sm" variant="outline" className="border-amber-200 bg-white text-amber-700 hover:bg-amber-50 hover:border-amber-300" asChild>
-              <Link to="/credits/purchase">Comprar pack</Link>
+              <Link to="/precios">Comprar pack</Link>
             </Button>
           </CardContent>
         </Card>
