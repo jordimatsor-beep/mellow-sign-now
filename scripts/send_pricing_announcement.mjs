@@ -18,10 +18,22 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { readFileSync, existsSync } from "node:fs";
 
-const SUPABASE_URL = process.env.SUPABASE_URL || "";
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+// Node no carga .env.local solo (a diferencia de Vite). Lo leemos nosotros.
+function fromEnvLocal(key) {
+  if (process.env[key]) return process.env[key];
+  if (existsSync(".env.local")) {
+    const line = readFileSync(".env.local", "utf8").split(/\r?\n/).find((l) => l.startsWith(key + "="));
+    if (line) return line.slice(key.length + 1).replace(/^["']|["']$/g, "").trim();
+  }
+  return "";
+}
+
+const SUPABASE_URL = fromEnvLocal("SUPABASE_URL");
+const SERVICE_KEY = fromEnvLocal("SUPABASE_SERVICE_ROLE_KEY");
+const SUPABASE_DB_URL = fromEnvLocal("SUPABASE_DB_URL");
+const RESEND_API_KEY = fromEnvLocal("RESEND_API_KEY");
 const FROM = "FirmaClara <noreply@firmaclara.es>";
 const SUBJECT = "Cambiamos cómo funcionan los créditos en FirmaClara (y no pierdes nada)";
 
@@ -77,6 +89,38 @@ async function sendEmail(to, nombre) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Lista los usuarios (email, name). Usa la service key si está; si no, cae a
+// la conexión directa SUPABASE_DB_URL (Session pooler).
+async function listUsers() {
+  if (SUPABASE_URL && SERVICE_KEY) {
+    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+    let q = supabase.from("users").select("email, name").not("email", "is", null);
+    if (limit) q = q.limit(limit);
+    const { data, error } = await q;
+    if (error) throw new Error(error.message);
+    return data;
+  }
+  if (SUPABASE_DB_URL) {
+    const { default: pg } = await import("pg");
+    const body = SUPABASE_DB_URL.replace(/^postgres(?:ql)?:\/\//, "");
+    const lastAt = body.lastIndexOf("@");
+    const ui = body.slice(0, lastAt), hp = body.slice(lastAt + 1);
+    const fc = ui.indexOf(":");
+    let user = ui.slice(0, fc); const password = ui.slice(fc + 1);
+    const host = (hp.match(/^([^:/]+)/) || [])[1];
+    const ref = (host.match(/^db\.([a-z0-9]+)\.supabase\.co$/) || [])[1];
+    let h = host, p = 5432;
+    if (ref) { h = "aws-1-eu-west-1.pooler.supabase.com"; if (user === "postgres") user = `postgres.${ref}`; }
+    else { p = parseInt((hp.match(/:(\d+)/) || [])[1] || "5432", 10); }
+    const c = new pg.Client({ host: h, port: p, user, password, database: "postgres", ssl: { rejectUnauthorized: false } });
+    await c.connect();
+    const r = await c.query(`SELECT email, name FROM public.users WHERE email IS NOT NULL${limit ? ` LIMIT ${parseInt(limit, 10)}` : ""}`);
+    await c.end();
+    return r.rows;
+  }
+  throw new Error("Faltan credenciales: define SUPABASE_SERVICE_ROLE_KEY o SUPABASE_DB_URL en .env.local");
+}
+
 async function main() {
   if (!RESEND_API_KEY) {
     console.error("✖ Falta RESEND_API_KEY.");
@@ -91,20 +135,7 @@ async function main() {
     return;
   }
 
-  if (!SUPABASE_URL || !SERVICE_KEY) {
-    console.error("✖ Faltan SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.");
-    process.exit(1);
-  }
-
-  const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
-  let query = supabase.from("users").select("email, name").not("email", "is", null);
-  if (limit) query = query.limit(limit);
-  const { data: users, error } = await query;
-  if (error) {
-    console.error("✖ Error leyendo usuarios:", error.message);
-    process.exit(1);
-  }
-
+  const users = await listUsers();
   const recipients = (users || []).filter((u) => u.email);
   console.log(`Destinatarios: ${recipients.length}`);
 
