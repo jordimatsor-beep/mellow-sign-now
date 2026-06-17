@@ -18,8 +18,10 @@ import { downloadUrl, safeFilename } from "@/lib/download";
  */
 
 interface PdfViewerProps {
-  /** blob: URL, signed Supabase URL, or any CORS-enabled PDF URL. */
+  /** blob: URL, signed Supabase URL, or any CORS-enabled PDF URL. Used for download fallback. */
   url: string;
+  /** Pre-fetched PDF bytes. When provided, pdf.js uses these directly (no internal fetch). */
+  data?: Uint8Array;
   className?: string;
   /** Filename used by the inline download fallback when rendering fails. */
   downloadName?: string;
@@ -27,7 +29,7 @@ interface PdfViewerProps {
   onReachedEnd?: () => void;
 }
 
-export function PdfViewer({ url, className, downloadName, onReachedEnd }: PdfViewerProps) {
+export function PdfViewer({ url, data, className, downloadName, onReachedEnd }: PdfViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
   const endedRef = useRef(false);
@@ -62,12 +64,18 @@ export function PdfViewer({ url, className, downloadName, onReachedEnd }: PdfVie
         const worker = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
         pdfjs.GlobalWorkerOptions.workerSrc = worker;
 
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("fetch failed");
-        const data = await res.arrayBuffer();
+        // Use pre-fetched bytes when available; otherwise fetch from URL.
+        let pdfData: Uint8Array | ArrayBuffer;
+        if (data) {
+          pdfData = data;
+        } else {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("fetch failed");
+          pdfData = await res.arrayBuffer();
+        }
         if (cancelled) return;
 
-        const doc = await pdfjs.getDocument({ data }).promise;
+        const doc = await pdfjs.getDocument({ data: pdfData }).promise;
         pdfDoc = doc;
         if (cancelled) {
           doc.destroy();
@@ -125,7 +133,7 @@ export function PdfViewer({ url, className, downloadName, onReachedEnd }: PdfVie
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url]);
+  }, [url, data]);
 
   return (
     <div

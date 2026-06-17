@@ -74,10 +74,11 @@ export default function SignDocument() {
   // In-app PDF viewer modal
   const [viewerOpen, setViewerOpen] = useState(false);
 
-  // Blob URL state
+  // PDF state — raw bytes for rendering + blob URL for download/modal
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [pdfBytes, setPdfBytes] = useState<Uint8Array | null>(null);
 
-  // Fetch PDF blob — deps only on file_url to avoid infinite loop
+  // Fetch PDF once; derive both the Uint8Array (for pdf.js) and blob URL (for download).
   useEffect(() => {
     if (!docData?.file_url) return;
 
@@ -88,13 +89,15 @@ export default function SignDocument() {
       try {
         const res = await fetch(docData.file_url);
         if (!res.ok) throw new Error("Failed to load PDF");
-        const blob = await res.blob();
-        if (active) {
-          objectUrl = URL.createObjectURL(blob);
-          setPdfBlobUrl(objectUrl);
-        }
+        const buffer = await res.arrayBuffer();
+        if (!active) return;
+        const bytes = new Uint8Array(buffer);
+        const blob = new Blob([bytes], { type: "application/pdf" });
+        objectUrl = URL.createObjectURL(blob);
+        setPdfBytes(bytes);
+        setPdfBlobUrl(objectUrl);
       } catch (err) {
-        console.error("Error loading PDF blob:", err);
+        console.error("Error loading PDF:", err);
       }
     };
 
@@ -104,7 +107,7 @@ export default function SignDocument() {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [docData?.file_url]); // Only re-fetch when URL changes, not when blob URL changes
+  }, [docData?.file_url]);
 
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -718,9 +721,10 @@ export default function SignDocument() {
               className={`h-[600px] w-full overflow-hidden transition-all ${canAccept ? 'bg-muted/10 ring-2 ring-green-200' : 'bg-muted/20'
                 }`}
             >
-              {pdfBlobUrl ? (
+              {pdfBytes ? (
                 <PdfViewer
-                  url={pdfBlobUrl}
+                  url={pdfBlobUrl ?? ""}
+                  data={pdfBytes}
                   downloadName={safeFilename(docData?.title)}
                   onReachedEnd={handleReachedEnd}
                   className="h-full w-full"
