@@ -275,10 +275,19 @@ export default function DocumentDetail() {
             }
             setLoadingPreview(true);
             try {
-              const url = await resolveStorageUrl(target);
-              const res = await fetch(url);
-              if (!res.ok) throw new Error("fetch failed");
-              const blob = await res.blob();
+              // Extract storage path from URL or use as-is
+              let storagePath = target;
+              if (target.startsWith("http") && target.includes("/documents/")) {
+                storagePath = decodeURIComponent(target.split("/documents/")[1].split("?")[0]);
+              }
+
+              // Download via Supabase client (uses user JWT, no CORS issues)
+              const { data: blob, error: dlError } = await supabase.storage
+                .from("documents")
+                .download(storagePath);
+
+              if (dlError || !blob) throw dlError ?? new Error("empty response");
+
               setPreviewFile(
                 new File([blob], `${doc.title || "documento"}.pdf`, { type: "application/pdf" })
               );
