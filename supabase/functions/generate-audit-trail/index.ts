@@ -58,15 +58,20 @@ serve(async (req: Request) => {
             try {
                 console.log("Solicitando sello de tiempo para hash:", signature.hash_sha256);
 
-                // Call request-tsa function
+                // Call request-tsa function — 10s timeout so a slow/unresponsive TSA
+                // does not block the entire signing flow for the signer.
+                const tsaAbort = new AbortController();
+                const tsaTimeout = setTimeout(() => tsaAbort.abort(), 10_000);
                 const tsaRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/request-tsa`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${serviceRoleKey}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ hash: signature.hash_sha256 })
+                    body: JSON.stringify({ hash: signature.hash_sha256 }),
+                    signal: tsaAbort.signal,
                 });
+                clearTimeout(tsaTimeout);
 
                 if (tsaRes.ok) {
                     const tsaResult = await tsaRes.json();
