@@ -63,7 +63,7 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="mb-4">
-              <Logo className="h-12 w-auto brightness-0 invert opacity-80" />
+              <Logo variant="white" className="h-12 w-auto opacity-90" />
             </div>
             <p className="text-sm text-slate-400 max-w-xs">
               La solución de firma digital simple, legal y segura

@@ -11,14 +11,15 @@ import { useAuth } from "@/context/AuthContext";
 interface LogoProps {
     className?: string;
     asLink?: boolean;
+    variant?: "default" | "white";
 }
 
-export function Logo({ className, asLink = true }: LogoProps) {
+export function Logo({ className, asLink = true, variant = "default" }: LogoProps) {
     const { session } = useAuth();
 
     const LogoImage = (
         <img
-            src="/logo.jpg"
+            src={variant === "white" ? "/logo-white.png" : "/logo.jpg"}
             alt="FirmaClara"
             className={cn("h-auto object-contain", className)}
         />
