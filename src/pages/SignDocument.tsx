@@ -33,6 +33,7 @@ interface DocumentData {
   created_at: string;
   issuer_data?: {
     name: string;
+    is_company?: boolean;
     id?: string;
     email?: string;
     phone?: string;
@@ -359,6 +360,7 @@ export default function SignDocument() {
           whatsapp_verification: docRecord.whatsapp_verification,
           issuer_data: {
             name: docRecord.issuer_company || docRecord.issuer_name || "Emisor",
+            is_company: !!docRecord.issuer_company,
             id: docRecord.issuer_tax_id,
             email: docRecord.issuer_email,
           },
@@ -655,7 +657,7 @@ export default function SignDocument() {
             </p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
               <div>
-                <span className="text-muted-foreground text-xs">Razón Social:</span>
+                <span className="text-muted-foreground text-xs">{docData.issuer_data.is_company ? "Razón Social:" : "Nombre:"}</span>
                 <p className="font-medium">{docData.issuer_data.name}</p>
               </div>
               {docData.issuer_data.id && (
