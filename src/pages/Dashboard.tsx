@@ -58,6 +58,30 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
+  // Conteos reales de documentos (no limitados por la lista de recientes).
+  // Usa count+head para no transferir filas. Antes los KPIs se calculaban sobre
+  // los 50 documentos mas recientes (.limit(50)), asi que "Total" se quedaba
+  // topado en 50 aunque hubiera mas.
+  const { data: docCounts, isLoading: loadingCounts } = useQuery({
+    queryKey: ['dashboard-documents-counts'] as const,
+    queryFn: async () => {
+      const base = () =>
+        supabase.from('documents').select('id', { count: 'exact', head: true }).eq('is_template', false);
+      const [total, pending, signed] = await Promise.all([
+        base(),
+        base().in('status', ['sent', 'viewed']),
+        base().eq('status', 'signed'),
+      ]);
+      if (total.error) throw total.error;
+      return {
+        total: total.count ?? 0,
+        pending: pending.count ?? 0,
+        signed: signed.count ?? 0,
+      };
+    },
+    enabled: !!user,
+  });
+
   // Fetch credits with shared hook - cached for 5 minutes
   const { credits, isLoading: loadingCredits } = useCredits();
 
@@ -68,9 +92,9 @@ export default function Dashboard() {
 
   // Calculate stats — safe even when data is still loading (defaults to 0/[])
   const stats = {
-    pending: documents.filter(d => ['sent', 'viewed'].includes(d.status)).length,
-    signed: documents.filter(d => d.status === 'signed').length,
-    total: documents.length,
+    pending: docCounts?.pending ?? 0,
+    signed: docCounts?.signed ?? 0,
+    total: docCounts?.total ?? 0,
     credits: credits
   };
 
@@ -156,7 +180,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.pending')}</p>
-              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={loadingDocs} value={stats.pending} /></p>
+              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={loadingCounts} value={stats.pending} /></p>
             </div>
           </CardContent>
         </Card>
@@ -168,7 +192,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.signed')}</p>
-              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={loadingDocs} value={stats.signed} /></p>
+              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={loadingCounts} value={stats.signed} /></p>
             </div>
           </CardContent>
         </Card>
@@ -180,7 +204,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.total')}</p>
-              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={loadingDocs} value={stats.total} /></p>
+              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={loadingCounts} value={stats.total} /></p>
             </div>
           </CardContent>
         </Card>
