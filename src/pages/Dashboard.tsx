@@ -29,7 +29,7 @@ interface Document {
 
 // Renders a numeric stat that shows a skeleton placeholder while loading.
 // Extracted to avoid repeating the same ternary skeleton in every stat card.
-function StatCardValue({ loading, value }: { loading: boolean; value: number }) {
+function StatCardValue({ loading, value }: { loading: boolean; value: number | string }) {
   if (loading) {
     return <span className="inline-block h-5 w-8 animate-pulse rounded bg-slate-200" />;
   }
@@ -62,7 +62,7 @@ export default function Dashboard() {
   // Usa count+head para no transferir filas. Antes los KPIs se calculaban sobre
   // los 50 documentos mas recientes (.limit(50)), asi que "Total" se quedaba
   // topado en 50 aunque hubiera mas.
-  const { data: docCounts, isLoading: loadingCounts, error: countsError, status: countsStatus } = useQuery({
+  const { data: docCounts, error: countsError, status: countsStatus } = useQuery({
     queryKey: ['dashboard-documents-counts'] as const,
     queryFn: async () => {
       const base = () =>
@@ -199,7 +199,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.pending')}</p>
-              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={countsStatus !== 'success'} value={stats.pending} /></p>
+              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={countsStatus === 'pending'} value={countsStatus === 'error' ? '—' : stats.pending} /></p>
             </div>
           </CardContent>
         </Card>
@@ -211,7 +211,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.signed')}</p>
-              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={countsStatus !== 'success'} value={stats.signed} /></p>
+              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={countsStatus === 'pending'} value={countsStatus === 'error' ? '—' : stats.signed} /></p>
             </div>
           </CardContent>
         </Card>
@@ -223,7 +223,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('dashboard.stats.total')}</p>
-              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={countsStatus !== 'success'} value={stats.total} /></p>
+              <p className="text-xl font-bold text-slate-900"><StatCardValue loading={countsStatus === 'pending'} value={countsStatus === 'error' ? '—' : stats.total} /></p>
             </div>
           </CardContent>
         </Card>

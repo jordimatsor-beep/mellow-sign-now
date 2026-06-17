@@ -281,6 +281,7 @@ export type Database = {
           file_hash: string | null
           file_url: string
           id: string
+          is_template: boolean
           otp_code_hash: string | null
           otp_expires_at: string | null
           otp_failed_attempts: number | null
@@ -317,6 +318,7 @@ export type Database = {
           file_hash?: string | null
           file_url: string
           id?: string
+          is_template?: boolean
           otp_code_hash?: string | null
           otp_expires_at?: string | null
           otp_failed_attempts?: number | null
@@ -353,6 +355,7 @@ export type Database = {
           file_hash?: string | null
           file_url?: string
           id?: string
+          is_template?: boolean
           otp_code_hash?: string | null
           otp_expires_at?: string | null
           otp_failed_attempts?: number | null
