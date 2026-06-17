@@ -83,10 +83,15 @@ export default function Documents() {
 
   if (error) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center text-red-500">
-        <AlertCircle className="h-8 w-8 mb-2" />
-        <p>Error al cargar documentos</p>
-        <p className="text-sm opacity-70">{(error as Error).message}</p>
+      <div className="flex h-64 flex-col items-center justify-center text-center px-4">
+        <AlertCircle className="h-8 w-8 mb-2 text-destructive" />
+        <p className="font-medium text-slate-900">No pudimos cargar tus documentos</p>
+        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+          Ha ocurrido un error al conectar con el servidor. Recarga la página o vuelve a intentarlo en unos minutos.
+        </p>
+        <Button size="sm" variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+          Recargar
+        </Button>
       </div>
     );
   }

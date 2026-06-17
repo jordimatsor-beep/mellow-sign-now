@@ -42,7 +42,7 @@ export default function Dashboard() {
   const userName = profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuario";
 
   // Fetch documents with React Query - cached for 5 minutes
-  const { data: documents = [], isLoading: loadingDocs } = useQuery({
+  const { data: documents = [], isLoading: loadingDocs, error: docsError } = useQuery({
     queryKey: queryKeys.documents.dashboard,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -62,7 +62,7 @@ export default function Dashboard() {
   // Usa count+head para no transferir filas. Antes los KPIs se calculaban sobre
   // los 50 documentos mas recientes (.limit(50)), asi que "Total" se quedaba
   // topado en 50 aunque hubiera mas.
-  const { data: docCounts, isLoading: loadingCounts } = useQuery({
+  const { data: docCounts, isLoading: loadingCounts, error: countsError } = useQuery({
     queryKey: ['dashboard-documents-counts'] as const,
     queryFn: async () => {
       const base = () =>
@@ -121,6 +121,25 @@ export default function Dashboard() {
           <Link to="/documents/new">{t('dashboard.create_document')}</Link>
         </Button>
       </div>
+
+      {/* Error de carga (P0-B): no silenciar fallos de API. Distingue
+          "no tienes documentos" de "no pudimos cargarlos". */}
+      {(docsError || countsError) && (
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardContent className="p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-medium text-destructive">No pudimos cargar tus documentos</h3>
+                <p className="text-sm text-destructive/80">Ha ocurrido un error al conectar con el servidor. Recarga la página o vuelve a intentarlo en unos minutos.</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => window.location.reload()}>Recargar</Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Banner de bienvenida (QW-01) — solo cuentas nuevas sin envíos */}
       {!loadingCredits && <WelcomeBanner credits={credits} hasSentDocument={hasSentDocument} />}
