@@ -292,7 +292,9 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
 
     // ── Polling fallback when realtime is not connected ──
     useEffect(() => {
-      if (!chatId || isClosed) return;
+      // P2-F: el sondeo de respaldo (cuando realtime esta caido) solo corre con
+      // el panel del chat abierto; cerrado no malgastamos peticiones cada 3s.
+      if (!chatId || isClosed || step !== "chat") return;
 
       if (isConnected) {
         if (pollIntervalRef.current) {
@@ -327,7 +329,7 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
           pollIntervalRef.current = null;
         }
       };
-    }, [chatId, isConnected, isClosed, applyClosedChatState]);
+    }, [chatId, isConnected, isClosed, step, applyClosedChatState]);
 
     // ── Actions ──
     const handleOpenChat = useCallback(async () => {
