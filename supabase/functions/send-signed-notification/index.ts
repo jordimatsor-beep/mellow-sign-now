@@ -53,13 +53,34 @@ serve(async (req) => {
     const docTitleRaw = doc.title || 'Documento Firmado'
     const docTitle = escapeHtml(docTitleRaw)
 
-    // STRICT: Only use SIGNED url. If missing, it's a bug or race condition.
-    const signedFileUrl = doc.signed_file_url;
-    if (!signedFileUrl) {
+    // signed_file_url and certificate_url are stored as storage PATHS (not URLs).
+    // Generate fresh signed URLs so Resend can fetch them as attachments and
+    // the email button links to a working URL.
+    const rawSignedPath = doc.signed_file_url;
+    if (!rawSignedPath) {
       throw new Error("Critical: signed_file_url is missing in notification step.");
     }
 
-    const certificateUrl = doc.certificate_url;
+    const makeSignedUrl = async (pathOrUrl: string | null): Promise<string | null> => {
+      if (!pathOrUrl) return null;
+      let path = pathOrUrl;
+      if (pathOrUrl.startsWith('http')) {
+        const parts = pathOrUrl.split('/documents/');
+        if (parts.length < 2) return pathOrUrl;
+        path = decodeURIComponent(parts[1].split('?')[0]);
+      }
+      const { data } = await supabase.storage.from('documents').createSignedUrl(path, 3600);
+      return data?.signedUrl ?? null;
+    };
+
+    const [signedFileUrl, certificateUrl] = await Promise.all([
+      makeSignedUrl(rawSignedPath),
+      makeSignedUrl(doc.certificate_url),
+    ]);
+
+    if (!signedFileUrl) {
+      throw new Error("No se pudo generar URL firmada del documento firmado.");
+    }
 
     // Shared HTML template (the intro line is customised per recipient).
     const buildHtml = (intro: string) => `

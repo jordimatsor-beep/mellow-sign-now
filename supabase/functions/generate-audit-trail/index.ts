@@ -209,20 +209,9 @@ serve(async (req: Request) => {
 
         if (updateError) console.error('Failed to update document certificate_url:', updateError)
 
-        // 6. Trigger Notification Email (Chained)
-        // Now that the Evidence PDF is generated and saved, we notify the parties.
-        try {
-            await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-signed-notification`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ document_id: doc.id })
-            });
-        } catch (e) {
-            console.error("Failed to trigger notification from audit trail:", e);
-        }
+        // NOTE: email notification is triggered by sign-complete-v2 AFTER this function
+        // returns, so it has the certificate_url already set in DB. Do not trigger it
+        // here — doing so causes a double email (one from here, one from sign-complete-v2).
 
         return new Response(
             JSON.stringify({ success: true, url: publicUrl }),
