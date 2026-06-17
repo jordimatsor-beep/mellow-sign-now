@@ -63,7 +63,7 @@ import { queryKeys } from "@/lib/queryKeys";
 export default function Documents() {
   const [search, setSearch] = useState("");
 
-  const { data: documents, isLoading, error } = useQuery({
+  const { data: documents, isLoading, isError, isPending, fetchStatus } = useQuery({
     queryKey: queryKeys.documents.all,
     queryFn: async () => {
       return withTimeout(
@@ -81,7 +81,7 @@ export default function Documents() {
     },
   });
 
-  if (error) {
+  if (isError) {
     return (
       <div className="flex h-64 flex-col items-center justify-center text-center px-4">
         <AlertCircle className="h-8 w-8 mb-2 text-destructive" />
@@ -92,6 +92,27 @@ export default function Documents() {
         <Button size="sm" variant="outline" className="mt-4" onClick={() => window.location.reload()}>
           Recargar
         </Button>
+      </div>
+    );
+  }
+
+  // P0-B: mientras la consulta no haya tenido éxito (cargando o pausada por
+  // falta de conexión) NO mostramos el estado vacío "No hay documentos", que
+  // confundiría un fallo de carga con ausencia de datos.
+  if (isPending) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center text-center px-4">
+        <Loader2 className="h-8 w-8 mb-2 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">
+          {fetchStatus === "paused"
+            ? "Sin conexión. Reintentaremos en cuanto se restablezca."
+            : "Cargando documentos…"}
+        </p>
+        {fetchStatus === "paused" && (
+          <Button size="sm" variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+            Recargar
+          </Button>
+        )}
       </div>
     );
   }
