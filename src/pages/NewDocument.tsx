@@ -7,6 +7,7 @@ import { SignaturePositionPicker } from "@/components/documents/SignaturePositio
 import { useProfile } from "@/context/ProfileContext";
 import { useCredits } from "@/hooks/useCredits";
 import { usePlanStatus } from "@/hooks/usePlanStatus";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -80,6 +81,7 @@ export default function NewDocument() {
   // query summed user_credit_purchases without the expiry filter and showed
   // inflated balances (e.g. 264 vs 122 real).
   const { credits, isLoading: isLoadingCredits, refetch: refetchCredits } = useCredits();
+  const queryClient = useQueryClient();
 
   // Profesional puede seguir enviando aunque agote la cuota (overage 0,40€/firma),
   // así que el saldo 0 NO debe bloquearle el envío. Gratis/Básico sí se bloquean.
@@ -545,6 +547,12 @@ export default function NewDocument() {
 
       setUploadStatus("success");
       refetchCredits(); // el saldo cambió en el servidor — refresca el badge
+      // P1-D: sincroniza el resto de vistas dependientes del envío para que el
+      // desglose de créditos (plan), los KPIs y los listados no queden desfasados.
+      queryClient.invalidateQueries({ queryKey: ['plan_status'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-documents-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
       toast.success("Documento enviado correctamente");
       offerSaveContact(); // QW-05: ofrecer guardar el firmante (no bloqueante)
       navigate('/dashboard');
