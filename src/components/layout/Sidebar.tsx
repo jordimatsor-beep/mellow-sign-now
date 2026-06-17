@@ -1,4 +1,4 @@
-import { Home, FileText, CreditCard, Settings, HelpCircle, Plus, User, LifeBuoy } from "lucide-react";
+import { Home, FileText, CreditCard, Settings, HelpCircle, Plus, User, LifeBuoy, FileStack } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ export function Sidebar() {
   const navItems = [
     { to: "/dashboard", icon: Home, label: t('nav.home') },
     { to: "/documents", icon: FileText, label: t('nav.documents') },
+    { to: "/templates", icon: FileStack, label: t('nav.templates') },
     { to: "/contacts", icon: User, label: t('nav.contacts') },
     { to: "/credits", icon: CreditCard, label: t('nav.credits'), badge: credits },
     { to: "/help", icon: LifeBuoy, label: t('nav.support') },

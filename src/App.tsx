@@ -30,8 +30,8 @@ const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Documents = lazy(() => import("@/pages/Documents"));
 const DocumentDetail = lazy(() => import("@/pages/DocumentDetail"));
 const NewDocument = lazy(() => import("@/pages/NewDocument"));
+const Templates = lazy(() => import("@/pages/Templates"));
 const Credits = lazy(() => import("@/pages/Credits"));
-const CreditsPurchase = lazy(() => import("@/pages/CreditsPurchase"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Help = lazy(() => import("@/pages/Help"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
@@ -46,6 +46,7 @@ const Legal = lazy(() => import("@/pages/Legal"));
 const Terms = lazy(() => import("@/pages/Terms"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const HowItWorks = lazy(() => import("@/pages/HowItWorks"));
+const Precios = lazy(() => import("@/pages/Precios"));
 
 // Admin pages (lazy — only for admins)
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
@@ -98,6 +99,7 @@ const App = () => (
                     <Route path="/terms" element={<Terms />} />
                     <Route path="/privacy" element={<Privacy />} />
                     <Route path="/how-it-works" element={<HowItWorks />} />
+                    <Route path="/precios" element={<Precios />} />
                   </Route>
 
                   {/* Authenticated routes */}
@@ -108,9 +110,11 @@ const App = () => (
                       <Route path="/documents" element={<Documents />} />
                       <Route path="/contacts" element={<Contacts />} />
                       <Route path="/documents/new" element={<NewDocument />} />
+                      <Route path="/templates" element={<Templates />} />
                       <Route path="/documents/:id" element={<DocumentDetail />} />
                       <Route path="/credits" element={<Credits />} />
-                      <Route path="/credits/purchase" element={<CreditsPurchase />} />
+                      {/* Catálogo de packs antiguo reemplazado por la página de planes */}
+                      <Route path="/credits/purchase" element={<Navigate to="/precios" replace />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/help" element={<Help />} />
                       <Route path="/clara" element={<Clara />} />

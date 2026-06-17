@@ -64,6 +64,15 @@ serve(async (req: Request) => {
 
   console.log("Send-document-invitation V2 invoked");
 
+  // Estado de cobro accesible desde el catch para poder reembolsar si algo
+  // falla después de haber consumido el crédito. El reembolso se hace SIEMPRE
+  // con service_role (revertir_firma ya no es invocable por el cliente, para
+  // evitar el exploit "consumir y reembolsar" = envío gratis).
+  let charged = false;
+  let userSupabase: ReturnType<typeof createClient> | null = null;
+  let chargedUserId: string | null = null;
+  let chargedDocId: string | null = null;
+
   try {
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
     if (!RESEND_API_KEY) {
@@ -71,7 +80,7 @@ serve(async (req: Request) => {
       throw new Error('Internal Server Error: Missing Configuration')
     }
 
-    const supabase = createClient(
+    const supabase = userSupabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
@@ -101,7 +110,7 @@ serve(async (req: Request) => {
     // Verify ownership
     const { data: doc, error: docError } = await supabase
       .from('documents')
-      .select('user_id')
+      .select('user_id, status')
       .eq('id', document_id)
       .single()
 
@@ -114,12 +123,118 @@ serve(async (req: Request) => {
       throw new Error('Unauthorized: You do not own this document')
     }
 
+    // ME-03: branding del remitente para personalizar el email al firmante.
+    const { data: brand } = await supabase
+      .from('users')
+      .select('brand_logo_url, brand_color, brand_sender_name')
+      .eq('id', user.id)
+      .single();
+    const brandColor = (brand?.brand_color as string) || '#2563eb';
+    const brandLogoUrl = (brand?.brand_logo_url as string) || '';
+    // Saneado para cabeceras de email (sin comillas, comas, < > ni saltos).
+    const brandSenderName = ((brand?.brand_sender_name as string) || '')
+      .replace(/["<>\r\n,]/g, '')
+      .trim();
+
+    // ── Cobro server-side (CRIT-1) ────────────────────────────────────
+    // El crédito se consume AQUÍ, atado al envío, no en el cliente (que
+    // antes podía saltárselo y enviar gratis). Reglas por estado:
+    //   • 'draft'                       → primer envío: consume 1 crédito.
+    //   • 'sent' | 'viewed' | 'expired' → reenvío: NO se vuelve a cobrar.
+    //   • 'signed' | 'cancelled' | otro → no enviable.
+    const docStatus = (doc.status ?? 'draft') as string;
+    if (docStatus === 'draft') {
+      // Consumo unificado por el núcleo del modelo de planes: 1) crédito de
+      // pack, 2) cuota del plan, 3) overage (solo Profesional), 4) bloqueo.
+      // Devuelve plan + límite para que el front muestre el modal de upgrade.
+      const { data: consumo, error: creditErr } = await supabase.rpc('consumir_firma', {
+        p_document_id: document_id,
+        p_description: 'Envío de documento',
+      });
+
+      if (creditErr) {
+        console.error('consumir_firma error:', creditErr);
+        return new Response(
+          JSON.stringify({ success: false, code: 'credit_error', error: 'No se pudo procesar el envío' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!consumo || consumo.ok !== true) {
+        // Límite del plan alcanzado (Gratis/Básico sin crédito de pack).
+        return new Response(
+          JSON.stringify({
+            success: false,
+            code: 'limite_alcanzado',
+            plan: consumo?.plan ?? null,
+            limite: consumo?.limite ?? null,
+            error: 'Has alcanzado el límite de firmas de tu plan',
+          }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      charged = true;
+      chargedUserId = user.id;
+      chargedDocId = document_id;
+    } else if (!['sent', 'viewed', 'expired'].includes(docStatus)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          code: 'invalid_status',
+          error: 'El documento no se puede enviar en su estado actual',
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Cliente service_role: necesario para llevar el documento a 'sent'
+    // (el trigger guard_document_status bloquea esa transición en contexto
+    // de usuario; service_role tiene auth.uid() NULL y sí puede).
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const markSentAndRespond = async (channel: string) => {
+      await supabaseAdmin.from('documents')
+        .update({ status: 'sent', sent_at: new Date().toISOString() })
+        .eq('id', document_id);
+      await supabaseAdmin.from('event_logs').insert({
+        user_id: user.id,
+        document_id,
+        event_type: 'document.sent',
+        event_data: { channel, charged },
+      });
+      return new Response(
+        JSON.stringify({ success: true, channel }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    };
+
+    const onSendFailure = async (message: string) => {
+      if (charged) {
+        try {
+          await supabaseAdmin.rpc('revertir_firma', {
+            p_user_id: user.id,
+            p_document_id: document_id,
+            p_description: 'Reembolso por fallo de envío',
+          });
+        } catch (e) { console.error('Refund failed:', e); }
+        charged = false;
+      }
+      return new Response(
+        JSON.stringify({ success: false, error: message }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    };
+
     const siteUrl = Deno.env.get('SITE_URL') || 'https://firmaclara.es';
     const signUrl = `${siteUrl}/sign/${sign_token}`
 
-    // Escape user-provided content
+    // Escape user-provided content. El nombre de marca (si existe) tiene
+    // prioridad sobre el sender_name que envía el cliente.
     const docTitle = escapeHtml(title) || 'Documento sin título'
-    const sender = escapeHtml(sender_name) || 'FirmaClara'
+    const sender = escapeHtml(brandSenderName || sender_name) || 'FirmaClara'
     const safeSignerName = escapeHtml(signer_name)
 
     // --- N8N / RESEND LOGIC START ---
@@ -133,17 +248,18 @@ serve(async (req: Request) => {
       sign_url: signUrl,
       // Default expiration 7 days from now if not present
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      custom_message: "Documento enviado desde FirmaClara"
+      custom_message: "Documento enviado desde FirmaClara",
+      // ME-03: branding para que la plantilla de n8n pueda aplicarlo.
+      brand_logo_url: brandLogoUrl,
+      brand_color: brandColor,
+      brand_sender_name: brandSenderName || sender,
     };
 
     const n8nSuccess = await triggerN8n('document.sent', n8nPayload);
 
     if (n8nSuccess) {
       console.log('n8n triggered successfully — skipping Resend to avoid duplicate email.');
-      return new Response(
-        JSON.stringify({ success: true, channel: 'n8n' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return await markSentAndRespond('n8n');
     }
 
     console.log('n8n not configured or failed. Sending email via Resend.');
@@ -285,7 +401,9 @@ serve(async (req: Request) => {
           <div class="wrapper">
             <div class="container">
               <div class="header">
-                <a href="${siteUrl}" class="logo">Firma<span>Clara</span></a>
+                ${brandLogoUrl
+                  ? `<img src="${brandLogoUrl}" alt="${sender}" style="max-height: 40px; max-width: 180px; object-fit: contain;" />`
+                  : `<a href="${siteUrl}" class="logo">Firma<span>Clara</span></a>`}
               </div>
 
               <div class="content">
@@ -301,7 +419,7 @@ serve(async (req: Request) => {
                 </div>
 
                 <div class="btn-container">
-                  <a href="${signUrl}" class="button">Revisar y Firmar</a>
+                  <a href="${signUrl}" class="button" style="background-color: ${brandColor};">Revisar y Firmar</a>
                 </div>
 
                 <p style="text-align: center; font-size: 14px;">
@@ -333,7 +451,8 @@ serve(async (req: Request) => {
         'Authorization': `Bearer ${RESEND_API_KEY}`
       },
       body: JSON.stringify({
-        from: 'FirmaClara <noreply@firmaclara.es>',
+        // ME-03: "[Empresa] vía FirmaClara" si hay marca configurada.
+        from: `${brandSenderName ? `${brandSenderName} vía FirmaClara` : 'FirmaClara'} <noreply@firmaclara.es>`,
         to: [signer_email],
         subject: `FirmaClara: ${sender} solicita tu firma en "${docTitle}"`,
         html: html
@@ -344,19 +463,31 @@ serve(async (req: Request) => {
 
     if (!res.ok) {
       console.error('Resend Error Response:', data)
-      throw new Error(data.message || 'Error sending email with Resend')
+      // Email falló → reembolsa el crédito si se cobró y deja el doc en draft.
+      return await onSendFailure(data.message || 'Error al enviar el email')
     }
 
     console.log("Email sent successfully:", data.id);
 
-    return new Response(
-      JSON.stringify({ success: true, id: data.id }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return await markSentAndRespond('resend');
 
   } catch (error: any) {
     console.error("Function Error:", error)
-    // RETURN 200 OK even on error to bypass supabase-js strict checks
+    // Si se cobró un crédito y reventó algo después, devuélvelo (vía service_role,
+    // con el id de usuario/documento guardados antes del cobro).
+    if (charged && chargedUserId) {
+      try {
+        const admin = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        );
+        await admin.rpc('revertir_firma', {
+          p_user_id: chargedUserId,
+          p_document_id: chargedDocId,
+          p_description: 'Reembolso por error en envío',
+        });
+      } catch (e) { console.error('Refund on catch failed:', e); }
+    }
     return new Response(
       JSON.stringify({
         success: false,

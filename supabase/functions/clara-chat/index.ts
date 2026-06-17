@@ -4,22 +4,10 @@ import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts'
 
 const N8N_WEBHOOK_URL = Deno.env.get('N8N_WEBHOOK_URL') || ''
 
-// In-memory rate limiter: max 20 requests per minute per user
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_MAX = 20;
-const RATE_LIMIT_WINDOW_MS = 60_000;
-
-function checkRateLimit(userId: string): boolean {
-    const now = Date.now();
-    const entry = rateLimitMap.get(userId);
-    if (!entry || now > entry.resetAt) {
-        rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-        return true;
-    }
-    if (entry.count >= RATE_LIMIT_MAX) return false;
-    entry.count++;
-    return true;
-}
+// El rate-limit es DURABLE (en DB) vía la RPC check_clara_rate_limit.
+// El limitador in-memory anterior vivía en un Map por instancia y se
+// reiniciaba en cada cold start (las edge functions son efímeras y
+// multi-instancia) → trivial de evitar abusando del LLM gratis.
 
 serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
@@ -59,8 +47,14 @@ serve(async (req: Request) => {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
-        // Rate limiting: max 20 requests/minute per user
-        if (!checkRateLimit(user.id)) {
+        // Rate limiting durable (DB): máx 20 req/min por usuario.
+        // Se permite por defecto si la comprobación falla (fail-open) para no
+        // tumbar el chat ante un hipo de DB; solo se bloquea con un 'false' explícito.
+        const { data: rlAllowed, error: rlError } = await supabaseClient.rpc('check_clara_rate_limit');
+        if (rlError) {
+            console.error('Rate limit check failed:', rlError.message);
+        }
+        if (rlAllowed === false) {
             return new Response(
                 JSON.stringify({ error: 'Demasiadas solicitudes. Espera un momento antes de continuar.' }),
                 { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' } }

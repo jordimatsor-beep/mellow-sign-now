@@ -71,6 +71,7 @@ export default function Documents() {
           const { data, error } = await supabase
             .from("documents")
             .select("id, title, signer_name, signer_email, status, created_at")
+            .eq("is_template", false) // ME-04: ocultar plantillas del listado
             .order("created_at", { ascending: false });
           if (error) throw error;
           return data;

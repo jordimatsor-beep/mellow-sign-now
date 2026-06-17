@@ -8,6 +8,21 @@ const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? ''
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
+// Price IDs de los planes (creados con scripts/stripe/setup_products.mjs)
+const STRIPE_PRICE_BASICO = Deno.env.get('STRIPE_PRICE_BASICO') ?? ''
+const STRIPE_PRICE_PROFESIONAL = Deno.env.get('STRIPE_PRICE_PROFESIONAL') ?? ''
+
+const OVERAGE_UNIT_AMOUNT = 40 // 0,40 € por firma extra, en céntimos
+
+// Mapea un price_id de Stripe al plan_id interno.
+function planFromPriceId(priceId: string): 'basico' | 'profesional' | null {
+  if (priceId && priceId === STRIPE_PRICE_BASICO) return 'basico'
+  if (priceId && priceId === STRIPE_PRICE_PROFESIONAL) return 'profesional'
+  return null
+}
+
+const PLAN_RANK: Record<string, number> = { gratis: 0, basico: 1, profesional: 2 }
+
 serve(async (req: Request) => {
   try {
     if (req.method !== 'POST') {
@@ -65,8 +80,25 @@ serve(async (req: Request) => {
     }
 
     try {
-      if (eventType === 'checkout.session.completed') {
-        await handleCheckoutSessionCompleted(supabaseAdmin, event)
+      switch (eventType) {
+        case 'checkout.session.completed':
+          await handleCheckoutSessionCompleted(supabaseAdmin, event, eventId)
+          break
+        case 'customer.subscription.updated':
+          await handleSubscriptionUpdated(supabaseAdmin, event, eventId)
+          break
+        case 'customer.subscription.deleted':
+          await handleSubscriptionDeleted(supabaseAdmin, event, eventId)
+          break
+        case 'invoice.payment_succeeded':
+          await handleInvoicePaymentSucceeded(supabaseAdmin, stripe, event)
+          break
+        case 'invoice.payment_failed':
+          await handleInvoicePaymentFailed(supabaseAdmin, event, eventId)
+          break
+        default:
+          // Evento no manejado: lo marcamos procesado igualmente (idempotencia).
+          break
       }
 
       await updateWebhookEventProcessed(supabaseAdmin, eventId)
@@ -164,101 +196,318 @@ async function ensureWebhookEvent(
   return { id: fetchResult.data.id, status: 'pending', attempts: fetchResult.data.attempts }
 }
 
-async function handleCheckoutSessionCompleted(supabaseAdmin: SupabaseClient, event: Record<string, unknown>) {
+async function handleCheckoutSessionCompleted(
+  supabaseAdmin: SupabaseClient,
+  event: Record<string, unknown>,
+  eventId: string
+) {
   const session = getNestedObject(event, ['data', 'object'])
   const metadata = getNestedObject(session, ['metadata']) ?? {}
   const userId = getNestedString(metadata, ['user_id'])
-  const packType = getNestedString(metadata, ['pack_id'])
-  const credits = getNestedInteger(metadata, ['credits'])
-  const paymentIntent = getNestedString(session, ['payment_intent'])
+  const planId = getNestedString(metadata, ['plan_id'])
+  const mode = getNestedString(session, ['mode'])
+  const customerId = getNestedString(session, ['customer'])
+  const subscriptionId = getNestedString(session, ['subscription'])
   const sessionId = getNestedString(session, ['id'])
-  const amountTotal = getNestedInteger(session, ['amount_total'], { allowNull: true })
 
-  if (!userId || !packType || credits === null || credits <= 0 || !paymentIntent || !sessionId) {
-    throw new Error('Invalid checkout metadata: missing user_id, pack_id, credits, payment_intent or session id')
+  if (!userId) {
+    throw new Error('Invalid checkout metadata: missing user_id')
   }
 
-  const purchaseId = await upsertUserCreditPurchase(supabaseAdmin, {
-    user_id: userId,
-    pack_type: packType,
-    credits_total: credits,
-    credits_used: 0,
-    price_paid: amountTotal !== null ? amountTotal / 100 : 0,
-    stripe_payment_id: paymentIntent,
-    stripe_session_id: sessionId,
-    purchased_at: new Date().toISOString()
-  })
-
-  await insertCreditTransactionIfMissing(supabaseAdmin, {
-    user_id: userId,
-    type: 'purchase',
-    amount: credits,
-    description: `Compra de pack ${packType.toUpperCase()} (${credits} créditos)`,
-    credit_pack_id: purchaseId
-  })
-}
-
-async function upsertUserCreditPurchase(supabaseAdmin: SupabaseClient, purchase: Record<string, unknown>) {
-  const upsertResult = await supabaseAdmin
-    .from('user_credit_purchases')
-    .upsert(purchase, { onConflict: 'stripe_payment_id', ignoreDuplicates: true })
-    .select('id')
-    .maybeSingle()
-
-  if (upsertResult.error) {
-    throw new Error(`Failed to upsert user_credit_purchases: ${upsertResult.error.message}`)
+  // Guarda el customer de Stripe en el usuario (necesario para el portal y overage).
+  if (customerId) {
+    await supabaseAdmin.from('users').update({ stripe_customer_id: customerId }).eq('id', userId)
   }
 
-  if (upsertResult.data && typeof upsertResult.data.id === 'string') {
-    return upsertResult.data.id
-  }
+  // ── Suscripción (Básico / Profesional) ───────────────────────────────
+  if (mode === 'subscription' && (planId === 'basico' || planId === 'profesional')) {
+    const prevPlan = await getUserPlan(supabaseAdmin, userId)
+    const { error } = await supabaseAdmin.from('users').update({
+      plan_id: planId,
+      stripe_subscription_id: subscriptionId || null,
+      subscription_status: 'active',
+      firmas_usadas_mes: 0,
+      plan_renewed_at: new Date().toISOString(),
+      grace_until: null,
+    }).eq('id', userId)
+    if (error) throw new Error(`Failed to activate subscription: ${error.message}`)
 
-  const paymentIntent = String(purchase.stripe_payment_id ?? '')
-  if (!paymentIntent) {
-    throw new Error('Missing stripe_payment_id after purchase upsert')
-  }
-
-  const lookup = await supabaseAdmin
-    .from('user_credit_purchases')
-    .select('id')
-    .eq('stripe_payment_id', paymentIntent)
-    .single()
-
-  if (lookup.error || !lookup.data) {
-    throw new Error(`Unable to fetch user_credit_purchases after upsert: ${lookup.error?.message ?? 'not found'}`)
-  }
-
-  return lookup.data.id
-}
-
-async function insertCreditTransactionIfMissing(supabaseAdmin: SupabaseClient, transaction: Record<string, unknown>) {
-  const packId = String(transaction.credit_pack_id ?? '')
-  if (!packId) {
-    throw new Error('credit_pack_id is required for credit transaction deduplication')
-  }
-
-  const existing = await supabaseAdmin
-    .from('credit_transactions')
-    .select('id')
-    .eq('credit_pack_id', packId)
-    .eq('type', 'purchase')
-    .maybeSingle()
-
-  if (existing.error) {
-    throw new Error(`Failed to query existing credit transaction: ${existing.error.message}`)
-  }
-
-  if (existing.data) {
+    await insertPlanHistory(supabaseAdmin, userId, prevPlan, planId,
+      motiveForChange(prevPlan, planId), eventId)
     return
   }
 
-  const insertResult = await supabaseAdmin
-    .from('credit_transactions')
-    .insert([transaction])
-
-  if (insertResult.error) {
-    throw new Error(`Failed to insert credit transaction: ${insertResult.error.message}`)
+  // ── Pago único: pack puntual de firmas ───────────────────────────────
+  if (mode === 'payment') {
+    const credits = getNestedInteger(metadata, ['credits']) ?? (planId === 'pack_puntual' ? 15 : null)
+    if (credits === null || credits <= 0) {
+      throw new Error('Invalid pack checkout: missing/invalid credits metadata')
+    }
+    const { error } = await supabaseAdmin.rpc('add_firmas_creditos', {
+      p_user_id: userId,
+      p_credits: credits,
+      p_session: sessionId,
+      p_description: `Compra de pack de ${credits} firmas`,
+    })
+    if (error) throw new Error(`Failed to add pack credits: ${error.message}`)
+    return
   }
+
+  // Modo no contemplado: no hacemos nada (idempotencia).
+}
+
+// ── customer.subscription.updated ──────────────────────────────────────
+// Upgrade / downgrade desde el Portal de Cliente de Stripe.
+async function handleSubscriptionUpdated(
+  supabaseAdmin: SupabaseClient,
+  event: Record<string, unknown>,
+  eventId: string
+) {
+  const sub = getNestedObject(event, ['data', 'object'])
+  const customerId = getNestedString(sub, ['customer'])
+  const subscriptionId = getNestedString(sub, ['id'])
+  const status = getNestedString(sub, ['status']) // active, past_due, canceled, trialing...
+  const priceId = getNestedString(sub, ['items', 'data', '0', 'price', 'id'])
+  const cancelAtPeriodEnd = getNestedObject(sub, ['cancel_at_period_end']) === true
+
+  const newPlan = planFromPriceId(priceId)
+  const user = customerId ? await findUserByCustomer(supabaseAdmin, customerId) : null
+  if (!user) {
+    // Sin usuario asociado no podemos hacer nada útil; no es un error fatal.
+    console.warn(`subscription.updated: no user for customer ${customerId}`)
+    return
+  }
+
+  const prevPlan = user.plan_id ?? 'gratis'
+  const subStatus = mapSubStatus(status)
+
+  // Si la suscripción se programó para cancelar al final del ciclo, mantenemos
+  // el plan hasta que llegue subscription.deleted; solo reflejamos el estado.
+  const update: Record<string, unknown> = {
+    stripe_subscription_id: subscriptionId || user.stripe_subscription_id || null,
+    subscription_status: subStatus,
+  }
+  if (newPlan && !cancelAtPeriodEnd) {
+    update.plan_id = newPlan
+  }
+  if (subStatus === 'active') {
+    update.grace_until = null
+  }
+
+  const { error } = await supabaseAdmin.from('users').update(update).eq('id', user.id)
+  if (error) throw new Error(`Failed to update subscription: ${error.message}`)
+
+  // Historial solo si cambió el plan (no en downgrade reseteamos firmas: se respeta lo usado).
+  if (newPlan && newPlan !== prevPlan && !cancelAtPeriodEnd) {
+    await insertPlanHistory(supabaseAdmin, user.id, prevPlan, newPlan,
+      motiveForChange(prevPlan, newPlan), eventId)
+  }
+}
+
+// ── customer.subscription.deleted ──────────────────────────────────────
+async function handleSubscriptionDeleted(
+  supabaseAdmin: SupabaseClient,
+  event: Record<string, unknown>,
+  eventId: string
+) {
+  const sub = getNestedObject(event, ['data', 'object'])
+  const customerId = getNestedString(sub, ['customer'])
+  const user = customerId ? await findUserByCustomer(supabaseAdmin, customerId) : null
+  if (!user) {
+    console.warn(`subscription.deleted: no user for customer ${customerId}`)
+    return
+  }
+
+  const prevPlan = user.plan_id ?? 'gratis'
+  const { error } = await supabaseAdmin.from('users').update({
+    plan_id: 'gratis',
+    subscription_status: 'canceled',
+    stripe_subscription_id: null,
+    firmas_usadas_mes: 0,
+    plan_renewed_at: new Date().toISOString(),
+    grace_until: null,
+  }).eq('id', user.id)
+  if (error) throw new Error(`Failed to downgrade to free: ${error.message}`)
+
+  await insertPlanHistory(supabaseAdmin, user.id, prevPlan, 'gratis', 'cancelacion', eventId)
+}
+
+// ── invoice.payment_succeeded ──────────────────────────────────────────
+// Renovación mensual: resetea la cuota y factura el overage acumulado.
+async function handleInvoicePaymentSucceeded(
+  supabaseAdmin: SupabaseClient,
+  stripe: Stripe,
+  event: Record<string, unknown>
+) {
+  const invoice = getNestedObject(event, ['data', 'object'])
+  const customerId = getNestedString(invoice, ['customer'])
+  const billingReason = getNestedString(invoice, ['billing_reason'])
+  const user = customerId ? await findUserByCustomer(supabaseAdmin, customerId) : null
+  if (!user) {
+    console.warn(`invoice.payment_succeeded: no user for customer ${customerId}`)
+    return
+  }
+
+  // Reset del contador solo en la renovación de ciclo (no en la primera factura).
+  if (billingReason === 'subscription_cycle' || billingReason === 'subscription_create') {
+    await supabaseAdmin.from('users').update({
+      firmas_usadas_mes: 0,
+      plan_renewed_at: new Date().toISOString(),
+      subscription_status: 'active',
+      grace_until: null,
+    }).eq('id', user.id)
+  }
+
+  // Facturar el overage pendiente del ciclo cerrado (solo Profesional lo genera).
+  await billPendingOverage(supabaseAdmin, stripe, user.id, customerId)
+}
+
+// ── invoice.payment_failed ─────────────────────────────────────────────
+async function handleInvoicePaymentFailed(
+  supabaseAdmin: SupabaseClient,
+  event: Record<string, unknown>,
+  eventId: string
+) {
+  const invoice = getNestedObject(event, ['data', 'object'])
+  const customerId = getNestedString(invoice, ['customer'])
+  const user = customerId ? await findUserByCustomer(supabaseAdmin, customerId) : null
+  if (!user) {
+    console.warn(`invoice.payment_failed: no user for customer ${customerId}`)
+    return
+  }
+
+  // Periodo de gracia de 3 días antes de bajar a Gratis (lo aplica un cron/login check).
+  const graceUntil = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+  const { error } = await supabaseAdmin.from('users').update({
+    subscription_status: 'past_due',
+    grace_until: graceUntil,
+  }).eq('id', user.id)
+  if (error) throw new Error(`Failed to mark past_due: ${error.message}`)
+
+  await insertPlanHistory(supabaseAdmin, user.id, user.plan_id ?? 'gratis',
+    user.plan_id ?? 'gratis', 'pago_fallido', eventId)
+}
+
+// ── Helpers de plan / overage ──────────────────────────────────────────
+
+async function getUserPlan(supabaseAdmin: SupabaseClient, userId: string): Promise<string> {
+  const { data } = await supabaseAdmin.from('users').select('plan_id').eq('id', userId).maybeSingle()
+  return (data?.plan_id as string) ?? 'gratis'
+}
+
+async function findUserByCustomer(supabaseAdmin: SupabaseClient, customerId: string) {
+  const { data } = await supabaseAdmin
+    .from('users')
+    .select('id, plan_id, stripe_subscription_id, stripe_customer_id')
+    .eq('stripe_customer_id', customerId)
+    .maybeSingle()
+  return data as { id: string; plan_id: string; stripe_subscription_id: string | null; stripe_customer_id: string | null } | null
+}
+
+function mapSubStatus(status: string): string {
+  switch (status) {
+    case 'active': return 'active'
+    case 'trialing': return 'trialing'
+    case 'past_due':
+    case 'unpaid': return 'past_due'
+    case 'canceled':
+    case 'incomplete_expired': return 'canceled'
+    default: return 'active'
+  }
+}
+
+function motiveForChange(prev: string, next: string): string {
+  const a = PLAN_RANK[prev] ?? 0
+  const b = PLAN_RANK[next] ?? 0
+  if (b > a) return 'upgrade'
+  if (b < a) return 'downgrade'
+  return 'upgrade'
+}
+
+async function insertPlanHistory(
+  supabaseAdmin: SupabaseClient,
+  userId: string,
+  prevPlan: string,
+  newPlan: string,
+  motivo: string,
+  eventId: string
+) {
+  // Idempotencia: no duplicar el mismo evento de Stripe.
+  const existing = await supabaseAdmin
+    .from('plan_history')
+    .select('id')
+    .eq('stripe_event_id', eventId)
+    .maybeSingle()
+  if (existing.data) return
+
+  const { error } = await supabaseAdmin.from('plan_history').insert({
+    user_id: userId,
+    plan_anterior: prevPlan,
+    plan_nuevo: newPlan,
+    motivo,
+    stripe_event_id: eventId,
+  })
+  if (error) console.error(`Failed to insert plan_history: ${error.message}`)
+}
+
+// Factura el overage pendiente creando un invoice item por lote.
+async function billPendingOverage(
+  supabaseAdmin: SupabaseClient,
+  stripe: Stripe,
+  userId: string,
+  customerId: string
+) {
+  // 1) Lee las firmas extra pendientes de facturar.
+  const { data: pending, error } = await supabaseAdmin
+    .from('overage_charges')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('billed', false)
+
+  if (error) {
+    console.error(`Failed to read pending overage: ${error.message}`)
+    return
+  }
+  if (!pending || pending.length === 0) return
+
+  const ids = pending.map((r: { id: string }) => r.id)
+  const qty = ids.length
+  const amount = qty * OVERAGE_UNIT_AMOUNT
+
+  // 2) "Reclama" las filas marcándolas billed=true ANTES de cobrar, para que un
+  //    fallo posterior de DB no provoque un doble cargo en el siguiente ciclo.
+  const { error: claimErr } = await supabaseAdmin
+    .from('overage_charges')
+    .update({ billed: true })
+    .in('id', ids)
+    .eq('billed', false)
+  if (claimErr) {
+    console.error(`Failed to claim overage rows: ${claimErr.message}`)
+    return // sin reclamar no cobramos; se reintenta en la próxima renovación
+  }
+
+  // 3) Crea el invoice item. Si falla, revertimos la reclama para reintentar.
+  let invoiceItemId = ''
+  try {
+    const item = await stripe.invoiceItems.create({
+      customer: customerId,
+      currency: 'eur',
+      amount,
+      description: `Firmas adicionales FirmaClara (${qty} × 0,40 €)`,
+    })
+    invoiceItemId = item.id
+  } catch (e) {
+    console.error('Failed to create overage invoice item, reverting claim:', e instanceof Error ? e.message : e)
+    await supabaseAdmin.from('overage_charges').update({ billed: false }).in('id', ids)
+    return
+  }
+
+  // 4) Estampa la referencia del item (best-effort; ya están billed=true).
+  const { error: stampErr } = await supabaseAdmin
+    .from('overage_charges')
+    .update({ stripe_invoice_item_id: invoiceItemId })
+    .in('id', ids)
+  if (stampErr) console.error(`Overage billed but failed to stamp invoice item id: ${stampErr.message}`)
 }
 
 async function updateWebhookEventProcessed(supabaseAdmin: SupabaseClient, eventId: string) {

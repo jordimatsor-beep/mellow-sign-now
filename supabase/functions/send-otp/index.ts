@@ -218,42 +218,11 @@ serve(async (req) => {
         // 5. Send Message
         if (effectiveChannel === 'email') {
             // --- SEND VIA RESEND (EMAIL) ---
-            const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-            if (!RESEND_API_KEY) throw new Error("Configuration Error: Missing RESEND_API_KEY");
-
-            const html = `
-               <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
-                 <h2 style="color: #111827; text-align: center;">Código de Seguridad</h2>
-                 <p style="color: #4b5563; text-align: center;">Usa el siguiente código para firmar el documento <strong>"${doc.title || 'Sin título'}"</strong>.</p>
-                 <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; text-align: center; margin: 24px 0;">
-                   <span style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #2563eb;">${otp}</span>
-                 </div>
-                 <p style="color: #6b7280; font-size: 12px; text-align: center;">Este código expira en 15 minutos.</p>
-               </div>
-             `;
-
-            const res = await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${RESEND_API_KEY}`
-                },
-                body: JSON.stringify({
-                    from: 'FirmaClara Security <noreply@firmaclara.es>',
-                    to: [doc.signer_email],
-                    subject: 'Tu código de seguridad - FirmaClara',
-                    html: html
-                })
-            });
-
-            if (!res.ok) {
-                const txt = await res.text();
-                console.error('Resend Error:', txt);
+            const ok = await sendEmailOtp(doc.signer_email, otp, doc.title || 'Sin título');
+            if (!ok) {
                 await logAttempt(supabase, doc.id, ipAddress, userAgent, false, false, 'provider_error_email');
-                throw new Error(`Error al enviar email: ${txt.substring(0, 100)}`);
+                throw new Error('Error al enviar email');
             }
-
-            // Log SUCCESS
             await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'email_sent');
 
         } else {
@@ -301,13 +270,24 @@ serve(async (req) => {
                 if (!res.ok) {
                     const txt = await res.text()
                     console.error('Twilio Error:', txt)
-                    // Log failed attempt but not blocked
                     await logAttempt(supabase, doc.id, ipAddress, userAgent, false, false, 'provider_error_sms');
-                    throw new Error(`Error al enviar mensaje SMS: ${txt.substring(0, 100)}`)
+                    // Fallback: deliver the OTP by email so the signer is never blocked
+                    // (e.g. while the Alphanumeric Sender ID is pending carrier approval).
+                    if (doc.signer_email) {
+                        const emailOk = await sendEmailOtp(doc.signer_email, otp, doc.title || 'Sin título');
+                        if (emailOk) {
+                            await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'sms_failed_email_fallback');
+                            effectiveChannel = 'email';
+                        } else {
+                            throw new Error('No se pudo enviar el código de seguridad');
+                        }
+                    } else {
+                        throw new Error('No se pudo enviar el SMS');
+                    }
+                } else {
+                    // Log SUCCESS
+                    await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'sms_sent');
                 }
-
-                // Log SUCCESS
-                await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'sms_sent');
 
             } else {
                 console.log('[DEV MODE] OTP would be sent via SMS (code omitted for security)');
@@ -347,6 +327,42 @@ serve(async (req) => {
         )
     }
 })
+
+// Sends the OTP by email via Resend. Returns true on success. Used both as the
+// primary email channel and as an automatic fallback when SMS delivery fails.
+async function sendEmailOtp(signerEmail: string | null, otp: string, title: string): Promise<boolean> {
+    if (!signerEmail) return false;
+    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+    if (!RESEND_API_KEY) { console.error('Missing RESEND_API_KEY for email OTP'); return false; }
+    const safeTitle = String(title).replace(/[<>]/g, '');
+    const html = `
+       <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+         <h2 style="color: #111827; text-align: center;">Código de Seguridad</h2>
+         <p style="color: #4b5563; text-align: center;">Usa el siguiente código para firmar el documento <strong>"${safeTitle}"</strong>.</p>
+         <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; text-align: center; margin: 24px 0;">
+           <span style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #2563eb;">${otp}</span>
+         </div>
+         <p style="color: #6b7280; font-size: 12px; text-align: center;">Este código expira en 15 minutos.</p>
+       </div>
+     `;
+    try {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
+            body: JSON.stringify({
+                from: 'FirmaClara Security <noreply@firmaclara.es>',
+                to: [signerEmail],
+                subject: 'Tu código de seguridad - FirmaClara',
+                html
+            })
+        });
+        if (!res.ok) { console.error('Resend Error (OTP):', (await res.text()).substring(0, 200)); return false; }
+        return true;
+    } catch (e) {
+        console.error('Email OTP send threw:', e);
+        return false;
+    }
+}
 
 async function logAttempt(
     supabase: any,

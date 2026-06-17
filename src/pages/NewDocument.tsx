@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Upload, FileText, ArrowRight, Loader2, User, Lock, Unlock, Receipt, Wrench, FileSignature, ClipboardList, MapPin, Check } from "lucide-react";
 import { ContactSelector } from "@/components/contacts/ContactSelector";
+import { ContactEmailAutocomplete } from "@/components/contacts/ContactEmailAutocomplete";
 import { SignaturePositionPicker } from "@/components/documents/SignaturePositionPicker";
 import { useProfile } from "@/context/ProfileContext";
 import { useCredits } from "@/hooks/useCredits";
+import { usePlanStatus } from "@/hooks/usePlanStatus";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { PdfPreviewDialog } from "@/components/documents/PdfPreviewDialog";
+import { LimitReachedModal } from "@/components/plan/LimitReachedModal";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
@@ -29,11 +32,19 @@ export default function NewDocument() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const draftId = searchParams.get('draftId');
+  const templateId = searchParams.get('templateId');
   const { profile } = useProfile();
   const [step, setStep] = useState<Step>("doctype");
   const [docType, setDocType] = useState<DocType | null>(null);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "creating_record" | "sending" | "success" | "error">("idle");
   const isSubmitting = uploadStatus !== "idle" && uploadStatus !== "error" && uploadStatus !== "success";
+
+  // Modal de límite de plan alcanzado (HTTP 402 desde send-invite-v2)
+  const [limitModal, setLimitModal] = useState<{ open: boolean; plan: "gratis" | "basico" | null; limite: number | null }>({
+    open: false,
+    plan: null,
+    limite: null,
+  });
 
   // Form Data
   const [file, setFile] = useState<File | null>(null);
@@ -69,6 +80,12 @@ export default function NewDocument() {
   // inflated balances (e.g. 264 vs 122 real).
   const { credits, isLoading: isLoadingCredits, refetch: refetchCredits } = useCredits();
 
+  // Profesional puede seguir enviando aunque agote la cuota (overage 0,40€/firma),
+  // así que el saldo 0 NO debe bloquearle el envío. Gratis/Básico sí se bloquean.
+  const { data: planStatus } = usePlanStatus();
+  const isProfesional = planStatus?.plan_id === 'profesional';
+  const canSend = credits > 0 || isProfesional;
+
   // Signature position settings
   // IMPORTANT: signaturePage must match the default selected radio ("last_page" -> -1).
   // 0 means "annex page" in the backend; a 0 default caused signatures to land on an
@@ -92,6 +109,45 @@ export default function NewDocument() {
     if (contact.nif) setSignerNif(contact.nif);
     if (contact.address) setSignerAddress(contact.address);
     toast.success("Datos importados de la agenda");
+  };
+
+  // QW-05: tras un envío correcto, si el email no estaba en la agenda, ofrecer
+  // guardarlo. Fire-and-forget: no debe bloquear ni retrasar la navegación.
+  const offerSaveContact = async () => {
+    try {
+      const email = signerEmail.trim();
+      if (!email) return;
+      // RLS limita la consulta a los contactos del propio usuario.
+      const { data: existing } = await supabase
+        .from("contacts")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+      if (existing) return;
+
+      toast("¿Guardar este firmante en tu agenda?", {
+        description: signerName ? `${signerName} · ${email}` : email,
+        action: {
+          label: "Guardar contacto",
+          onClick: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { error } = await supabase.from("contacts").insert({
+              user_id: user.id,
+              name: signerName || email.split("@")[0],
+              email,
+              phone: signerPhone || null,
+              nif: signerNif || null,
+              address: signerAddress || null,
+            });
+            if (error) toast.error("No se pudo guardar el contacto");
+            else toast.success("Contacto guardado en tu agenda");
+          },
+        },
+      });
+    } catch {
+      /* el guardado de contacto nunca debe romper el flujo de envío */
+    }
   };
 
   // Load draft data
@@ -153,6 +209,60 @@ export default function NewDocument() {
 
     loadDraft();
   }, [draftId]);
+
+  // ME-04: usar una plantilla → se prerrellena un documento NUEVO (sin draftId,
+  // así handleCreateDocument hace INSERT) reutilizando el archivo y los datos de
+  // la plantilla. El archivo original es inmutable, por lo que referenciar el
+  // mismo file_url no produce modificación cruzada.
+  useEffect(() => {
+    if (!templateId) return;
+
+    const loadTemplate = async () => {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('id', templateId)
+        .single();
+
+      if (error || !data) {
+        toast.error("No se pudo cargar la plantilla");
+        if (import.meta.env.DEV) console.error(error);
+        return;
+      }
+
+      const tpl = data as any;
+      setTitle(tpl.title || '');
+      setSignerName(tpl.signer_name || '');
+      setSignerEmail(tpl.signer_email || '');
+      setSignerNif(tpl.signer_tax_id || '');
+      setSignerAddress(tpl.signer_address || '');
+      setSignerPhone(tpl.signer_phone || '');
+      setCustomMessage(tpl.custom_message || '');
+
+      if (typeof tpl.signature_page === 'number') setSignaturePage(tpl.signature_page);
+      if (typeof tpl.signature_x === 'number') setSignatureX(tpl.signature_x);
+      if (typeof tpl.signature_y === 'number') setSignatureY(tpl.signature_y);
+      if (tpl.signature_page === 0) setSignaturePosition("new_page");
+      else if (typeof tpl.signature_page === 'number' && tpl.signature_page > 0) setSignaturePosition("custom");
+      else setSignaturePosition("last_page");
+
+      if (tpl.security_level) {
+        setSecurityLevel(tpl.security_level);
+        setWhatsappVerification(tpl.security_level === 'whatsapp_otp');
+      }
+
+      if (tpl.file_url) {
+        setDraftFileUrl(tpl.file_url);
+        setFile(new File([], tpl.title ? `${tpl.title}.pdf` : "documento.pdf", { type: "application/pdf" }));
+        setDocType('otro');
+        setStep('signer');
+      }
+
+      toast.success("Plantilla cargada. Revisa el firmante y envía.");
+    };
+
+    loadTemplate();
+  }, [templateId]);
 
   // Calls the convert-to-pdf edge function (Gotenberg backend) and returns a
   // PDF File. Uses raw fetch (not supabase.functions.invoke) because the
@@ -263,12 +373,12 @@ export default function NewDocument() {
   const handleCreateDocument = async () => {
     if (!file || !title || !signerEmail || !signerName) return;
 
-    if (credits <= 0) {
-      toast.error("No tienes créditos suficientes", {
-        description: "Necesitas al menos 1 crédito para enviar un documento.",
+    if (!canSend) {
+      toast.error("Has alcanzado el límite de tu plan", {
+        description: "Mejora de plan o compra un pack para enviar este documento.",
         action: {
-          label: "Comprar créditos",
-          onClick: () => navigate('/credits/purchase')
+          label: "Ver planes",
+          onClick: () => navigate('/precios')
         }
       });
       return;
@@ -384,26 +494,12 @@ export default function NewDocument() {
     }
   };
 
-  const handleSendDocument = async (docId: string, userId: string, signToken: string) => {
+  const handleSendDocument = async (docId: string, _userId: string, signToken: string) => {
     try {
-      // 1. Consumir crédito
-      const { error: creditError } = await withTimeout(
-        supabase.rpc('consume_credit', { amount: 1 }),
-        3000, "Credit consume"
-      );
-
-      if (creditError) {
-        if (import.meta.env.DEV) console.error("Credit Error Details:", creditError);
-        toast.error(`Error de créditos: ${creditError.message || creditError.details || 'Desconocido'}`);
-
-        if (creditError.message && creditError.message.includes('Insufficient credits')) {
-          setTimeout(() => navigate('/credits/purchase'), 2000);
-        }
-        setUploadStatus("error");
-        return;
-      }
-
-      // 2. Intentar enviar el email (CRITICO: Si falla, devolvemos el crédito)
+      // El consumo de crédito y la transición del documento a 'sent' ocurren
+      // DENTRO de send-invite-v2 (server-side), de forma atómica con el envío.
+      // El cliente ya no consume créditos ni cambia el estado: así es imposible
+      // enviar saltándose el cobro (antes era trivial desde la consola).
       const payload = {
         document_id: docId,
         signer_email: signerEmail,
@@ -415,94 +511,45 @@ export default function NewDocument() {
       };
 
       const { data: fnData, error: fnError } = await withTimeout(
-        supabase.functions.invoke('send-invite-v2', {
-          body: payload
-        }),
-        15000, "Send invite" // Aumentado timeout para email
+        supabase.functions.invoke('send-invite-v2', { body: payload }),
+        20000, "Send invite"
       );
 
-      // Verificación estricta del envío
-      const emailSent = !fnError && fnData?.success !== false;
+      const result = fnData as { success?: boolean; code?: string; error?: string; plan?: string; limite?: number } | null;
 
-      if (!emailSent) {
-        if (import.meta.env.DEV) console.error("Error sending email:", fnError || fnData);
+      if (fnError || result?.success !== true) {
+        const code = result?.code;
 
-        // 2.1 ROLLBACK: Devolver el crédito si el email falló
-        // consume_credit rejects negative amounts (security fix 2026-05-25);
-        // refunds go through the dedicated refund_credit() RPC.
-        // Cast until Supabase types are regenerated to include the new RPC.
-        const { error: refundError } = await (supabase.rpc as CallableFunction)('refund_credit', { p_description: 'Reembolso por fallo de envío' });
-        if (refundError) {
-          if (import.meta.env.DEV) console.error("Credit refund failed:", refundError);
+        // Límite del plan alcanzado → modal de upgrade (pack / mejorar plan).
+        if (code === 'limite_alcanzado' || code === 'insufficient_credits') {
+          setUploadStatus("error");
+          const plan = result?.plan === 'basico' ? 'basico' : result?.plan === 'gratis' ? 'gratis' : null;
+          setLimitModal({ open: true, plan, limite: result?.limite ?? null });
+          return;
         }
-        const creditMsg = refundError
-          ? " No se pudo devolver el crédito automáticamente — contacta con soporte."
-          : " El crédito ha sido devuelto.";
 
-        const errorMsg = fnError?.message || fnData?.error || "Error desconocido al enviar email";
-        toast.error(`No se pudo enviar el email: ${errorMsg}.${creditMsg}`);
+        // Cualquier otro fallo: el servidor ya reembolsó el crédito (si lo cobró)
+        // y dejó el documento como borrador.
+        const errorMsg = result?.error || fnError?.message || "Error desconocido al enviar";
+        if (import.meta.env.DEV) console.error("Error sending document:", fnError || result);
+        toast.error(`No se pudo enviar: ${errorMsg}`);
         toast.info("El documento se ha guardado como borrador. Inténtalo de nuevo.");
-
         setUploadStatus("error");
-        // No actualizamos a 'sent', se queda en 'draft'
-        setTimeout(() => navigate('/dashboard'), 4000);
+        setTimeout(() => navigate('/dashboard'), 3500);
         return;
       }
 
-      // 3. Email enviado correctamente -> Actualizar estado a 'sent'
-      const { error: updateError } = await withTimeout(
-        supabase.from('documents').update({
-          status: 'sent',
-          sent_at: new Date().toISOString()
-        }).eq('id', docId),
-        3000, "Document status update"
-      );
-
-      if (updateError) {
-        // Edge case: Email se envió pero falló actualizar la BBDD. 
-        // En este caso NO devolvemos crédito porque el email sí salió.
-        // El usuario verá el documento como 'draft' pero el firmante recibió el correo.
-        // Es un estado inconsistente pero preferible a que el firmante firme y no valga, 
-        // o que enviemos 2 emails.
-        if (import.meta.env.DEV) console.error("Error updating document status after sending email:", updateError);
-        toast.error("El email se envió pero hubo un error actualizando el estado. Contacta con soporte.");
-      }
-
-      // Registrar el evento
-      try {
-        await withTimeout(
-          supabase.from('event_logs').insert({
-            user_id: userId,
-            event_type: 'document.sent',
-            event_data: {
-              credits_consumed: 1,
-              email_sent: true,
-              document_id: docId,
-              signer_email: signerEmail
-            }
-          }),
-          3000, "Event log"
-        );
-      } catch (logErr) {
-        if (import.meta.env.DEV) console.warn("Event log failed (non-critical):", logErr);
-      }
-
       setUploadStatus("success");
-      refetchCredits(); // credit was consumed — refresh the shared balance
+      refetchCredits(); // el saldo cambió en el servidor — refresca el badge
       toast.success("Documento enviado correctamente");
+      offerSaveContact(); // QW-05: ofrecer guardar el firmante (no bloqueante)
       navigate('/dashboard');
 
     } catch (error: unknown) {
       const err = error as Error;
       if (import.meta.env.DEV) console.error("Critical error in handleSendDocument:", err);
-
-      // Intentar devolver crédito si falló algo inesperado después del consumo
-      // Nota: Esto es arriesgado si no sabemos si el email salió, 
-      // pero asumimos que si saltó al catch, el email probablemente falló o es el timeout.
-      // Por seguridad, solo devolvemos si no hemos llegado al punto de "emailSent = true".
-      // Como es complejo saberlo aquí, mejor pedimos al usuario que contacte si ha perdido créditos.
-
-      toast.error("Error crítico al enviar: " + err.message);
+      // Si se cobró un crédito, send-invite-v2 lo reembolsa ante el fallo.
+      toast.error("Error al enviar: " + err.message);
       setUploadStatus("error");
       navigate('/dashboard');
     }
@@ -672,12 +719,12 @@ export default function NewDocument() {
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Email *</Label>
-                  <Input
+                  <ContactEmailAutocomplete
                     id="email"
-                    type="email"
                     placeholder="Ej: juan@email.com"
                     value={signerEmail}
-                    onChange={(e) => setSignerEmail(e.target.value)}
+                    onChange={setSignerEmail}
+                    onSelect={handleContactSelect}
                   />
                 </div>
               </div>
@@ -1032,20 +1079,25 @@ export default function NewDocument() {
               )}
             </div>
 
-            <div className={`rounded-lg p-3 text-center ${credits <= 0 && !isLoadingCredits ? 'bg-destructive/10' : 'bg-primary/5'}`}>
+            <div className={`rounded-lg p-3 text-center ${!canSend && !isLoadingCredits ? 'bg-destructive/10' : 'bg-primary/5'}`}>
               {isLoadingCredits ? (
-                <p className="text-sm text-muted-foreground">Verificando créditos disponibles...</p>
-              ) : credits <= 0 ? (
+                <p className="text-sm text-muted-foreground">Verificando saldo disponible...</p>
+              ) : !canSend ? (
                 <>
-                  <p className="text-sm text-destructive font-medium">Sin créditos disponibles</p>
+                  <p className="text-sm text-destructive font-medium">Has alcanzado el límite de tu plan</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    <button className="underline" onClick={() => navigate('/credits/purchase')}>Comprar créditos</button> para enviar este documento
+                    <button className="underline" onClick={() => navigate('/precios')}>Ver planes</button> para enviar este documento
                   </p>
+                </>
+              ) : isProfesional && credits <= 0 ? (
+                <>
+                  <p className="text-sm">⚠️ Esta firma se cobrará como <strong>extra (0,40 €)</strong></p>
+                  <p className="text-xs text-muted-foreground">Has superado las 50 firmas incluidas de tu plan</p>
                 </>
               ) : (
                 <>
                   <p className="text-sm">
-                    💳 Se usará <strong>1 crédito</strong> · Disponibles: <strong>{credits}</strong>
+                    💳 Se usará <strong>1 firma</strong> · Disponibles: <strong>{credits}</strong>
                   </p>
                   <p className="text-xs text-muted-foreground">(Se descontará al enviar)</p>
                 </>
@@ -1056,7 +1108,7 @@ export default function NewDocument() {
               className="w-full"
               size="lg"
               onClick={handleCreateDocument}
-              disabled={isSubmitting || isLoadingCredits || credits <= 0}
+              disabled={isSubmitting || isLoadingCredits || !canSend}
             >
               {isSubmitting ? (
                 <>
@@ -1066,10 +1118,10 @@ export default function NewDocument() {
               ) : isLoadingCredits ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Verificando créditos...
+                  Verificando saldo...
                 </>
-              ) : credits <= 0 ? (
-                'Sin créditos disponibles'
+              ) : !canSend ? (
+                'Límite alcanzado'
               ) : (
                 'Enviar documento'
               )}
@@ -1079,11 +1131,16 @@ export default function NewDocument() {
     }
   };
 
-  const getSteps = () => {
-    return ["doctype", "upload", "signer", "options", "confirm"];
-  };
-
-  const steps = getSteps();
+  // Pasos del flujo con etiqueta visible (QW-02: numeración + nombre, N1 Nielsen).
+  const STEPS: { key: Step; label: string }[] = [
+    { key: "doctype", label: "Tipo" },
+    { key: "upload", label: "Documento" },
+    { key: "signer", label: "Firmante" },
+    { key: "options", label: "Opciones" },
+    { key: "confirm", label: "Revisión" },
+  ];
+  const steps = STEPS.map((s) => s.key);
+  const currentIndex = steps.indexOf(step);
 
   return (
     <div className="mx-auto max-w-xl py-4 space-y-6">
@@ -1093,7 +1150,6 @@ export default function NewDocument() {
           size="icon"
           className="h-8 w-8"
           onClick={() => {
-            const currentIndex = steps.indexOf(step);
             if (currentIndex === 0) {
               navigate("/dashboard");
             } else {
@@ -1107,16 +1163,35 @@ export default function NewDocument() {
         <h1 className="text-xl font-bold tracking-tight">Nuevo Documento</h1>
       </div>
 
-      <div className="mx-1 flex gap-2">
-        {steps.map((s, i) => (
-          <div
-            key={s}
-            className={`h-1.5 flex-1 rounded-full transition-colors ${steps.indexOf(step) >= i
-              ? "bg-primary"
-              : "bg-slate-200"
-              }`}
-          />
-        ))}
+      {/* Stepper con número y nombre de paso (QW-02). En móvil basta la línea
+          "Paso X de N · Nombre"; en >=sm se muestra además la etiqueta bajo cada barra. */}
+      <div className="mx-1 space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-slate-500">
+            Paso {currentIndex + 1} de {steps.length}
+          </p>
+          <p className="text-sm font-semibold text-primary">
+            {STEPS[currentIndex].label}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {STEPS.map((s, i) => (
+            <div key={s.key} className="flex-1">
+              <div
+                className={`h-1.5 rounded-full transition-colors ${
+                  currentIndex >= i ? "bg-primary" : "bg-slate-200"
+                }`}
+              />
+              <span
+                className={`mt-1 hidden text-[10px] sm:block ${
+                  currentIndex === i ? "font-semibold text-primary" : "text-slate-400"
+                }`}
+              >
+                {i + 1}. {s.label}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <Card className="border-muted/40 shadow-lg">
@@ -1152,6 +1227,14 @@ export default function NewDocument() {
         onOpenChange={setIsPreviewOpen}
         file={file}
         label={convertedFrom ? `convertido desde .${convertedFrom}` : undefined}
+      />
+
+      {/* Límite de plan alcanzado al enviar → opciones de pack / upgrade */}
+      <LimitReachedModal
+        open={limitModal.open}
+        onOpenChange={(open) => setLimitModal((s) => ({ ...s, open }))}
+        plan={limitModal.plan}
+        limite={limitModal.limite}
       />
     </div>
   );

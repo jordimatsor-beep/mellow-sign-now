@@ -46,12 +46,15 @@ serve(async (req: Request) => {
         const supabase = createClient(supabaseUrl, supabaseKey)
 
         // Parse Body
-        const { token, otp_code, signature_image, user_agent } = await req.json()
+        const { token, otp_code, signature_image } = await req.json()
 
-        // Get client IP - Prioritize x-real-ip
+        // SECURITY: la evidencia de auditoría (IP y user-agent) se toma de
+        // fuentes confiables del request, NUNCA del body controlado por el
+        // cliente. Antes user_agent venía del JSON → falsificable en el acta.
         const ip_address = req.headers.get('x-real-ip')
             || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
             || 'unknown'
+        const user_agent = req.headers.get('user-agent') || 'unknown'
 
         if (!token || !signature_image) throw new Error('Faltan datos requeridos (token o firma)')
 
