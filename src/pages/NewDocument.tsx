@@ -20,6 +20,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
+import { isValidTaxId } from "@/lib/validators";
 import { sanitizeFileName } from "@/lib/utils";
 import { ACCEPTED_OFFICE_FORMATS, OFFICE_MIME_TYPES, getOriginalFormat } from "@/lib/documentFormats";
 
@@ -101,6 +102,9 @@ export default function NewDocument() {
 
   // Fields are optional for "presupuesto" type
   const isPresupuesto = docType === "presupuesto";
+  // P1-C: si el firmante introduce un CIF/NIF, debe ser válido (checksum MOD-23).
+  // Vacío no es error aquí (la obligatoriedad la cubre la condición del botón).
+  const nifInvalid = signerNif.trim() !== "" && !isValidTaxId(signerNif);
 
   const handleContactSelect = (contact: { name: string | null; email: string; phone?: string | null; nif?: string | null; address?: string | null }) => {
     setSignerName(contact.name || '');
@@ -739,8 +743,14 @@ export default function NewDocument() {
                     id="nif"
                     placeholder="Ej: 12345678Z"
                     value={signerNif}
+                    aria-invalid={nifInvalid}
                     onChange={(e) => setSignerNif(e.target.value)}
                   />
+                  {nifInvalid && (
+                    <p className="text-xs text-destructive">
+                      Revisa el CIF/NIF: la letra de control no es válida.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -839,6 +849,7 @@ export default function NewDocument() {
                 disabled={
                   !signerName ||
                   !signerEmail ||
+                  nifInvalid ||
                   (!isPresupuesto && (!signerNif || !signerAddress)) ||
                   (whatsappVerification && !signerPhone.replace(/^\+\d+\s*/, '').trim())
                 }
