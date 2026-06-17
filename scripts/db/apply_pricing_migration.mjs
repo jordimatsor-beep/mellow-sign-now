@@ -66,7 +66,7 @@ if (!RAW_URL) {
   console.error(
     "\n✖ Falta SUPABASE_DB_URL.\n" +
     "  Dashboard → Connect → 'Session pooler' (URI), con tu contraseña, en .env.local:\n" +
-    "    SUPABASE_DB_URL=postgresql://postgres.pmzfwwtgjvlvuawxguiw:TU_PASSWORD@aws-1-eu-west-1.pooler.supabase.com:5432/postgres\n"
+    "    SUPABASE_DB_URL=postgresql://postgres.<project-ref>:<password>@<pooler-host>:5432/postgres\n"
   );
   process.exit(1);
 }

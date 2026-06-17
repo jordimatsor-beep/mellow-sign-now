@@ -29,7 +29,7 @@ catch { console.error('✖ Falta "stripe": npm i stripe --no-save'); process.exi
 
 const stripe = new Stripe(SECRET, { apiVersion: "2024-04-10" });
 
-const WEBHOOK_URL = "https://pmzfwwtgjvlvuawxguiw.supabase.co/functions/v1/stripe-webhook";
+const WEBHOOK_URL = process.env.SUPABASE_WEBHOOK_URL || "https://<project-ref>.supabase.co/functions/v1/stripe-webhook";
 const EVENTS = [
   "checkout.session.completed",
   "customer.subscription.updated",

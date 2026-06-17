@@ -6,7 +6,7 @@
  * SEGURIDAD: por defecto NO envía (dry-run). Solo envía con --confirm.
  *
  * USO (PowerShell):
- *   $env:SUPABASE_URL = "https://pmzfwwtgjvlvuawxguiw.supabase.co"
+ *   $env:SUPABASE_URL = "https://<project-ref>.supabase.co"
  *   $env:SUPABASE_SERVICE_ROLE_KEY = "..."
  *   $env:RESEND_API_KEY = "re_..."
  *
