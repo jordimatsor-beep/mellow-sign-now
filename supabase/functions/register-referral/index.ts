@@ -5,6 +5,16 @@ import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts'
 const CODE_REGEX = /^FC-[A-Z2-9]{6}$/
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const FIFTEEN_MINUTES = 15 * 60 * 1000
+const RL_MAX_PER_MINUTE = 20
+
+function extractClientIp(req: Request): string {
+  return (
+    req.headers.get('cf-connecting-ip') ??
+    req.headers.get('x-real-ip') ??
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    'unknown'
+  )
+}
 
 function normalizeEmail(email: string): string {
   const parts = email.split('@')
@@ -25,6 +35,21 @@ serve(async (req) => {
   }
 
   try {
+    // I4: Rate limiting — 20 requests/minute por IP antes de consumir recursos
+    const clientIp = extractClientIp(req)
+    const adminSupabaseForRl = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+    const { data: hits, error: rlErr } = await adminSupabaseForRl
+      .rpc('check_referral_rl', { p_ip: clientIp, p_max: RL_MAX_PER_MINUTE })
+    if (!rlErr && (hits as number) > RL_MAX_PER_MINUTE) {
+      return new Response(JSON.stringify({ error: 'rate_limited' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' }
+      })
+    }
+
     let body: { ref_code?: string; new_user_id?: string } = {}
     try { body = await req.json() } catch { /* body vacío */ }
 
@@ -42,10 +67,7 @@ serve(async (req) => {
       })
     }
 
-    const adminSupabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    const adminSupabase = adminSupabaseForRl
 
     // C2-FIX: Verificar que new_user_id existe en auth.users y fue creado < 15 minutos
     const { data: { user: newUser }, error: userErr } = await adminSupabase.auth.admin.getUserById(new_user_id)
