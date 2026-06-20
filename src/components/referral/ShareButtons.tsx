@@ -41,11 +41,14 @@ export function ShareButtons({ url }: ShareButtonsProps) {
         </a>
       </Button>
 
-      <Button variant="outline" size="sm" className="gap-2" asChild>
-        <a href={`mailto:?subject=${emailSubject}&body=${emailBody}`}>
-          <Mail className="h-4 w-4" />
-          Email
-        </a>
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2"
+        onClick={() => { window.location.href = `mailto:?subject=${emailSubject}&body=${emailBody}` }}
+      >
+        <Mail className="h-4 w-4" />
+        Email
       </Button>
 
       <Button variant="outline" size="sm" className="gap-2" onClick={handleCopy}>
