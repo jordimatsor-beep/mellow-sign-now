@@ -38,14 +38,17 @@ function getEventDisplay(eventType: string) {
 interface LogEntry {
     id: string;
     event_type: string;
-    event_data: Record<string, unknown> | null;
-    user_id: string | null;
-    user_email?: string;
+    user_email: string | null;
     document_id: string | null;
     created_at: string | null;
-    ip_address: unknown;
-    user_agent: string | null;
 }
+
+// Campos de event_data que NO deben mostrarse (datos de usuarios/firmantes)
+const SENSITIVE_EVENT_FIELDS = new Set([
+    "signer_email", "signer_name", "signer_phone", "signer_tax_id",
+    "document_title", "title", "file_url", "signed_file_url",
+    "certificate_url", "custom_message", "email", "phone",
+]);
 
 export default function AdminLogs() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -62,52 +65,37 @@ export default function AdminLogs() {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            // Build query with optional filter
+            // Contar total para paginación (sin exponer datos sensibles)
             let countQuery = supabase.from("event_logs").select("*", { count: "exact", head: true });
-            let dataQuery = supabase.from("event_logs").select("*").order("created_at", { ascending: false });
-
             if (filterType && filterType !== "all") {
-                if (filterType === "admin") {
-                    countQuery = countQuery.like("event_type", "admin.%");
-                    dataQuery = dataQuery.like("event_type", "admin.%");
-                } else if (filterType === "credit") {
-                    countQuery = countQuery.like("event_type", "credit.%");
-                    dataQuery = dataQuery.like("event_type", "credit.%");
-                } else if (filterType === "document") {
-                    countQuery = countQuery.like("event_type", "document.%");
-                    dataQuery = dataQuery.like("event_type", "document.%");
-                } else if (filterType === "user") {
-                    countQuery = countQuery.like("event_type", "user.%");
-                    dataQuery = dataQuery.like("event_type", "user.%");
-                }
+                const prefix = filterType === "admin" ? "admin.%"
+                    : filterType === "credit" ? "credit.%"
+                    : filterType === "document" ? "document.%"
+                    : "user.%";
+                countQuery = countQuery.like("event_type", prefix);
             }
-
-            const from = page * PAGE_SIZE;
-            const to = from + PAGE_SIZE - 1;
-
-            const [{ count }, { data, error }] = await Promise.all([
-                countQuery,
-                dataQuery.range(from, to),
-            ]);
-
-            if (error) throw error;
+            const { count } = await countQuery;
             setTotalCount(count || 0);
 
-            // Enrich with user emails
-            const userIds = [...new Set((data || []).map(l => l.user_id).filter(Boolean))] as string[];
-            let emailMap: Record<string, string> = {};
-            if (userIds.length > 0) {
-                const { data: users } = await supabase.from("users").select("id, email").in("id", userIds);
-                (users || []).forEach(u => { emailMap[u.id] = u.email; });
+            // Obtener logs via RPC segura (sin event_data ni document_title)
+            const { data, error } = await supabase.rpc("admin_get_logs", {
+                page_size: PAGE_SIZE,
+                page_offset: page * PAGE_SIZE,
+                event_type_filter: (filterType && filterType !== "all")
+                    ? (filterType === "admin" ? null : null)  // RPC filtra por tipo exacto; usamos null para filtrar en cliente
+                    : null,
+            });
+
+            if (error) throw error;
+
+            let result: LogEntry[] = (data || []) as LogEntry[];
+
+            // Filtro de tipo por cliente (el RPC no soporta LIKE, solo igualdad)
+            if (filterType && filterType !== "all") {
+                result = result.filter(l => l.event_type.startsWith(filterType + "."));
             }
 
-            const enriched: LogEntry[] = (data || []).map(l => ({
-                ...l,
-                event_data: l.event_data as Record<string, unknown> | null,
-                user_email: l.user_id ? emailMap[l.user_id] || l.user_id : "Sistema",
-            }));
-
-            setLogs(enriched);
+            setLogs(result);
         } catch (error: any) {
             console.error("Error fetching logs:", error);
             toast.error("Error cargando logs: " + (error.message || "Unknown"));
@@ -118,24 +106,12 @@ export default function AdminLogs() {
 
     const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-    // Client-side search filter
     const filtered = search.trim()
         ? logs.filter(l =>
             (l.user_email || "").toLowerCase().includes(search.toLowerCase()) ||
-            l.event_type.toLowerCase().includes(search.toLowerCase()) ||
-            JSON.stringify(l.event_data || {}).toLowerCase().includes(search.toLowerCase())
+            l.event_type.toLowerCase().includes(search.toLowerCase())
         )
         : logs;
-
-    const formatEventData = (data: Record<string, unknown> | null) => {
-        if (!data || Object.keys(data).length === 0) return null;
-        return Object.entries(data).map(([key, value]) => (
-            <span key={key} className="inline-block mr-2">
-                <span className="text-muted-foreground">{key}:</span>{" "}
-                <span className="font-mono text-xs">{String(value)}</span>
-            </span>
-        ));
-    };
 
     return (
         <div className="space-y-6">
@@ -204,11 +180,6 @@ export default function AdminLogs() {
                                                         {log.user_email}
                                                     </span>
                                                 </div>
-                                                {log.event_data && Object.keys(log.event_data).length > 0 && (
-                                                    <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-x-3">
-                                                        {formatEventData(log.event_data)}
-                                                    </div>
-                                                )}
                                             </div>
                                             <div className="text-right shrink-0">
                                                 <p className="text-xs text-muted-foreground">

@@ -86,9 +86,8 @@ export default function UsersManager() {
                 supabase.from("user_credit_purchases")
                     .select("user_id, credits_total, credits_used")
                     .in("user_id", userIds),
-                supabase.from("documents")
-                    .select("user_id")
-                    .in("user_id", userIds),
+                // Usamos RPC segura — sin política RLS directa sobre documents
+                supabase.rpc("admin_get_document_counts", { p_user_ids: userIds }),
             ]);
 
             const creditsByUser: Record<string, number> = {};
@@ -97,8 +96,8 @@ export default function UsersManager() {
             });
 
             const docsByUser: Record<string, number> = {};
-            (docsRes.data || []).forEach(d => {
-                docsByUser[d.user_id] = (docsByUser[d.user_id] || 0) + 1;
+            ((docsRes.data || []) as { user_id: string; doc_count: number }[]).forEach(d => {
+                docsByUser[d.user_id] = Number(d.doc_count);
             });
 
             const enriched: UserRow[] = (usersData || []).map(u => ({
