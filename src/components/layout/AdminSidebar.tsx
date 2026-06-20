@@ -1,4 +1,4 @@
-import { Home, Users, CreditCard, LayoutDashboard, LogOut, ScrollText, MessageCircle, ShieldAlert } from "lucide-react";
+import { Home, Users, CreditCard, LayoutDashboard, LogOut, ScrollText, MessageCircle, ShieldAlert, Euro } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/brand/Logo";
@@ -20,6 +20,7 @@ export function AdminSidebar() {
         { to: "/shobdgohs/support", icon: MessageCircle, label: "Soporte en vivo" },
         isAdmin && { to: "/shobdgohs/logs", icon: ScrollText, label: "Logs" },
         isAdmin && { to: "/shobdgohs/team", icon: ShieldAlert, label: "Equipo" },
+        isAdmin && { to: "/shobdgohs/payouts", icon: Euro, label: "Afiliados" },
     ].filter(Boolean) as any[];
 
     return (

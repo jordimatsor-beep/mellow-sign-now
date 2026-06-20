@@ -58,6 +58,7 @@ const CreditsManager = lazy(() => import("@/pages/admin/CreditsManager"));
 const AdminLogs = lazy(() => import("@/pages/admin/AdminLogs"));
 const AdminSupportChats = lazy(() => import("@/pages/admin/AdminSupportChats"));
 const AdminTeam = lazy(() => import("@/pages/admin/AdminTeam"));
+const PayoutsManager = lazy(() => import("@/pages/admin/PayoutsManager"));
 
 const PageLoader = () => (
   <div className="flex h-screen items-center justify-center">
@@ -140,6 +141,7 @@ const App = () => {
                       <Route path="support" element={<AdminSupportChats />} />
                       <Route path="logs" element={<AdminLogs />} />
                       <Route path="team" element={<AdminTeam />} />
+                      <Route path="payouts" element={<PayoutsManager />} />
                     </Route>
                   </Route>
 
