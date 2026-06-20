@@ -105,22 +105,22 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  chars   TEXT := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  code    TEXT;
-  counter INT  := 0;
+  chars    TEXT := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  v_code   TEXT;
+  counter  INT  := 0;
 BEGIN
   LOOP
-    code := 'FC-';
+    v_code := 'FC-';
     FOR i IN 1..6 LOOP
-      code := code || substr(chars, (floor(random() * length(chars)) + 1)::INT, 1);
+      v_code := v_code || substr(chars, (floor(random() * length(chars)) + 1)::INT, 1);
     END LOOP;
-    EXIT WHEN NOT EXISTS (SELECT 1 FROM public.referral_codes WHERE referral_codes.code = code);
+    EXIT WHEN NOT EXISTS (SELECT 1 FROM public.referral_codes WHERE referral_codes.code = v_code);
     counter := counter + 1;
     IF counter > 200 THEN
       RAISE EXCEPTION 'referral_codes: no se puede generar código único tras 200 intentos';
     END IF;
   END LOOP;
-  RETURN code;
+  RETURN v_code;
 END;
 $$;
 
