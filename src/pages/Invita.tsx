@@ -8,10 +8,11 @@ import { ReferralStats } from '@/components/referral/ReferralStats'
 import { HowItWorks } from '@/components/referral/HowItWorks'
 import { ReferralList } from '@/components/referral/ReferralList'
 import { MilestoneCelebration } from '@/components/referral/MilestoneCelebration'
+import { CommissionBalance } from '@/components/referral/CommissionBalance'
 
 export default function Invita() {
   const { user } = useAuth()
-  const { code, url, stats, referrals, isLoading, error, refetch } = useReferral()
+  const { code, url, stats, referrals, commissions, isLoading, error, refetch } = useReferral()
 
   const handleCopy = async () => {
     if (url) await navigator.clipboard.writeText(url)
@@ -66,6 +67,9 @@ export default function Invita() {
 
           {/* Contadores + progress bar */}
           <ReferralStats stats={stats} />
+
+          {/* Ingresos en dinero por afiliado */}
+          <CommissionBalance commissions={commissions} onPayoutRequested={refetch} />
 
           {/* Cómo funciona */}
           <HowItWorks />

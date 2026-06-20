@@ -51,6 +51,13 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .maybeSingle()
 
+    // Saldo de comisiones de afiliado
+    const { data: commissionData } = await adminSupabase
+      .from('referral_commission_balance')
+      .select('balance_pending, balance_paid, balance_total, commissions_pending, commissions_total')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
     const stats = statsData ?? {
       total_invited: 0,
       total_pending: 0,
@@ -93,7 +100,15 @@ serve(async (req) => {
       created_at: r.created_at,
     }))
 
-    return new Response(JSON.stringify({ code, url, stats, referrals }), {
+    const commissions = commissionData ?? {
+      balance_pending: 0,
+      balance_paid: 0,
+      balance_total: 0,
+      commissions_pending: 0,
+      commissions_total: 0,
+    }
+
+    return new Response(JSON.stringify({ code, url, stats, referrals, commissions }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 

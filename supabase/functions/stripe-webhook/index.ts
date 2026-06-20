@@ -259,7 +259,46 @@ async function handleCheckoutSessionCompleted(
     const amountCents = Number(getNestedObject(session, ['amount_total']) ?? 0)
     triggerN8nBilling(supabaseAdmin, userId, paymentIntentId, amountCents, metadata as Record<string, unknown>)
       .catch((e) => console.error('triggerN8nBilling non-fatal:', e instanceof Error ? e.message : e))
+
+    // Comisión de afiliado: 20% al referrer si este usuario fue referido (non-fatal)
+    if (amountCents > 0 && sessionId) {
+      handleAffiliateCommission(supabaseAdmin, userId, amountCents, planId || 'pack_puntual', sessionId)
+        .catch((e) => console.error('handleAffiliateCommission non-fatal:', e instanceof Error ? e.message : e))
+    }
   }
+}
+
+async function handleAffiliateCommission(
+  supabaseAdmin: SupabaseClient,
+  buyerUserId: string,
+  amountCents: number,
+  product: string,
+  stripeSession: string
+) {
+  // Buscar si el comprador fue referido por alguien
+  const { data: referral } = await supabaseAdmin
+    .from('referrals')
+    .select('referrer_id')
+    .eq('referred_id', buyerUserId)
+    .neq('status', 'invalid')
+    .maybeSingle()
+
+  if (!referral?.referrer_id) return
+
+  const purchaseEur = amountCents / 100
+  const commissionEur = Math.round(purchaseEur * 20) / 100 // 20%, redondeado a céntimos
+
+  // UNIQUE en stripe_session garantiza idempotencia
+  await supabaseAdmin.from('referral_commissions').insert({
+    referrer_id:   referral.referrer_id,
+    referred_id:   buyerUserId,
+    amount_eur:    commissionEur,
+    percentage:    20,
+    purchase_eur:  purchaseEur,
+    product,
+    stripe_session: stripeSession,
+    status: 'pending',
+  }).throwOnError()
 }
 
 async function triggerN8nBilling(

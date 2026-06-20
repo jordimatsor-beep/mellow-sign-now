@@ -19,17 +19,34 @@ export interface ReferralStats {
   credits_remaining: number
 }
 
+export interface CommissionBalance {
+  balance_pending: number
+  balance_paid: number
+  balance_total: number
+  commissions_pending: number
+  commissions_total: number
+}
+
 export interface ReferralData {
   code: string
   url: string
   stats: ReferralStats
   referrals: ReferralEntry[]
+  commissions: CommissionBalance
   isLoading: boolean
   error: string | null
   refetch: () => void
 }
 
 const MILESTONES = [5, 10, 25, 50]
+
+const DEFAULT_COMMISSIONS: CommissionBalance = {
+  balance_pending: 0,
+  balance_paid: 0,
+  balance_total: 0,
+  commissions_pending: 0,
+  commissions_total: 0,
+}
 
 export function useReferral(): ReferralData {
   const { user } = useAuth()
@@ -43,6 +60,7 @@ export function useReferral(): ReferralData {
     credits_remaining: 50,
   })
   const [referrals, setReferrals] = useState<ReferralEntry[]>([])
+  const [commissions, setCommissions] = useState<CommissionBalance>(DEFAULT_COMMISSIONS)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const triggeredMilestones = useRef<Set<number>>(new Set())
@@ -63,6 +81,7 @@ export function useReferral(): ReferralData {
       setUrl(data.url)
       setStats(data.stats)
       setReferrals(data.referrals)
+      setCommissions(data.commissions ?? DEFAULT_COMMISSIONS)
     } catch {
       setError('No se pudo cargar la información de referidos.')
     } finally {
@@ -140,5 +159,5 @@ export function useReferral(): ReferralData {
     return () => { supabase.removeChannel(channel) }
   }, [user]) // Sin `referrals` en deps — se lee desde referralsRef
 
-  return { code, url, stats, referrals, isLoading, error, refetch: fetchData }
+  return { code, url, stats, referrals, commissions, isLoading, error, refetch: fetchData }
 }
