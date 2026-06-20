@@ -15,6 +15,8 @@ export interface PlanStatus {
   overage_eur: number;
   plan_renewed_at: string | null;
   grace_until: string | null;
+  subscription_period_end: string | null;
+  subscription_cancel_at_period_end: boolean;
 }
 
 export const PLAN_LABELS: Record<PlanId, string> = {

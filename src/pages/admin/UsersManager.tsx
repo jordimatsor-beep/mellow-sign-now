@@ -160,9 +160,13 @@ export default function UsersManager() {
     };
 
     const handleToggleRole = async (user: UserRow) => {
-        // CRIT-4: Prevent admin from demoting themselves
         if (user.id === currentUser?.id) {
             toast.error("No puedes cambiar tu propio rol");
+            return;
+        }
+        // Support role is managed from /team page; only toggle user ↔ admin here
+        if (user.role === "support") {
+            toast.info("Gestiona roles de soporte desde la página Equipo");
             return;
         }
         const newRole = user.role === "admin" ? "user" : "admin";
@@ -284,8 +288,11 @@ export default function UsersManager() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant={user.role === "admin" ? "destructive" : "secondary"} className="text-xs">
-                                                {user.role === "admin" ? "Admin" : "Usuario"}
+                                            <Badge
+                                                variant={user.role === "admin" ? "destructive" : user.role === "support" ? "outline" : "secondary"}
+                                                className="text-xs"
+                                            >
+                                                {user.role === "admin" ? "Admin" : user.role === "support" ? "Soporte" : "Usuario"}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-center">

@@ -1,6 +1,15 @@
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
+export async function hasBillingProfile(userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("billing_profiles")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return data !== null;
+}
+
 export type PlanChoice = "basico" | "profesional" | "pack";
 
 async function readEdgeError(error: unknown): Promise<string> {

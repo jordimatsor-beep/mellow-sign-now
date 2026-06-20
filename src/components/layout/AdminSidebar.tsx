@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export function AdminSidebar() {
     const { profile, signOut } = useAuth();
-    const isAdmin = profile?.role === 'admin' || profile?.email === 'jormattor@gmail.com';
+    const isAdmin = profile?.role === 'admin';
     const isSupport = profile?.role === 'support';
     const canAccessUsers = isAdmin;
     const canAccessLogs = isAdmin;

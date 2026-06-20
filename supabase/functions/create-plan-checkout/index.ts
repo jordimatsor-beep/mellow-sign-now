@@ -128,6 +128,9 @@ serve(async (req) => {
       metadata: {
         user_id: user.id,
         plan_id: isPack ? 'pack_puntual' : plan,
+        product_type: isPack ? 'pack_creditos' : 'plan_mensual',
+        plan_name: isPack ? '' : (plan === 'basico' ? 'Básico' : 'Profesional'),
+        pack_quantity: isPack ? '15' : '',
         ...(isPack ? { credits: '15' } : {}),
       },
       ...(isPack

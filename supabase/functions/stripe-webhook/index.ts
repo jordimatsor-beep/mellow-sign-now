@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import Stripe from "https://esm.sh/stripe@14.10.0"
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { triggerN8n } from '../_shared/n8n.ts'
 
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? ''
 const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? ''
@@ -234,11 +235,10 @@ async function handleCheckoutSessionCompleted(
 
     await insertPlanHistory(supabaseAdmin, userId, prevPlan, planId,
       motiveForChange(prevPlan, planId), eventId)
-    return
   }
 
   // ── Pago único: pack puntual de firmas ───────────────────────────────
-  if (mode === 'payment') {
+  else if (mode === 'payment') {
     const credits = getNestedInteger(metadata, ['credits']) ?? (planId === 'pack_puntual' ? 15 : null)
     if (credits === null || credits <= 0) {
       throw new Error('Invalid pack checkout: missing/invalid credits metadata')
@@ -250,14 +250,57 @@ async function handleCheckoutSessionCompleted(
       p_description: `Compra de pack de ${credits} firmas`,
     })
     if (error) throw new Error(`Failed to add pack credits: ${error.message}`)
+  }
+
+  // Modo no contemplado: no hacemos nada (idempotencia). Para subscription y payment,
+  // disparar n8n para generación de factura en Holded (non-fatal).
+  if (mode === 'subscription' || mode === 'payment') {
+    const paymentIntentId = getNestedString(session, ['payment_intent']) || sessionId
+    const amountCents = Number(getNestedObject(session, ['amount_total']) ?? 0)
+    triggerN8nBilling(supabaseAdmin, userId, paymentIntentId, amountCents, metadata as Record<string, unknown>)
+      .catch((e) => console.error('triggerN8nBilling non-fatal:', e instanceof Error ? e.message : e))
+  }
+}
+
+async function triggerN8nBilling(
+  supabaseAdmin: SupabaseClient,
+  userId: string,
+  paymentIntentId: string,
+  amountCents: number,
+  metadata: Record<string, unknown>
+) {
+  const { data: billingProfile } = await supabaseAdmin
+    .from('billing_profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (!billingProfile) {
+    // Sin perfil fiscal no se puede generar factura — no es un error de plataforma.
+    console.warn(`triggerN8nBilling: no billing_profile for user ${userId} — invoice skipped`)
     return
   }
 
-  // Modo no contemplado: no hacemos nada (idempotencia).
+  const { data: userRow } = await supabaseAdmin
+    .from('users')
+    .select('email')
+    .eq('id', userId)
+    .maybeSingle()
+
+  await triggerN8n('billing.checkout_completed', {
+    payment_intent_id: paymentIntentId,
+    user_id: userId,
+    amount_cents: amountCents,
+    product_type: String(metadata['product_type'] ?? ''),
+    plan_name: String(metadata['plan_name'] ?? ''),
+    pack_quantity: String(metadata['pack_quantity'] ?? ''),
+    billing_profile: billingProfile,
+    user_email: userRow?.email ?? '',
+  })
 }
 
-// ── customer.subscription.updated ──────────────────────────────────────
-// Upgrade / downgrade desde el Portal de Cliente de Stripe.
+// ── customer.subscription.created / updated ────────────────────────────
+// Upgrade / downgrade desde el Portal de Cliente de Stripe, o nueva suscripción.
 async function handleSubscriptionUpdated(
   supabaseAdmin: SupabaseClient,
   event: Record<string, unknown>,
@@ -269,6 +312,7 @@ async function handleSubscriptionUpdated(
   const status = getNestedString(sub, ['status']) // active, past_due, canceled, trialing...
   const priceId = getNestedString(sub, ['items', 'data', '0', 'price', 'id'])
   const cancelAtPeriodEnd = getNestedObject(sub, ['cancel_at_period_end']) === true
+  const currentPeriodEndRaw = getNestedObject(sub, ['current_period_end'])
 
   const newPlan = planFromPriceId(priceId)
   const user = customerId ? await findUserByCustomer(supabaseAdmin, customerId) : null
@@ -280,13 +324,20 @@ async function handleSubscriptionUpdated(
 
   const prevPlan = user.plan_id ?? 'gratis'
   const subStatus = mapSubStatus(status)
+  const periodEndIso = currentPeriodEndRaw
+    ? new Date(Number(currentPeriodEndRaw) * 1000).toISOString()
+    : null
 
-  // Si la suscripción se programó para cancelar al final del ciclo, mantenemos
-  // el plan hasta que llegue subscription.deleted; solo reflejamos el estado.
   const update: Record<string, unknown> = {
     stripe_subscription_id: subscriptionId || user.stripe_subscription_id || null,
     subscription_status: subStatus,
+    subscription_cancel_at_period_end: cancelAtPeriodEnd,
   }
+  if (periodEndIso) {
+    update.subscription_period_end = periodEndIso
+  }
+  // Si la suscripción se programó para cancelar al final del ciclo, mantenemos
+  // el plan hasta que llegue subscription.deleted; solo reflejamos el estado.
   if (newPlan && !cancelAtPeriodEnd) {
     update.plan_id = newPlan
   }
@@ -326,6 +377,8 @@ async function handleSubscriptionDeleted(
     firmas_usadas_mes: 0,
     plan_renewed_at: new Date().toISOString(),
     grace_until: null,
+    subscription_period_end: null,
+    subscription_cancel_at_period_end: false,
   }).eq('id', user.id)
   if (error) throw new Error(`Failed to downgrade to free: ${error.message}`)
 
@@ -421,7 +474,7 @@ function motiveForChange(prev: string, next: string): string {
   const b = PLAN_RANK[next] ?? 0
   if (b > a) return 'upgrade'
   if (b < a) return 'downgrade'
-  return 'upgrade'
+  return 'renewal'
 }
 
 async function insertPlanHistory(
@@ -579,7 +632,7 @@ function getNestedString(source: unknown, path: string[]) {
 function getNestedInteger(source: unknown, path: string[], options?: { allowNull?: boolean }) {
   const value = getNestedObject(source, path)
   if (value === null || value === undefined) {
-    return options?.allowNull ? null : null
+    return null
   }
 
   if (typeof value === 'number' && Number.isInteger(value)) {

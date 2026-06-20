@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { usePlanStatus, type PlanId } from "@/hooks/usePlanStatus";
 import { startPlanCheckout, openBillingPortal, type PlanChoice } from "@/lib/billing";
+import { useBillingProfile } from "@/hooks/useBillingProfile";
+import { BillingProfileModal } from "@/components/billing/BillingProfileModal";
 
 type PlanCard = {
   id: "gratis" | "basico" | "profesional" | "pack";
@@ -69,14 +71,39 @@ const PLANS: PlanCard[] = [
 export default function Precios() {
   const { user } = useAuth();
   const { data: status } = usePlanStatus();
+  const { profile } = useBillingProfile();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [overageOpen, setOverageOpen] = useState(false);
   const [overageAccepted, setOverageAccepted] = useState(false);
+  const [billingModalOpen, setBillingModalOpen] = useState(false);
+  const [pendingCheckout, setPendingCheckout] = useState<{
+    plan: PlanChoice;
+    opts?: { acceptOverage?: boolean };
+  } | null>(null);
 
   const currentPlan: PlanId | null = user ? status?.plan_id ?? null : null;
   const hasSubscription = currentPlan === "basico" || currentPlan === "profesional";
 
   const checkout = async (plan: PlanChoice, opts?: { acceptOverage?: boolean }) => {
+    // Require billing profile before Stripe checkout (PRD §3)
+    if (!profile) {
+      setPendingCheckout({ plan, opts });
+      setBillingModalOpen(true);
+      return;
+    }
+    setLoadingPlan(plan);
+    try {
+      await startPlanCheckout(plan, opts);
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
+  const confirmBillingAndCheckout = async () => {
+    if (!pendingCheckout) return;
+    setBillingModalOpen(false);
+    const { plan, opts } = pendingCheckout;
+    setPendingCheckout(null);
     setLoadingPlan(plan);
     try {
       await startPlanCheckout(plan, opts);
@@ -258,6 +285,16 @@ export default function Precios() {
       <p className="text-center text-xs text-muted-foreground">
         Pagos seguros con Stripe · Los créditos de pack no caducan · IVA no incluido
       </p>
+
+      {/* Datos de facturación requeridos antes del checkout (PRD §3) */}
+      <BillingProfileModal
+        open={billingModalOpen}
+        onClose={() => {
+          setBillingModalOpen(false);
+          setPendingCheckout(null);
+        }}
+        onConfirm={confirmBillingAndCheckout}
+      />
 
       {/* Consentimiento de overage para Profesional (PRD §2 / §6.1) */}
       <Dialog open={overageOpen} onOpenChange={setOverageOpen}>

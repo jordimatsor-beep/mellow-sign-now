@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useCredits } from "@/hooks/useCredits";
+import { SubscriptionCard } from "@/components/plan/SubscriptionCard";
 
 interface CreditTransaction {
   id: string;
@@ -156,6 +157,8 @@ export default function Credits() {
           </Button>
         </CardContent>
       </Card>
+
+      <SubscriptionCard />
 
       <Separator />
 
