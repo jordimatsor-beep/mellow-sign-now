@@ -81,7 +81,7 @@ export default function Register() {
             const refCode = getStoredReferralCode();
             if (refCode && signUpData?.user?.id) {
                 supabase.functions.invoke('register-referral', {
-                    body: { referral_code: refCode, new_user_id: signUpData.user.id }
+                    body: { ref_code: refCode, new_user_id: signUpData.user.id }
                 }).catch(() => { /* silent */ });
             }
             clearReferralCode();
