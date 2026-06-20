@@ -261,8 +261,10 @@ async function handleCheckoutSessionCompleted(
       .catch((e) => console.error('triggerN8nBilling non-fatal:', e instanceof Error ? e.message : e))
 
     // Comisión de afiliado: 20% al referrer si este usuario fue referido (non-fatal)
-    if (amountCents > 0 && sessionId) {
-      handleAffiliateCommission(supabaseAdmin, userId, amountCents, planId || 'pack_puntual', sessionId)
+    // Usa amount_subtotal (sin IVA) — correcto fiscalmente para comisiones de afiliado en España
+    const subtotalCents = Number(getNestedObject(session, ['amount_subtotal']) ?? amountCents)
+    if (subtotalCents > 0 && sessionId) {
+      handleAffiliateCommission(supabaseAdmin, userId, subtotalCents, planId || 'pack_puntual', sessionId)
         .catch((e) => console.error('handleAffiliateCommission non-fatal:', e instanceof Error ? e.message : e))
     }
   }
