@@ -1,7 +1,7 @@
 # PRD: FirmaClara
 ## Plataforma de Envío y Firma Electrónica con Certificación Técnica de Evidencias
 
-**Versión:** 2.1 (auditoría exhaustiva del código + saneamiento para compartir)
+**Versión:** 2.2 (+ programa de afiliados: referidos, comisiones en dinero y panel admin)
 **Fecha:** Junio 2026
 **Propietario:** OPERIA
 **Estado:** En producción · plataforma SaaS independiente (standalone)
@@ -77,6 +77,10 @@ Resumen del estado real de cada bloque funcional (para alinear expectativas de d
 | Panel admin + soporte chat | ✅ Implementado | En producción (acceso restringido por rol; ruta privada no documentada) |
 | Colas de email y reintentos de webhooks | ✅ Implementado | Workers `process-email-queue`, `process-webhook-retries` |
 | GDPR (export + borrado) | ✅ Implementado | `delete-account`, export en Settings |
+| Programa de afiliados (referidos + créditos) | ✅ Implementado | `/invita`, trigger en `documents`, anti-fraude, código `FC-XXXXXX` |
+| Comisiones en dinero (20 % sobre compras) | ✅ Implementado | `referral_commissions`, lógica en `stripe-webhook`, mín. €15 |
+| Solicitud de cobro por transferencia bancaria | ✅ Implementado | `payout_requests`, EF `request-commission-payout`, IBAN validado |
+| Panel admin de afiliados | ✅ Implementado | Ruta admin "Afiliados": vista completa + "Marcar pagado" |
 
 > **Deuda técnica conocida:** el historial de migraciones está desincronizado (`supabase db push` no fiable); aplicar SQL nuevo desde el **SQL Editor** de Supabase, no a ciegas. Los ficheros root `lib/pdf.ts`, `lib/certificate.ts` y `lib/tsa.ts` son **utilidades huérfanas** (no forman parte del flujo vivo, que vive íntegramente en las Edge Functions); `lib/tsa.ts` está deprecado a propósito y lanza error si se invoca.
 
@@ -192,6 +196,7 @@ La función `request-tsa` construye una `TimeStampReq` DER real (`asn1js` + `pki
 │                                                                        │
 │  ADMIN ──▶ [ruta privada no documentada] · acceso por rol            │
 │             Stats · Usuarios · Créditos · Logs · Soporte · Equipo     │
+│             Afiliados (PayoutsManager: tabla + "Marcar pagado")        │
 │                                                                        │
 │  TERCEROS (API) ──▶ REST signature-requests + webhooks HMAC-SHA256    │
 └──────────────────────────────────────────────────────────────────────┘
@@ -215,6 +220,7 @@ Autenticadas (RequireAuth):
   /templates            Plantillas
   /contacts             Agenda
   /credits              Saldo + historial transacciones
+  /invita               Programa de afiliados (código FC-, stats, comisiones €)
   /settings             Perfil, marca, fiscal, GDPR
   /clara                Asistente IA
   /help                 Ayuda + soporte chat
@@ -273,6 +279,13 @@ Admin (AdminRoute, ruta privada — no documentada por seguridad):
 - **email_queue** — cola de email con reintentos (`template_type`, `status`, backoff).
 - **api_clients** — clientes API externos (terceros): `api_key_hash` (SHA-256), `webhook_url`, `webhook_secret` (HMAC), `user_id` (cuenta que paga los créditos), `active`.
 
+**Programa de afiliados** (tablas añadidas en junio 2026):
+- **referral_codes** — código único `FC-XXXXXX` por usuario (charset sin ambiguos: ABCDEFGHJKLMNPQRSTUVWXYZ23456789). Generado lazy en el primer acceso a `/invita`.
+- **referrals** — vínculo `referrer_id → referred_id` (UNIQUE para evitar dobles registros). Estados: `pending` (referido registrado, no ha enviado aún), `rewarded` (primer doc enviado → créditos otorgados), `invalid`. Campo `credits_to_referrer` (1 crédito por defecto).
+- **referral_commissions** — 20 % del `amount_subtotal` (pre-IVA, en €) de cada compra de plan/pack. UNIQUE por `stripe_session` (idempotencia). Estados: `pending` / `paid` / `cancelled`. FK `referrer_id` + `referred_id`.
+- **payout_requests** — solicitudes de transferencia bancaria del afiliado. `iban` (validado en servidor), `amount_eur` (saldo en el momento de la solicitud), `status` (pending/paid/cancelled), `resolved_at`, `notes` (referencia de la transferencia).
+- **referral_rl** — tabla de rate-limiting por IP para la EF `register-referral` (max 20 req/min; auto-limpia entradas > 10 min).
+
 ### 5.4 Funciones RPC (núcleo de negocio)
 
 | Función | Rol | Descripción |
@@ -290,6 +303,12 @@ Admin (AdminRoute, ruta privada — no documentada por seguridad):
 | `grant_credits()` / `set_user_role()` | admin/soporte | Regalo de créditos y gestión de roles. |
 | `get_admin_stats(period)` | admin | KPIs agregados (ingresos, growth, activos, firmados, top clientes, series temporales). |
 | `mark_expired_documents()` / `mark_document_viewed()` | sistema | Expiración y marca de "visto". |
+| `generate_referral_code()` | helper | Genera un código `FC-XXXXXX` único (charset 32 chars sin ambiguos); variable interna renombrada a `v_code` para evitar ambigüedad con columna `referral_codes.code`. |
+| `trigger_process_referral_on_first_send()` | trigger AFTER UPDATE `documents` | Dispara `process_referral_reward()` cuando `status` pasa a `sent` por primera vez. |
+| `process_referral_reward()` | SECURITY DEFINER | Anti-fraude: ventana de 15 min desde registro, normalización de alias de email, protección contra auto-referido, FOR UPDATE SKIP LOCKED. Otorga 1 crédito al referrer y marca el referral como `rewarded`. |
+| `check_referral_rl(p_ip, p_max)` | SECURITY DEFINER | Rate limiting por IP para `register-referral`: inserta/incrementa en `referral_rl`, devuelve el conteo del minuto. Max 20 req/min por IP. |
+| `sync_commissions_on_payout_paid()` | trigger AFTER UPDATE `payout_requests` | Cuando un payout pasa a `paid`, marca como `paid` todas las comisiones pendientes anteriores al momento de la solicitud → el saldo del afiliado baja a 0 automáticamente. |
+| `admin_referral_overview()` | SECURITY DEFINER (admin) | Devuelve una fila por afiliado con: email, nombre, código, invitados, activos, créditos ganados, saldo pendiente €, saldo pagado €, y la solicitud de cobro pendiente más reciente (LATERAL). Verifica `is_admin()` internamente. |
 
 > **Decisión de arquitectura:** `consumir_firma()` es la **única fuente de verdad** del consumo. El saldo vive en `users.firmas_*`. Esto evita doble cobro y fuentes duplicadas cuando conviven envíos desde frontend, API y reembolsos.
 
@@ -448,6 +467,10 @@ support_chats ──< support_messages (chat_id)
 | `support-chat` / `contact-support` | Soporte: chat en vivo y formulario de contacto |
 | `get-credits` / `get-file-for-signing` | Saldo de créditos / entrega controlada del PDF al firmante |
 | `delete-account` | GDPR Art. 17: borrado en cascada de la cuenta |
+| `register-referral` | Registra la relación referrer→referred en el momento del registro (con código en la URL). Rate-limiting `check_referral_rl` (20 req/min/IP), validación anti-fraude (mismo usuario, código inexistente). |
+| `get-referral-info` | Devuelve al usuario su código `FC-XXXXXX` (lazy creation), estadísticas de referidos y saldo de comisiones (`referral_commission_balance`). |
+| `request-commission-payout` | Solicita transferencia bancaria del saldo pendiente. Valida IBAN (longitud + prefijo `ES` u otros), mínimo €15 de saldo, no permite solicitud duplicada pending. Inserta en `payout_requests` y notifica a Jordi vía n8n webhook. |
+| `admin-mark-payout-paid` | (Solo admin) Marca un `payout_request` como `paid` con notas opcionales (referencia de transferencia). El trigger `sync_commissions_on_payout_paid` sincroniza automáticamente las comisiones → el saldo del afiliado baja a 0. |
 | `_shared/*` | CORS, `n8n.ts`, `emailQueue.ts`, `webhook-dispatch.ts` (HMAC + validación API key) |
 
 **CORS:** todas las funciones usan whitelist de orígenes (sin wildcard `*`): los dominios de producción (con y sin `www`) y los `localhost` de desarrollo. Orígenes no permitidos reciben `Access-Control-Allow-Origin: null`. Helpers compartidos en `_shared/cors.ts` (`getCorsHeaders`, `handleCorsPreflightRequest`, `escapeHtml`, `sanitizeErrorMessage`).
@@ -551,6 +574,7 @@ Ruta **privada no documentada** (seguridad por ofuscación) con **pantalla de ac
 - **Logs:** auditoría de eventos.
 - **Soporte:** bandeja de chats.
 - **Equipo:** gestión de roles (`set_user_role`).
+- **Afiliados** (añadido junio 2026): panel completo del programa de referidos — tabla con todos los afiliados (nombre/email, código, invitados, activos, créditos, saldo €), cards de resumen (total afiliados, saldo pendiente total, solicitudes activas, total pagado), filtros por estado y buscador. Las filas con solicitud de cobro se destacan en ámbar. Al expandir una fila se muestra el IBAN (copiable), la fecha de la solicitud y un campo de referencia de transferencia; el botón "Marcar pagado" llama a `admin-mark-payout-paid` y el trigger sincroniza el saldo automáticamente.
 
 ### 7.13 API Pública para Terceros
 
@@ -561,7 +585,58 @@ REST autenticada por **API key** (`Authorization: Bearer`, validada por hash SHA
 
 > El cliente API externo está **desactivado** a la espera de rotación de credenciales antes de reactivarlo. Las API keys se siembran/rotan mediante script administrativo dedicado, **nunca con secretos embebidos en migraciones**.
 
-### 7.14 GDPR
+### 7.14 Programa de Afiliados (`/invita`)
+
+Sistema **peer-to-peer** entre usuarios actuales de FirmaClara. Incentivo doble: créditos in-app por activación + comisión económica sobre compras.
+
+#### 7.14.1 Mecánica de referidos (créditos)
+
+1. El usuario entra en `/invita` y se genera su código `FC-XXXXXX` (lazy, primera visita).
+2. Comparte el enlace `firmaclara.com/?ref=FC-XXXXXX` por WhatsApp, email o copia directa (animación `Check` al copiar).
+3. El nuevo registro llega con `?ref=FC-XXXXXX` → la EF `register-referral` lo valida y crea la fila en `referrals` con estado `pending`.
+4. Cuando el referido **envía su primer documento** (trigger `AFTER UPDATE` en `documents`), `process_referral_reward()` verifica anti-fraude y otorga **1 crédito** al referrer (estado → `rewarded`).
+
+**Anti-fraude aplicado:**
+- Ventana de 15 min desde el registro del referido (el referrer no puede registrar a alguien que ya existía antes).
+- Normalización de alias de email (`+...` antes de `@` eliminado, dominio en minúsculas) para evitar alias duplicados.
+- `UNIQUE` en `referrals.referred_id` — cada persona solo puede ser referida una vez.
+- Protección contra auto-referido (`referrer_id ≠ referred_id`).
+- `FOR UPDATE SKIP LOCKED` para serializar la concurrencia sin deadlocks.
+- Rate-limiting en `register-referral`: max 20 req/min por IP (`check_referral_rl`).
+
+#### 7.14.2 Comisiones económicas (dinero)
+
+Sobre **cada compra de plan o pack** realizada por un referido activo (sin límite temporal):
+- La EF `stripe-webhook`, en el evento `checkout.session.completed`, llama a `handleAffiliateCommission()` de forma no bloqueante.
+- Se calcula el **20 %** del `amount_subtotal` (pre-IVA, para no cobrar comisión sobre el IVA).
+- Se inserta en `referral_commissions` con UNIQUE por `stripe_session` (idempotente).
+- El saldo se muestra en `/invita` como "disponible para cobrar".
+
+#### 7.14.3 Solicitud de cobro (transferencia bancaria)
+
+- Saldo mínimo **€15** para poder solicitar.
+- El usuario introduce su IBAN (validado en servidor) y pulsa "Solicitar X €".
+- Se crea una fila en `payout_requests` y se envía una notificación a Jordi vía n8n webhook.
+- Jordi realiza la transferencia bancaria y marca el pago en el panel admin.
+- El trigger `sync_commissions_on_payout_paid` marca todas las comisiones pendientes como `paid` → el saldo del afiliado baja a 0 automáticamente (sin intervención manual en SQL).
+
+**No es Stripe Connect** — el pago se realiza mediante transferencia bancaria IBAN. Esto evita comisiones de plataforma y es apropiado para el volumen inicial.
+
+#### 7.14.4 Página `/invita` (UX)
+
+- **Hero** con enlace copiable animado (icono cambia a `Check` verde 2 s).
+- **3 contadores** animados: invitados totales, activos (primer doc enviado), créditos ganados.
+- **Tarjeta de comisiones** en € si el usuario tiene referidos con compras: saldo disponible, progreso hacia mínimo €15, formulario IBAN + botón de solicitud.
+- **Botones de compartir:** WhatsApp (API nativa), email (`mailto:`) y copiar enlace.
+- **Lista de referidos** con estado visual (pendiente / activo).
+- **Sección "cómo funciona"** (3 pasos: compartir → registrarse → enviar doc).
+
+#### 7.14.5 Vistas de base de datos
+
+- `referral_stats` (`security_invoker = true`) — estadísticas del usuario (invitados, activos, créditos).
+- `referral_commission_balance` (`security_invoker = true`) — saldo financiero: `balance_pending`, `balance_paid`, `balance_total`, conteos.
+
+### 7.15 GDPR
 
 - **Art. 20 (Portabilidad):** export de todos los datos del usuario en JSON desde Ajustes.
 - **Art. 17 (Supresión):** borrado en cascada de la cuenta (`delete-account`), con confirmación escribiendo "ELIMINAR".
@@ -596,9 +671,42 @@ REST autenticada por **API key** (`Authorization: Bearer`, validada por hash SHA
 - `invoice.payment_failed`: marca `past_due` con **periodo de gracia de 3 días**; pasado el plazo, el usuario consume como Gratis sin mutar su `plan_id` (al pagar recupera el plan automáticamente).
 - Idempotencia y reintentos con backoff exponencial vía `webhook_events` (+ worker `process-webhook-retries`).
 
-### 8.4 Reset de Cuota
+### 8.4 Comisiones de Afiliados
+
+Las comisiones se generan en `stripe-webhook` (`checkout.session.completed`) de forma **no bloqueante** (fire-and-forget con `.catch()`): un fallo en el cálculo de la comisión no interrumpe la activación del plan del comprador.
+
+| Concepto | Valor |
+|---|---|
+| Porcentaje | 20 % del `amount_subtotal` (pre-IVA) |
+| Trigger | Cualquier compra (plan mensual, renovación, pack puntual) del referido |
+| Idempotencia | UNIQUE por `stripe_session` — doble disparo del webhook no duplica la comisión |
+| Saldo mínimo para cobrar | €15 |
+| Método de pago | Transferencia bancaria IBAN (manual, sin Stripe Connect) |
+| Cobro de la comisión | Solo hasta la solicitud de pago; comisiones futuras siguen acumulándose |
+
+**Flujo de liquidación:**
+1. Afiliado solicita desde `/invita` (IBAN + botón).
+2. Notificación automática a Jordi via n8n webhook.
+3. Jordi realiza la transferencia y marca pagado en el panel admin.
+4. Trigger `sync_commissions_on_payout_paid` → comisiones `pending` anteriores a la solicitud → `paid` → saldo = 0.
+
+### 8.5 Reset de Cuota
 
 `reset_firmas_mensuales()` (cron) resetea **solo el plan Gratis**. Los planes de pago se resetean en `invoice.payment_succeeded` (su ciclo real de Stripe), para no regalar cuota a mitad de ciclo.
+
+---
+
+## 8.bis Vistas y funciones de soporte de afiliados
+
+| Objeto | Tipo | Propósito |
+|---|---|---|
+| `referral_stats` | Vista (`security_invoker`) | Total invitados, activos y créditos ganados por usuario; usada en `/invita` |
+| `referral_commission_balance` | Vista (`security_invoker`) | `balance_pending`, `balance_paid`, `balance_total`, conteos; usada en `/invita` y en `get-referral-info` |
+| `admin_referral_overview()` | Función SECURITY DEFINER | Agrega todo lo anterior + payout pendiente para la vista de admin; verifica `is_admin()` internamente |
+| `check_referral_rl()` | Función SECURITY DEFINER | Rate-limit 20 req/min por IP para `register-referral` |
+| `sync_commissions_on_payout_paid` | Trigger AFTER UPDATE | Liquidación automática al marcar un payout `paid` |
+
+> **Decisión de seguridad:** `referral_stats` y `referral_commission_balance` usan `security_invoker = true` para que las RLS del usuario las filtren correctamente. Las funciones admin usan `SECURITY DEFINER` para leer por encima de RLS, pero solo tras verificar `is_admin()` con `auth.uid()` (requiere JWT Supabase; falla en conexiones pg directas sin JWT, como se verificó en las pruebas).
 
 ---
 
@@ -622,7 +730,19 @@ REST autenticada por **API key** (`Authorization: Bearer`, validada por hash SHA
 - API key por hash SHA-256; ownership por `api_client_id`; webhooks salientes firmados HMAC-SHA256.
 - Secretos fuera de migraciones; rotación documentada.
 
-### 9.5 Endurecimiento aplicado (2026)
+### 9.5 Afiliados — medidas anti-fraude
+
+- **Rate-limiting en `register-referral`:** max 20 req/min por IP en tabla `referral_rl`; HTTP 429 con `Retry-After: 60`.
+- **Normalización de alias de email:** `usuario+alias@dominio.com` → `usuario@dominio.com` antes de comprobar duplicados.
+- **Ventana de 15 min:** el referido debe haberse registrado dentro de los 15 minutos anteriores al click (evita que referencias antiguas sean aprovechadas retroactivamente).
+- **UNIQUE en `referrals.referred_id`:** un usuario solo puede ser referido una vez.
+- **Bloqueo de auto-referido:** `referrer_id ≠ referred_id` en la función `process_referral_reward`.
+- **UNIQUE en `referral_commissions.stripe_session`:** dobles disparos del webhook no generan comisiones duplicadas.
+- **Saldo calculado en vista:** `balance_pending` se calcula dinámicamente desde `referral_commissions`, no desde un campo en `users`; no puede manipularse directamente.
+- **Mínimo €15 para solicitar pago:** verificado server-side en `request-commission-payout`.
+- **Prevención de solicitud duplicada:** la EF rechaza una nueva solicitud si ya existe una `pending` para el mismo usuario.
+
+### 9.6 Endurecimiento aplicado (2026)
 - CORS sin wildcard en todas las funciones.
 - Escapado HTML en plantillas de email (anti-XSS).
 - Sanitización de mensajes de error (sin stack traces al cliente).
@@ -657,7 +777,7 @@ REST autenticada por **API key** (`Authorization: Bearer`, validada por hash SHA
 **Autenticación (`auth/`):** `Login.tsx`, `Register.tsx`, `UpdatePassword.tsx`, `AccountConfirmed.tsx`.
 **App autenticada:** `Dashboard.tsx`, `Documents.tsx`, `DocumentDetail.tsx`, `NewDocument.tsx` (wizard), `Templates.tsx`, `Contacts.tsx`, `Credits.tsx`, `CreditsPurchase.tsx` (legacy, ruta redirige a `/precios`), `Settings.tsx`, `Help.tsx`, `Clara.tsx`, `Onboarding.tsx`.
 **Firma pública:** `SignDocument.tsx`.
-**Admin (`admin/`):** `AdminDashboard.tsx`, `UsersManager.tsx`, `CreditsManager.tsx`, `AdminLogs.tsx`, `AdminSupportChats.tsx`, `AdminTeam.tsx`, `StealthLogin.tsx` (pantalla de acceso enmascarada).
+**Admin (`admin/`):** `AdminDashboard.tsx`, `UsersManager.tsx`, `CreditsManager.tsx`, `AdminLogs.tsx`, `AdminSupportChats.tsx`, `AdminTeam.tsx`, `StealthLogin.tsx` (pantalla de acceso enmascarada), `PayoutsManager.tsx` (panel de afiliados: referidos + comisiones + "Marcar pagado").
 **Tests (`__tests__/`):** `Contacts`, `Credits`, `Dashboard`, `Documents`, `SignDocument`, `auth/Register` (6 suites de página).
 
 > **Hallazgo:** `CreditsPurchase.tsx` sigue en el repo aunque su ruta `/credits/purchase` ya solo hace `Navigate` a `/precios` (residuo del modelo de packs). Ver §12 (A-4).
@@ -665,7 +785,9 @@ REST autenticada por **API key** (`Authorization: Bearer`, validada por hash SHA
 ### 11.2 Componentes (`src/components/`, 86 archivos)
 
 **Raíz:** `ClaraChat`, `SupportChat`, `CookieConsent`, `ErrorBoundary`, `LegalModals`, `NavLink`, `SolutionsModal`, `ContactSalesDialog`.
-**`layout/`:** `RequireAuth`, `AdminRoute`, `AuthenticatedLayout`, `PublicLayout`, `AdminLayout`, `Header`, `Footer`, `Sidebar`, `AdminSidebar`, `MobileMenu`, `BottomNavigation`.
+**`layout/`:** `RequireAuth`, `AdminRoute`, `AuthenticatedLayout`, `PublicLayout`, `AdminLayout`, `Header`, `Footer`, `Sidebar`, `AdminSidebar` (incluye ítem "Afiliados"), `MobileMenu`, `BottomNavigation`.
+**`referral/`** (nuevo, junio 2026): `ReferralEmptyState.tsx` (estado vacío con copia animada), `ShareButtons.tsx` (WhatsApp, email, copiar), `ReferralStats.tsx` (3 contadores), `ReferralList.tsx` (lista con estados).
+**`billing/`** (nuevo, junio 2026): `CommissionBalance.tsx` (saldo €, barra de progreso hacia €15, formulario IBAN + solicitud).
 **`auth/`:** `AuthLayout`. **`brand/`:** `BrandHeader`, `Logo`. **`contacts/`:** `ContactSelector`, `ContactEmailAutocomplete`.
 **`dashboard/`:** `WelcomeBanner`. **`documents/`:** `PdfPreviewDialog`, `SignaturePositionPicker`. **`pdf/`:** `PdfViewer`, `PdfModal`.
 **`plan/`:** `PlanUsageCard`, `OverageBanner`, `LimitReachedModal`. **`settings/`:** `BrandSettings`. **`onboarding/`:** `ProfileForm`.
@@ -673,7 +795,7 @@ REST autenticada por **API key** (`Authorization: Bearer`, validada por hash SHA
 
 ### 11.3 Edge Functions (`supabase/functions/`, 25 funciones — catálogo completo en §6)
 
-Funciones **vivas** (núcleo): `send-invite-v2`, `sign-complete-v2`, `request-tsa`, `generate-audit-trail`, `convert-to-pdf`, `send-otp`, `clara-chat`, `create-plan-checkout`, `stripe-webhook`, `stripe-portal`, `signature-requests`, `send-signed-notification`, `send-reminders`, `send-welcome-email`, `send-daily-metrics`, `process-email-queue`, `process-webhook-retries`, `support-chat`, `contact-support`, `get-credits`, `get-file-for-signing`, `delete-account`.
+Funciones **vivas** (núcleo): `send-invite-v2`, `sign-complete-v2`, `request-tsa`, `generate-audit-trail`, `convert-to-pdf`, `send-otp`, `clara-chat`, `create-plan-checkout`, `stripe-webhook`, `stripe-portal`, `signature-requests`, `send-signed-notification`, `send-reminders`, `send-welcome-email`, `send-daily-metrics`, `process-email-queue`, `process-webhook-retries`, `support-chat`, `contact-support`, `get-credits`, `get-file-for-signing`, `delete-account`, `register-referral`, `get-referral-info`, `request-commission-payout`, `admin-mark-payout-paid`.
 
 Funciones **legacy aún presentes** (no retiradas): `sign-complete` (sustituida por `sign-complete-v2`), `create-checkout-session` (sustituida por `create-plan-checkout`), `send-document-invitation` (sustituida por `send-invite-v2`). Ver §12 (A-4).
 
@@ -768,7 +890,7 @@ El cliente API externo está desactivado a la espera de rotar credenciales. **Ac
 
 ## 13. Roadmap
 
-### 13.1 Completado (vs. MVP y Fase 2 del PRD v1.0)
+### 13.1 Completado (vs. MVP y Fase 2 del PRD v1.0 + junio 2026)
 - [x] Auth propia (email/password + Google), onboarding, GDPR
 - [x] Subida y almacenamiento de documentos; **conversión multiformato Office→PDF**
 - [x] Envío por email con **branding** y cobro server-side atómico (branding desplegado en BD el 18/06/2026 — §12 C-1)
@@ -785,6 +907,10 @@ El cliente API externo está desactivado a la espera de rotar credenciales. **Ac
 - [x] **API pública + webhooks firmados** (integración de terceros)
 - [x] Colas de email y reintentos de webhooks
 - [x] i18n (5 idiomas), Sentry, suite de tests (Vitest + Playwright)
+- [x] **Programa de afiliados** completo (referidos peer-to-peer, créditos in-app, códigos `FC-XXXXXX`, anti-fraude multinivel)
+- [x] **Comisiones económicas** (20 % del subtotal de cada compra, `referral_commissions`, idempotencia Stripe)
+- [x] **Solicitud de cobro** por transferencia bancaria IBAN (`payout_requests`, mínimo €15, validación server-side)
+- [x] **Panel admin de afiliados** (`PayoutsManager.tsx`): tabla completa + "Marcar pagado" + sincronización automática de saldo via trigger
 
 ### 13.2 Pendiente / Próximo
 - [x] ~~Aplicar la migración de marca y crear el bucket `brand-logos`~~ — **hecho el 18/06/2026** (§12 C-1)
@@ -818,6 +944,11 @@ El cliente API externo está desactivado a la espera de rotar credenciales. **Ac
 | Hash | Huella SHA-256 del documento |
 | eIDAS | Reglamento (UE) 910/2014 de firma electrónica |
 | RLS | Row Level Security (seguridad por fila en Postgres) |
+| Afiliado | Usuario de FirmaClara con código de referido activo |
+| Referido | Usuario nuevo registrado mediante el enlace de un afiliado |
+| Comisión | 20 % del `amount_subtotal` de cada compra del referido, acumulada en `referral_commissions` |
+| Payout | Transferencia bancaria IBAN de las comisiones acumuladas (mín. €15) |
+| Código FC- | Identificador único del afiliado (`FC-XXXXXX`, charset 32 chars sin ambiguos) |
 
 ### 14.2 Disclaimer del Certificado
 
