@@ -100,6 +100,26 @@ export default {
           "25%": { transform: "rotate(0.5deg)" },
           "75%": { transform: "rotate(-0.5deg)" },
         },
+        "slide-in-right": {
+          from: { opacity: "0", transform: "translateX(32px)" },
+          to:   { opacity: "1", transform: "translateX(0)" },
+        },
+        "fade-up": {
+          from: { opacity: "0", transform: "translateY(16px)" },
+          to:   { opacity: "1", transform: "translateY(0)" },
+        },
+        "copy-pulse": {
+          "0%":   { boxShadow: "0 0 0 0 rgba(16,185,129,0.45)" },
+          "100%": { boxShadow: "0 0 0 14px rgba(16,185,129,0)" },
+        },
+        "badge-pop": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%":      { transform: "scale(1.25)" },
+        },
+        "reveal-from-left": {
+          from: { clipPath: "inset(0 100% 0 0)" },
+          to:   { clipPath: "inset(0 0% 0 0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -107,6 +127,11 @@ export default {
         "fade-in": "fade-in 0.3s ease-out",
         "slide-in-bottom": "slide-in-bottom 0.3s ease-out",
         "tilt": "tilt 10s infinite linear",
+        "slide-in-right":   "slide-in-right 350ms ease-out forwards",
+        "fade-up":          "fade-up 400ms ease-out forwards",
+        "copy-pulse":       "copy-pulse 500ms ease-out forwards",
+        "badge-pop":        "badge-pop 300ms ease-out",
+        "reveal-from-left": "reveal-from-left 600ms ease-out forwards",
       },
     },
   },
