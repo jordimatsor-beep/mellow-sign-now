@@ -67,24 +67,31 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(50)
 
-    const referrals = await Promise.all(
-      (referralsRaw ?? []).map(async (r: { id: string; status: string; rewarded_at: string | null; created_at: string; referred_id: string }) => {
-        const { data: userData } = await adminSupabase
-          .from('users')
-          .select('name')
-          .eq('id', r.referred_id)
-          .maybeSingle()
-        const fullName = (userData as { name?: string } | null)?.name ?? ''
-        const firstName = fullName.split(' ')[0] || 'Usuario'
-        return {
-          id: r.id,
-          name: firstName,
-          status: r.status,
-          rewarded_at: r.rewarded_at,
-          created_at: r.created_at,
-        }
+    const rows = (referralsRaw ?? []) as Array<{
+      id: string; status: string; rewarded_at: string | null;
+      created_at: string; referred_id: string
+    }>
+
+    // M2-FIX: una sola query IN en vez de N+1 queries individuales
+    const referredIds = rows.map((r) => r.referred_id)
+    const nameMap: Record<string, string> = {}
+    if (referredIds.length > 0) {
+      const { data: usersRaw } = await adminSupabase
+        .from('users')
+        .select('id, name')
+        .in('id', referredIds)
+      ;(usersRaw ?? []).forEach((u: { id: string; name?: string | null }) => {
+        nameMap[u.id] = (u.name ?? '').split(' ')[0] || 'Usuario'
       })
-    )
+    }
+
+    const referrals = rows.map((r) => ({
+      id: r.id,
+      name: nameMap[r.referred_id] ?? 'Usuario',
+      status: r.status,
+      rewarded_at: r.rewarded_at,
+      created_at: r.created_at,
+    }))
 
     return new Response(JSON.stringify({ code, url, stats, referrals }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

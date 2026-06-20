@@ -23,7 +23,7 @@ export function Sidebar() {
       .from('referral_stats')
       .select('total_pending')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         if (data?.total_pending) setPendingReferrals(data.total_pending);
       });

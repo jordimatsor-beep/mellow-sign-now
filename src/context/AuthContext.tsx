@@ -157,6 +157,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const currentUser = session?.user ?? null;
             setUser(currentUser);
 
+            // C2-FIX: Google/OAuth sign-ups bypass Register.tsx — registrar referido aquí
+            if (event === 'SIGNED_IN' && currentUser) {
+                const provider = currentUser.app_metadata?.provider;
+                if (provider && provider !== 'email') {
+                    const refCode = localStorage.getItem('fc_ref');
+                    const refTs = localStorage.getItem('fc_ref_ts');
+                    const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+                    if (refCode && refTs && (Date.now() - parseInt(refTs)) < SEVEN_DAYS) {
+                        supabase.functions.invoke('register-referral', {
+                            body: { ref_code: refCode, new_user_id: currentUser.id }
+                        }).catch(() => { /* silencioso — no bloquea el login */ });
+                    }
+                    // Limpiar siempre al autenticar (código ya no aplicable)
+                    localStorage.removeItem('fc_ref');
+                    localStorage.removeItem('fc_ref_ts');
+                }
+            }
+
             if (currentUser) {
                 // Use ref to avoid stale closure — profileRef always reflects current value
                 if (!profileRef.current || profileRef.current.id !== currentUser.id) {

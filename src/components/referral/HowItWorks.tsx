@@ -15,7 +15,7 @@ const STEPS = [
   {
     Icon: Gift,
     title: 'Ambos ganáis',
-    description: 'Tú recibes 5 firmas. Ellos, 3 de bienvenida',
+    description: 'Tú recibes 5 créditos. Ellos, 3 de bienvenida',
   },
 ]
 

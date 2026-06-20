@@ -6,11 +6,10 @@ import { cn } from '@/lib/utils'
 import { ShareButtons } from './ShareButtons'
 
 interface ReferralCertificateProps {
-  code: string
   url: string
 }
 
-export function ReferralCertificate({ code: _code, url }: ReferralCertificateProps) {
+export function ReferralCertificate({ url }: ReferralCertificateProps) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {

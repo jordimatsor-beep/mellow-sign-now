@@ -46,6 +46,11 @@ export function useReferral(): ReferralData {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const triggeredMilestones = useRef<Set<number>>(new Set())
+  // I1-FIX: ref para leer referrals actuales en el callback de Realtime sin stale closure
+  const referralsRef = useRef<ReferralEntry[]>([])
+
+  // Mantener ref sincronizado con el estado
+  useEffect(() => { referralsRef.current = referrals }, [referrals])
 
   const fetchData = useCallback(async () => {
     if (!user) return
@@ -70,7 +75,7 @@ export function useReferral(): ReferralData {
   }, [fetchData])
 
   // Supabase Realtime: escuchar UPDATE en referrals propios
-  // Requiere REPLICA IDENTITY FULL en la tabla (ya en migración) y filter server-side
+  // I1-FIX: sin `referrals` en deps → el canal no se re-suscribe en cada actualización de estado
   useEffect(() => {
     if (!user) return
 
@@ -85,8 +90,13 @@ export function useReferral(): ReferralData {
           filter: `referrer_id=eq.${user.id}`,
         },
         (payload) => {
-          const updated = payload.new as { id: string; status: string; name?: string }
+          const updated = payload.new as {
+            id: string
+            status: string
+            credits_to_referrer?: number
+          }
           if (updated.status === 'rewarded') {
+            // Actualizar lista usando ref (evita stale closure)
             setReferrals((prev) =>
               prev.map((r) =>
                 r.id === updated.id
@@ -94,16 +104,18 @@ export function useReferral(): ReferralData {
                   : r
               )
             )
+            // I2-FIX: usar credits_to_referrer del payload en vez de hardcodear 5
+            const creditsGained = updated.credits_to_referrer ?? 5
             setStats((prev) => {
-              const newEarned = prev.credits_earned + 5
+              const newEarned = prev.credits_earned + creditsGained
               for (const m of MILESTONES) {
                 if (newEarned >= m && !triggeredMilestones.current.has(m)) {
                   triggeredMilestones.current.add(m)
                   const msgs: Record<number, string> = {
-                    5:  '¡Primer hito! Ya tienes 5 firmas ganadas',
-                    10: '¡10 firmas ganadas con referidos! Sigue así',
-                    25: '¡Increíble! 25 firmas. Eres embajador de FirmaClara',
-                    50: '¡Máximo alcanzado! 50 firmas ganadas. Muchísimas gracias',
+                    5:  '¡Primer hito! Ya tienes 5 créditos ganados',
+                    10: '¡10 créditos ganados con referidos! Sigue así',
+                    25: '¡Increíble! 25 créditos. Eres embajador de FirmaClara',
+                    50: '¡Máximo alcanzado! 50 créditos ganados. Muchísimas gracias',
                   }
                   setTimeout(() => toast.success(msgs[m] ?? ''), 600)
                 }
@@ -113,19 +125,20 @@ export function useReferral(): ReferralData {
                 total_pending: Math.max(0, prev.total_pending - 1),
                 total_active: prev.total_active + 1,
                 credits_earned: newEarned,
-                credits_remaining: Math.max(0, prev.credits_remaining - 5),
+                credits_remaining: Math.max(0, prev.credits_remaining - creditsGained),
               }
             })
-            const refEntry = referrals.find((r) => r.id === updated.id)
+            // I1-FIX: leer nombre del referido desde la ref, no del closure
+            const refEntry = referralsRef.current.find((r) => r.id === updated.id)
             const name = refEntry?.name || 'Alguien'
-            toast.success(`¡${name} acaba de enviar su primer contrato! +5 créditos para ti`)
+            toast.success(`¡${name} acaba de enviar su primer contrato! +${creditsGained} créditos para ti`)
           }
         }
       )
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [user, referrals])
+  }, [user]) // Sin `referrals` en deps — se lee desde referralsRef
 
   return { code, url, stats, referrals, isLoading, error, refetch: fetchData }
 }

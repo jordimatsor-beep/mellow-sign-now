@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, Gift, Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useReferral } from '@/hooks/useReferral'
+import { useAuth } from '@/context/AuthContext'
 import { ReferralCertificate } from '@/components/referral/ReferralCertificate'
 import { ReferralStats } from '@/components/referral/ReferralStats'
 import { HowItWorks } from '@/components/referral/HowItWorks'
@@ -9,6 +10,7 @@ import { ReferralList } from '@/components/referral/ReferralList'
 import { MilestoneCelebration } from '@/components/referral/MilestoneCelebration'
 
 export default function Invita() {
+  const { user } = useAuth()
   const { code, url, stats, referrals, isLoading, error, refetch } = useReferral()
 
   const handleCopy = async () => {
@@ -57,10 +59,10 @@ export default function Invita() {
       {/* Contenido principal */}
       {!isLoading && !error && code && (
         <>
-          <MilestoneCelebration creditsEarned={stats.credits_earned} />
+          <MilestoneCelebration creditsEarned={stats.credits_earned} userId={user?.id} />
 
           {/* Certificado con el enlace */}
-          <ReferralCertificate code={code} url={url} />
+          <ReferralCertificate url={url} />
 
           {/* Contadores + progress bar */}
           <ReferralStats stats={stats} />

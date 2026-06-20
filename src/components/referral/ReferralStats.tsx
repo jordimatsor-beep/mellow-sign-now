@@ -45,10 +45,13 @@ export function ReferralStats({ stats }: ReferralStatsProps) {
 
   const nextMilestone = MILESTONE_SEQUENCE.find((m) => m > stats.credits_earned) ?? 50
   const prevMilestone = [0, ...MILESTONE_SEQUENCE].filter((m) => m <= stats.credits_earned).at(-1) ?? 0
+  // M4-FIX: guard NaN cuando nextMilestone === prevMilestone (credits_earned === 50)
   const progressPct   =
     stats.credits_earned >= 50
       ? 100
-      : Math.round(((stats.credits_earned - prevMilestone) / (nextMilestone - prevMilestone)) * 100)
+      : nextMilestone === prevMilestone
+        ? 0
+        : Math.round(((stats.credits_earned - prevMilestone) / (nextMilestone - prevMilestone)) * 100)
 
   const progressLabel =
     stats.credits_earned >= 50
