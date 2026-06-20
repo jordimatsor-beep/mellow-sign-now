@@ -1,4 +1,5 @@
-import { Home, FileText, CreditCard, Settings, HelpCircle, Plus, User, LifeBuoy, FileStack } from "lucide-react";
+import { Home, FileText, CreditCard, Settings, HelpCircle, Plus, User, LifeBuoy, FileStack, Gift } from "lucide-react";
+import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -6,13 +7,27 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from "@/context/AuthContext";
 import { Logo } from "@/components/brand/Logo";
 import { useCredits } from "@/hooks/useCredits";
+import { supabase } from "@/lib/supabase";
 
 export function Sidebar() {
   const { t } = useTranslation();
   const { user, profile, signOut } = useAuth();
   const { credits } = useCredits();
+  const [pendingReferrals, setPendingReferrals] = useState<number>(0);
 
   const userName = profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuario";
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from('referral_stats')
+      .select('total_pending')
+      .eq('referrer_id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.total_pending) setPendingReferrals(data.total_pending);
+      });
+  }, [user?.id]);
 
   const navItems = [
     { to: "/dashboard", icon: Home, label: t('nav.home') },
@@ -20,6 +35,7 @@ export function Sidebar() {
     { to: "/templates", icon: FileStack, label: t('nav.templates') },
     { to: "/contacts", icon: User, label: t('nav.contacts') },
     { to: "/credits", icon: CreditCard, label: t('nav.credits'), badge: credits },
+    { to: "/invita", icon: Gift, label: "Invita y gana", badge: pendingReferrals > 0 ? pendingReferrals : undefined, badgeClass: "bg-amber-100 text-amber-700" },
     { to: "/help", icon: LifeBuoy, label: t('nav.support') },
   ];
 
@@ -64,7 +80,10 @@ export function Sidebar() {
                 <item.icon className="h-5 w-5" />
                 {item.label}
                 {item.badge !== undefined && item.badge !== null && (
-                  <span className="ml-auto inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                  <span className={cn(
+                    "ml-auto inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold",
+                    (item as any).badgeClass ?? "bg-primary/10 text-primary"
+                  )}>
                     {item.badge}
                   </span>
                 )}

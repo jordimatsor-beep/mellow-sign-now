@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { getStoredReferralCode, clearReferralCode } from "@/lib/referral";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -28,7 +29,20 @@ export default function Register() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [referrerName, setReferrerName] = useState<string | null>(null);
     const { session } = useAuth();
+
+    useEffect(() => {
+        const code = getStoredReferralCode();
+        if (!code) return;
+        fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-referrer-name?code=${encodeURIComponent(code)}`,
+            { headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
+        )
+            .then((r) => r.json())
+            .then((json) => { if (json.name) setReferrerName(json.name); })
+            .catch(() => { /* silent */ });
+    }, []);
 
     const form = useForm<RegisterFormValues>({
         resolver: zodResolver(registerSchema),
@@ -48,7 +62,7 @@ export default function Register() {
     const onSubmit = async (data: RegisterFormValues) => {
         setLoading(true);
         try {
-            const { error } = await supabase.auth.signUp({
+            const { data: signUpData, error } = await supabase.auth.signUp({
                 email: data.email,
                 password: data.password,
                 options: {
@@ -62,6 +76,15 @@ export default function Register() {
 
             setIsSuccess(true);
             toast.success("Cuenta creada exitosamente");
+
+            // Registrar referido — no bloqueante, fallo silencioso
+            const refCode = getStoredReferralCode();
+            if (refCode && signUpData?.user?.id) {
+                supabase.functions.invoke('register-referral', {
+                    body: { referral_code: refCode, new_user_id: signUpData.user.id }
+                }).catch(() => { /* silent */ });
+            }
+            clearReferralCode();
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : "Error al crear la cuenta";
             toast.error(message);
@@ -106,6 +129,12 @@ export default function Register() {
             subtitle="Empieza a firmar documentos digitalmente"
             mode="register"
         >
+            {referrerName && (
+                <div className="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+                    <Gift className="h-4 w-4 shrink-0 text-amber-600" />
+                    <span><strong>{referrerName}</strong> te ha invitado. Al enviar tu primer documento, ambos recibiréis créditos extra.</span>
+                </div>
+            )}
             <div className="mb-5 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-primary">
                 <Gift className="h-4 w-4 shrink-0" />
                 <span>Tu cuenta incluye <strong>{WELCOME_CREDITS} firmas gratuitas</strong> para empezar.</span>

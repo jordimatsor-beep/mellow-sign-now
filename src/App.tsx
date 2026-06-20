@@ -3,7 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
+import { captureReferralCode } from "@/lib/referral";
 import { Loader2 } from "lucide-react";
 
 // Context
@@ -47,6 +48,8 @@ const Terms = lazy(() => import("@/pages/Terms"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const HowItWorks = lazy(() => import("@/pages/HowItWorks"));
 const Precios = lazy(() => import("@/pages/Precios"));
+const Invita = lazy(() => import("@/pages/Invita"));
+const ReferralRedirect = lazy(() => import("@/pages/ReferralRedirect"));
 
 // Admin pages (lazy — only for admins)
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
@@ -73,7 +76,9 @@ const queryClient = new QueryClient({
   },
 });
 
-const App = () => (
+const App = () => {
+  useEffect(() => { captureReferralCode() }, [])
+  return (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
@@ -91,6 +96,9 @@ const App = () => (
                   <Route path="/register" element={<Register />} />
                   <Route path="/update-password" element={<UpdatePassword />} />
                   <Route path="/account-confirmed" element={<AccountConfirmed />} />
+
+                  {/* Referral redirect — captura código y redirige a /register */}
+                  <Route path="/r/:code" element={<ReferralRedirect />} />
 
                   {/* Public signing page & Content pages */}
                   <Route element={<PublicLayout />}>
@@ -118,6 +126,7 @@ const App = () => (
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/help" element={<Help />} />
                       <Route path="/clara" element={<Clara />} />
+                      <Route path="/invita" element={<Invita />} />
                     </Route>
                   </Route>
 
@@ -144,6 +153,7 @@ const App = () => (
       </BrowserRouter>
     </QueryClientProvider>
   </ErrorBoundary>
-);
+  )
+}
 
 export default App;
