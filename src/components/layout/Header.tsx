@@ -34,7 +34,7 @@ export function Header() {
                 <span className="sr-only">Abrir menú</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[280px] p-0">
+            <SheetContent side="right" className="w-[280px] p-0 [&>button:first-child]:hidden">
               <MobileMenu onClose={() => setIsOpen(false)} />
             </SheetContent>
           </Sheet>

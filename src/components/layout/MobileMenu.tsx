@@ -1,4 +1,4 @@
-import { Home, FileText, CreditCard, Settings, HelpCircle, LogOut, X, Plus } from "lucide-react";
+import { Home, FileText, CreditCard, Settings, HelpCircle, LogOut, X, Plus, Gift } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/Logo";
@@ -18,6 +18,7 @@ export function MobileMenu({ onClose }: MobileMenuProps) {
     { to: "/dashboard", icon: Home, label: "Inicio" },
     { to: "/documents", icon: FileText, label: "Mis documentos" },
     { to: "/credits", icon: CreditCard, label: "Créditos" },
+    { to: "/invita", icon: Gift, label: "Invita y gana" },
     { to: "/settings", icon: Settings, label: "Configuración" },
     { to: "/help", icon: HelpCircle, label: "Ayuda y FAQs" },
   ];
