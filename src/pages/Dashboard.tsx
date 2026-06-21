@@ -106,7 +106,7 @@ export default function Dashboard() {
   const recentDocuments = documents.slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -126,17 +126,17 @@ export default function Dashboard() {
           "no tienes documentos" de "no pudimos cargarlos". */}
       {(docsError || countsError) && (
         <Card className="border-destructive/30 bg-destructive/5">
-          <CardContent className="p-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+          <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
                 <AlertCircle className="h-5 w-5" />
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-destructive">No pudimos cargar tus documentos</h3>
                 <p className="text-sm text-destructive/80">Ha ocurrido un error al conectar con el servidor. Recarga la página o vuelve a intentarlo en unos minutos.</p>
               </div>
             </div>
-            <Button size="sm" variant="outline" onClick={() => window.location.reload()}>Recargar</Button>
+            <Button size="sm" variant="outline" className="self-start sm:self-auto shrink-0" onClick={() => window.location.reload()}>Recargar</Button>
           </CardContent>
         </Card>
       )}
@@ -153,17 +153,17 @@ export default function Dashboard() {
       {/* Saldo agotado (QW-04) — más prominente; el envío ya queda bloqueado en NewDocument */}
       {!loadingCredits && hasSentDocument && credits === 0 && !isProfesional && (
         <Card className="border-destructive/30 bg-destructive/5">
-          <CardContent className="p-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+          <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
                 <AlertCircle className="h-5 w-5" />
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-destructive">Te has quedado sin créditos</h3>
                 <p className="text-sm text-destructive/80">Mejora tu plan o compra un pack para volver a enviar documentos.</p>
               </div>
             </div>
-            <Button size="sm" asChild>
+            <Button size="sm" className="self-start sm:self-auto shrink-0" asChild>
               <Link to="/precios">Comprar créditos</Link>
             </Button>
           </CardContent>
@@ -173,17 +173,17 @@ export default function Dashboard() {
       {/* Saldo bajo (QW-04) — entre 1 y el umbral, solo con uso real previo */}
       {!loadingCredits && hasSentDocument && credits > 0 && credits <= LOW_CREDITS_THRESHOLD && !isProfesional && (
         <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="p-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+          <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
                 <AlertCircle className="h-5 w-5" />
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-amber-900">Te quedan pocos créditos ({credits})</h3>
                 <p className="text-sm text-amber-700">Recarga ahora para no interrumpir tus envíos.</p>
               </div>
             </div>
-            <Button size="sm" variant="outline" className="border-amber-200 bg-white text-amber-700 hover:bg-amber-50 hover:border-amber-300" asChild>
+            <Button size="sm" variant="outline" className="self-start sm:self-auto shrink-0 border-amber-200 bg-white text-amber-700 hover:bg-amber-50 hover:border-amber-300" asChild>
               <Link to="/precios">Comprar pack</Link>
             </Button>
           </CardContent>

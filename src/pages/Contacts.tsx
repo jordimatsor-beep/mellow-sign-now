@@ -245,7 +245,7 @@ export default function Contacts() {
                             )}
                         </div>
                     ) : (
-                        <div className="rounded-md border">
+                        <div className="rounded-md border overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -259,15 +259,15 @@ export default function Contacts() {
                                 <TableBody>
                                     {filteredContacts.map((contact) => (
                                         <TableRow key={contact.id}>
-                                            <TableCell className="font-medium">
+                                            <TableCell className="font-medium max-w-[140px]">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0">
                                                         {contact.name.substring(0, 2).toUpperCase()}
                                                     </div>
-                                                    {contact.name}
+                                                    <span className="truncate">{contact.name}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell>{contact.email}</TableCell>
+                                            <TableCell className="max-w-[160px]"><span className="truncate block">{contact.email}</span></TableCell>
                                             <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                                                 {contact.phone || "-"}
                                             </TableCell>

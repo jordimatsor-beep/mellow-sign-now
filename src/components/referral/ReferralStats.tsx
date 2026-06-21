@@ -44,7 +44,8 @@ export function ReferralStats({ stats }: ReferralStatsProps) {
   const earned  = useCountUp(stats.credits_earned, 300)
 
   const nextMilestone = MILESTONE_SEQUENCE.find((m) => m > stats.credits_earned) ?? 50
-  const prevMilestone = [0, ...MILESTONE_SEQUENCE].filter((m) => m <= stats.credits_earned).at(-1) ?? 0
+  const prevFiltered = [0, ...MILESTONE_SEQUENCE].filter((m) => m <= stats.credits_earned)
+  const prevMilestone = prevFiltered[prevFiltered.length - 1] ?? 0
   // M4-FIX: guard NaN cuando nextMilestone === prevMilestone (credits_earned === 50)
   const progressPct   =
     stats.credits_earned >= 50

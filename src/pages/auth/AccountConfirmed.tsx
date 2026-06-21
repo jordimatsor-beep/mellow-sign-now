@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/brand/Logo";
 
 export default function AccountConfirmed() {
     const navigate = useNavigate();
@@ -25,6 +26,9 @@ export default function AccountConfirmed() {
     return (
         <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50 px-4">
             <div className="flex max-w-md flex-col items-center text-center">
+                <div className="mb-8">
+                    <Logo className="h-10 w-auto" asLink={false} />
+                </div>
                 <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
                     <CheckCircle className="h-10 w-10 text-green-600" />
                 </div>

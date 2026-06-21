@@ -80,7 +80,7 @@ export default function CreditsPurchase() {
   }
 
   return (
-    <div className="container space-y-6 px-4 py-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>

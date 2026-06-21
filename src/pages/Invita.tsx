@@ -19,7 +19,7 @@ export default function Invita() {
   }
 
   return (
-    <div className="container max-w-2xl px-4 py-6 space-y-8">
+    <div className="max-w-2xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild className="md:hidden">

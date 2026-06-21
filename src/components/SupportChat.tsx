@@ -441,7 +441,7 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
         {step === "closed" && !hideTriggerButton && (
           <button
             onClick={() => (hasActiveChat ? setStep("chat") : setStep("subject"))}
-            className="fixed bottom-6 right-6 z-50 group"
+            className="fixed bottom-20 right-4 z-50 group md:bottom-6 md:right-6"
           >
             <div className="relative">
               <div className="flex items-center gap-2.5 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-xl shadow-primary/30 transition-all duration-200 hover:shadow-primary/50 hover:scale-105 active:scale-95">
