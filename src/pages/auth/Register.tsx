@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-import { getStoredReferralCode, clearReferralCode } from "@/lib/referral";
+import { captureReferralCode, getStoredSessionId, getStoredReferralCode, clearReferralCode } from "@/lib/referral";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -33,15 +33,24 @@ export default function Register() {
     const { session } = useAuth();
 
     useEffect(() => {
-        const code = getStoredReferralCode();
-        if (!code) return;
-        fetch(
+        // If arriving directly at /register?ref=... (e.g. from a copied link without visiting
+        // the landing first), capture the server-side session before doing anything else.
+        const urlRef = new URLSearchParams(window.location.search).get('ref')
+        const captureFirst = urlRef && !getStoredSessionId()
+          ? captureReferralCode()
+          : Promise.resolve()
+
+        captureFirst.then(() => {
+          const code = getStoredReferralCode()
+          if (!code) return
+          fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-referrer-name?code=${encodeURIComponent(code)}`,
             { headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
-        )
+          )
             .then((r) => r.json())
-            .then((json) => { if (json.name) setReferrerName(json.name); })
-            .catch(() => { /* silent */ });
+            .then((json) => { if (json.name) setReferrerName(json.name) })
+            .catch(() => { /* silent */ })
+        })
     }, []);
 
     const form = useForm<RegisterFormValues>({
@@ -77,12 +86,15 @@ export default function Register() {
             setIsSuccess(true);
             toast.success("Cuenta creada exitosamente");
 
-            // Registrar referido — no bloqueante, fallo silencioso
-            const refCode = getStoredReferralCode();
-            if (refCode && signUpData?.user?.id) {
-                supabase.functions.invoke('register-referral', {
-                    body: { ref_code: refCode, new_user_id: signUpData.user.id }
-                }).catch(() => { /* silent */ });
+            // Registrar referido — no bloqueante, fallo silencioso.
+            // Prefer session_id (server-side); fall back to legacy ref_code.
+            const sessionId = getStoredSessionId()
+            const legacyRef = getStoredReferralCode()
+            if ((sessionId || legacyRef) && signUpData?.user?.id) {
+                const body = sessionId
+                    ? { session_id: sessionId, new_user_id: signUpData.user.id }
+                    : { ref_code: legacyRef, new_user_id: signUpData.user.id }
+                supabase.functions.invoke('register-referral', { body }).catch(() => { /* silent */ })
             }
             clearReferralCode();
         } catch (error: unknown) {
@@ -163,7 +175,35 @@ export default function Register() {
                             <FormItem>
                                 <FormLabel>Email</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="hola@ejemplo.com" type="email" className="h-11" autoComplete="email" {...field} />
+                                    <Input
+                                        placeholder="hola@ejemplo.com"
+                                        type="email"
+                                        className="h-11"
+                                        autoComplete="email"
+                                        {...field}
+                                        onBlur={(e) => {
+                                            field.onBlur()
+                                            // Link the email to the pending referral session
+                                            // so cross-device attribution works if the user
+                                            // continues registration from a different device.
+                                            const sid = getStoredSessionId()
+                                            const email = e.target.value?.trim()
+                                            const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)
+                                            if (sid && validEmail) {
+                                                fetch(
+                                                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/link-email-to-session`,
+                                                    {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                                                        },
+                                                        body: JSON.stringify({ session_id: sid, email }),
+                                                    }
+                                                ).catch(() => { /* silent */ })
+                                            }
+                                        }}
+                                    />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

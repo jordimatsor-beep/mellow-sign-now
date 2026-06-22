@@ -3,10 +3,13 @@ import { captureReferralCode } from '@/lib/referral'
 
 export default function ReferralRedirect() {
   useEffect(() => {
-    // M1-FIX: delegar a lib/referral (single source of truth para keys/TTL/regex)
-    // captureReferralCode() lee window.location.pathname que aún es /r/:code en este punto
-    captureReferralCode()
-    window.location.replace('/register')
+    // captureReferralCode() reads window.location.pathname still at /r/:code at this point.
+    // 2-second safety timeout: redirect regardless if the network call hangs.
+    const fallback = setTimeout(() => window.location.replace('/register'), 2000)
+    captureReferralCode().finally(() => {
+      clearTimeout(fallback)
+      window.location.replace('/register')
+    })
   }, [])
 
   return null

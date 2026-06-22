@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
 import { useAuth } from "@/context/AuthContext";
@@ -8,8 +8,8 @@ export type IssuerType = 'company' | 'person';
 
 export interface IssuerProfile {
     type: IssuerType;
-    name: string; // Razón Social / Nombre
-    id: string;   // CIF / NIF (Fetched from tax_id)
+    name: string;
+    id: string;   // CIF / NIF
     address: string;
     city: string;
     zip: string;
@@ -29,73 +29,30 @@ interface ProfileContextType {
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
 
 export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { user } = useAuth();
-    const [profile, setProfile] = useState<IssuerProfile | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    // Derive IssuerProfile from AuthContext — zero extra DB queries.
+    const { user, profile: authProfile, loading: authLoading, refreshProfile } = useAuth();
 
-    // Fetch profile from Supabase on mount/auth change
-    useEffect(() => {
-        if (!user) {
-            setProfile(null);
-            return;
-        }
-
-        const fetchProfile = async () => {
-            setIsLoading(true);
-            try {
-                const { data, error } = await supabase.from('users')
-                    .select('tax_id, address, city, zip_code, country, issuer_type, name, email, phone, company_name')
-                    .eq('id', user.id)
-                    .single();
-                /*
-                // Removed withTimeout
-                await withTimeout(
-                supabase.from('users')
-                    ...
-                3000, "Profile fetch"
-            ); */
-
-                if (error) {
-                    if (import.meta.env.DEV) console.error("Error fetching profile:", error);
-                    return;
-                }
-
-                if (data) {
-                    // Map DB columns to IssuerProfile interface
-                    // Fallback chain: DB name → DB company_name → Auth user_metadata.full_name
-                    const resolvedName = data.name || data.company_name || user.user_metadata?.full_name || "";
-                    setProfile({
-                        type: (data.issuer_type as IssuerType) || 'company',
-                        name: resolvedName,
-                        id: data.tax_id || "",
-                        address: data.address || "",
-                        city: data.city || "",
-                        zip: data.zip_code || "",
-                        country: data.country || "España",
-                        phone: data.phone || "",
-                        email: data.email || user.email || "",
-                    });
-                }
-            } catch (err) {
-                if (import.meta.env.DEV) console.error("Unexpected error fetching profile:", err);
-            } finally {
-                setIsLoading(false);
-            }
+    const profile: IssuerProfile | null = useMemo(() => {
+        if (!authProfile) return null;
+        return {
+            type: (authProfile.issuer_type as IssuerType) || 'company',
+            name: authProfile.name || authProfile.company_name || user?.user_metadata?.full_name || '',
+            id: authProfile.tax_id || '',
+            address: authProfile.address || '',
+            city: authProfile.city || '',
+            zip: authProfile.zip_code || '',
+            country: authProfile.country || 'España',
+            phone: authProfile.phone || '',
+            email: authProfile.email || user?.email || '',
         };
+    }, [authProfile, user?.email, user?.user_metadata?.full_name]);
 
-        fetchProfile();
-    }, [user]);
+    // Loading while auth is resolving the user but profile not yet loaded.
+    const isLoading = authLoading || (!!user && !authProfile);
 
     const updateProfile = async (data: Partial<IssuerProfile>) => {
         if (!user) return;
 
-        // Optimistic UI update
-        setProfile(prev => {
-            if (!prev) return data as IssuerProfile;
-            return { ...prev, ...data };
-        });
-
-        // Build update payload — only include defined values (undefined causes Supabase issues)
         const rawUpdates: Record<string, unknown> = {
             issuer_type: data.type,
             name: data.name,
@@ -110,7 +67,6 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
             updated_at: new Date().toISOString(),
         };
 
-        // Filter out undefined keys to avoid sending them to Supabase
         const updates = Object.fromEntries(
             Object.entries(rawUpdates).filter(([, v]) => v !== undefined)
         );
@@ -120,19 +76,18 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
                 supabase.from('users').update(updates).eq('id', user.id),
                 3000, "Profile save"
             );
-
             if (error) throw error;
-        } catch (error) {
-            if (import.meta.env.DEV) console.error("Error updating profile:", error);
+            // Sync AuthContext cache with the updated values.
+            await refreshProfile();
+        } catch {
             toast.error("Error al guardar en la nube");
         }
     };
 
-    const clearProfile = () => {
-        setProfile(null);
-    };
+    // No-op: profile clears automatically when the user signs out via AuthContext.
+    const clearProfile = () => { };
 
-    const isProfileComplete = React.useMemo(() => {
+    const isProfileComplete = useMemo(() => {
         if (!profile) return false;
         return Boolean(
             profile.name?.trim() &&

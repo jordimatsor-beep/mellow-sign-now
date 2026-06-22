@@ -4,7 +4,6 @@ import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
-// Define Profile interface
 export interface Profile {
     id: string;
     name: string | null;
@@ -13,6 +12,14 @@ export interface Profile {
     role: 'user' | 'admin' | 'support' | null;
     onboarding_completed: boolean | null;
     legal_accepted: boolean | null;
+    // Issuer fields — merged from ProfileContext to avoid a second round-trip
+    tax_id: string | null;
+    address: string | null;
+    city: string | null;
+    zip_code: string | null;
+    country: string | null;
+    issuer_type: 'company' | 'person' | null;
+    phone: string | null;
 }
 
 interface AuthContextType {
@@ -37,182 +44,155 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
+// Single query that satisfies both AuthContext and ProfileContext — no second round-trip.
+const fetchProfile = async (userId: string): Promise<Profile | null> => {
+    try {
+        const { data, error } = await withTimeout(
+            supabase.from('users')
+                .select('id, name, email, company_name, role, onboarding_completed, legal_accepted, tax_id, address, city, zip_code, country, issuer_type, phone')
+                .eq('id', userId)
+                .single(),
+            10000, "Profile fetch"
+        );
+        if (error) {
+            if (import.meta.env.DEV) console.error("Error fetching profile:", error);
+            return null;
+        }
+        return {
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            company_name: data.company_name,
+            role: (data.role as Profile['role']) || 'user',
+            onboarding_completed: data.onboarding_completed ?? false,
+            legal_accepted: data.legal_accepted ?? false,
+            tax_id: data.tax_id,
+            address: data.address,
+            city: data.city,
+            zip_code: data.zip_code,
+            country: data.country,
+            issuer_type: data.issuer_type,
+            phone: data.phone,
+        };
+    } catch {
+        if (import.meta.env.DEV) console.error("Profile fetch timeout/error");
+        return null;
+    }
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [session, setSession] = useState<Session | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    // Ref keeps onAuthStateChange callback from closing over stale profile state
+
+    // Refs survive re-renders and avoid stale closures in the async listener.
     const profileRef = useRef<Profile | null>(null);
-
-    const fetchProfile = async (userId: string) => {
-        try {
-            const { data, error } = await withTimeout(
-                supabase.from('users')
-                    .select('id, name, email, company_name, role, onboarding_completed, legal_accepted')
-                    .eq('id', userId)
-                    .single(),
-                10000, "Profile fetch"
-            );
-
-            if (error) {
-                if (import.meta.env.DEV) console.error("Error fetching profile:", error);
-                return null;
-            }
-
-            // Map DB response to Profile, handling missing role column gracefully
-            const profile: Profile = {
-                id: data.id,
-                name: data.name,
-                email: data.email,
-                company_name: data.company_name,
-                role: (data.role as any) || 'user',
-                onboarding_completed: data.onboarding_completed ?? false,
-                legal_accepted: data.legal_accepted ?? false,
-            };
-
-            return profile;
-        } catch (error) {
-            if (import.meta.env.DEV) console.error("Error fetching profile (timeout/catch):", error);
-            // If timeout or error, return null so we don't crash or hang
-            return null;
-        }
-    };
+    const userIdRef = useRef<string | null>(null);
+    // Tracks which userId is currently being fetched — prevents concurrent duplicates.
+    const fetchingForUserRef = useRef<string | null>(null);
 
     const setProfileAndRef = (p: Profile | null) => {
         profileRef.current = p;
         setProfile(p);
     };
 
+    // Works even when profileRef is null (e.g., after a failed fetch).
     const refreshProfile = async () => {
-        if (!user) return;
-        const data = await fetchProfile(user.id);
+        const uid = userIdRef.current;
+        if (!uid) return;
+        const data = await fetchProfile(uid);
         if (data) setProfileAndRef(data);
     };
 
     useEffect(() => {
         let mounted = true;
 
-        // Failsafe: if everything hangs, force stop loading after 15s
+        // Failsafe: if onAuthStateChange never fires (network outage, etc.) stop loading.
         const safetyTimer = setTimeout(() => {
-            if (mounted && loading) {
-                if (import.meta.env.DEV) console.warn("Auth load safety timeout triggered");
-                setLoading(false);
-            }
+            if (mounted) setLoading(false);
         }, 15000);
 
-        // Check active sessions and sets the user
-        const initSession = async () => {
-            try {
-                const result = await withTimeout(
-                    supabase.auth.getSession(),
-                    10000, "Auth session"
-                );
-                const { data } = result as { data: { session: Session | null } };
-
-                if (mounted && data?.session) {
-                    const session = data.session;
-                    setSession(session);
-                    const currentUser = session.user;
-                    setUser(currentUser);
-
-                    if (currentUser) {
-                        try {
-                            const profileData = await fetchProfile(currentUser.id);
-                            if (mounted) setProfileAndRef(profileData);
-                        } catch (e) {
-                            if (import.meta.env.DEV) console.error("Profile fetch error", e);
-                        }
-                    }
-                }
-            } catch (error) {
-                if (import.meta.env.DEV) console.error("Auth initialization error or timeout:", error);
-            } finally {
-                if (mounted) {
-                    setLoading(false);
-                    clearTimeout(safetyTimer);
-                }
-            }
-        };
-
-        if (!isLoggingOut) {
-            initSession();
-        }
-
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (!mounted) return;
-            if (isLoggingOut) return; // Ignore updates during logout
+            if (!mounted || isLoggingOut) return;
 
-            // Handle explicit SIGNED_OUT event
             if (event === 'SIGNED_OUT') {
+                clearTimeout(safetyTimer);
                 setSession(null);
                 setUser(null);
                 setProfileAndRef(null);
+                fetchingForUserRef.current = null;
+                userIdRef.current = null;
                 setLoading(false);
                 return;
             }
 
-            setSession(session);
             const currentUser = session?.user ?? null;
+            userIdRef.current = currentUser?.id ?? null;
+            setSession(session);
             setUser(currentUser);
 
-            // C2-FIX: Google/OAuth sign-ups bypass Register.tsx — registrar referido aquí
+            // OAuth sign-ups bypass Register.tsx — register referral here.
             if (event === 'SIGNED_IN' && currentUser) {
                 const provider = currentUser.app_metadata?.provider;
                 if (provider && provider !== 'email') {
                     const refCode = localStorage.getItem('fc_ref');
                     const refTs = localStorage.getItem('fc_ref_ts');
-                    const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+                    const SEVEN_DAYS = 30 * 24 * 60 * 60 * 1000;
                     if (refCode && refTs && (Date.now() - parseInt(refTs)) < SEVEN_DAYS) {
                         supabase.functions.invoke('register-referral', {
                             body: { ref_code: refCode, new_user_id: currentUser.id }
-                        }).catch(() => { /* silencioso — no bloquea el login */ });
+                        }).catch(() => { });
                     }
-                    // Limpiar siempre al autenticar (código ya no aplicable)
                     localStorage.removeItem('fc_ref');
                     localStorage.removeItem('fc_ref_ts');
                 }
             }
 
             if (currentUser) {
-                // Use ref to avoid stale closure — profileRef always reflects current value
-                if (!profileRef.current || profileRef.current.id !== currentUser.id) {
+                const needsFetch =
+                    !profileRef.current || profileRef.current.id !== currentUser.id;
+                const alreadyFetching =
+                    fetchingForUserRef.current === currentUser.id;
+
+                if (needsFetch && !alreadyFetching) {
+                    fetchingForUserRef.current = currentUser.id;
                     const profileData = await fetchProfile(currentUser.id);
-                    if (mounted) setProfileAndRef(profileData);
+                    if (mounted) {
+                        setProfileAndRef(profileData);
+                        fetchingForUserRef.current = null;
+                    }
                 }
+                // TOKEN_REFRESHED with same user ID → profile already cached, skip fetch.
             } else {
-                if (mounted) setProfileAndRef(null);
+                setProfileAndRef(null);
+                fetchingForUserRef.current = null;
             }
 
+            clearTimeout(safetyTimer);
             if (mounted) setLoading(false);
         });
 
         return () => {
             mounted = false;
+            clearTimeout(safetyTimer);
             subscription.unsubscribe();
         };
-    }, [isLoggingOut]); // Re-subscribe if we cancel logout (unlikely) or finish it logic elsewhere
+    }, [isLoggingOut]);
 
     const signOut = async () => {
         setIsLoggingOut(true);
         try {
-            // Artificial delay to show the branding (UX)
             await new Promise(resolve => setTimeout(resolve, 800));
-
             await supabase.auth.signOut();
-
-            // Clear local state immediately
             setProfileAndRef(null);
             setUser(null);
             setSession(null);
-
-            // Hard Reload to ensure clean state if needed, or just redirect
-            // Currently using window.location to be absolutely sure all memory is cleared
             window.location.href = '/login';
         } catch (error) {
             if (import.meta.env.DEV) console.error("Error signing out:", error);
-            setIsLoggingOut(false); // Only reset if error, otherwise we are redirecting
+            setIsLoggingOut(false);
         }
     };
 

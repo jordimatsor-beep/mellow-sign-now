@@ -16,7 +16,11 @@ import {
   Briefcase,
   Wrench,
   FileSignature,
-  ChevronRight
+  ChevronRight,
+  Users,
+  Gift,
+  Euro,
+  TrendingUp
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { SolutionsModal } from "@/components/SolutionsModal";
@@ -50,6 +54,12 @@ export default function Index() {
             </Link>
             <a href="#pricing" className="text-base font-semibold text-foreground/80 hover:text-primary transition-colors">
               Precios
+            </a>
+            <a href="#afiliados" className="text-base font-semibold transition-colors">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700 hover:bg-emerald-200 transition-colors">
+                <TrendingUp className="h-3.5 w-3.5" />
+                Gana 20%
+              </span>
             </a>
             <Link to="/legal" className="text-base font-semibold text-foreground/80 hover:text-primary transition-colors">
               Legalidad
@@ -490,6 +500,109 @@ export default function Index() {
         </div>
       </section>
 
+      {/* Affiliate / Referral Section */}
+      <section id="afiliados" className="py-16 lg:py-24">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              {/* Left — copy */}
+              <div className="space-y-6">
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-1.5 text-sm font-semibold text-emerald-700">
+                  <TrendingUp className="h-4 w-4" />
+                  Programa de Afiliados
+                </div>
+                <h2 className="text-3xl lg:text-4xl font-bold text-foreground leading-tight">
+                  Cobra el 20% de cada cliente que traigas.{" "}
+                  <span className="text-emerald-600">Sin límite.</span>
+                </h2>
+                <p className="text-lg text-muted-foreground">
+                  Comparte tu enlace con autónomos y pymes. Cada vez que compren un plan
+                  recibes el 20% directamente en tu cuenta bancaria — de por vida, no solo la primera compra.
+                </p>
+                <ul className="space-y-4">
+                  <li className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <Euro className="h-4 w-4 text-emerald-700" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground">20% de comisión de por vida</p>
+                      <p className="text-sm text-muted-foreground">Por cada compra que hagan tus referidos, siempre</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <Gift className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground">+5 firmas gratis por referido activo</p>
+                      <p className="text-sm text-muted-foreground">Se añaden a tu cuenta en cuanto envían su primer documento</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center shrink-0 mt-0.5">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground">Tu referido recibe 3 firmas extra de bienvenida</p>
+                      <p className="text-sm text-muted-foreground">Los dos ganáis desde el primer momento</p>
+                    </div>
+                  </li>
+                </ul>
+                <Button size="lg" asChild className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 hover:scale-105 active:scale-95 transition-all duration-300">
+                  <Link to="/register">
+                    Empieza a ganar gratis
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+              </div>
+
+              {/* Right — earnings card */}
+              <Card className="border-2 border-emerald-200 shadow-xl shadow-emerald-100/50">
+                <CardContent className="p-6 space-y-5">
+                  <div>
+                    <p className="font-semibold text-foreground">Cuánto puedes ganar</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Ejemplo con plan Profesional (19 €/mes)</p>
+                  </div>
+                  <div className="space-y-2">
+                    {[
+                      { label: "1 referido", monthly: "3,80 €/mes", yearly: "45,60 €/año", highlight: false, note: "" },
+                      { label: "3 referidos", monthly: "11,40 €/mes", yearly: "136 €/año", highlight: false, note: "" },
+                      { label: "5 referidos", monthly: "19 €/mes", yearly: "228 €/año", highlight: true, note: "Tu suscripción, gratis" },
+                      { label: "10 referidos", monthly: "38 €/mes", yearly: "456 €/año", highlight: false, note: "" },
+                    ].map(({ label, monthly, yearly, highlight, note }) => (
+                      <div
+                        key={label}
+                        className={`flex items-center justify-between rounded-lg px-4 py-3 transition-colors ${
+                          highlight
+                            ? "bg-emerald-50 border border-emerald-200"
+                            : "bg-secondary/50"
+                        }`}
+                      >
+                        <div>
+                          <p className="font-semibold text-sm text-foreground">{label}</p>
+                          {note && (
+                            <p className="text-xs text-emerald-700 font-medium mt-0.5">✓ {note}</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-bold ${highlight ? "text-emerald-700" : "text-foreground"}`}>
+                            {monthly}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{yearly}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center border-t pt-4">
+                    Cobras por transferencia bancaria · Mínimo 15 € · Sin límite de referidos
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ Section - SEO */}
       <section className="py-16 lg:py-20 bg-secondary/30">
         <div className="container mx-auto px-4">
@@ -577,6 +690,7 @@ export default function Index() {
               <ul className="space-y-2 text-sm">
                 <li><Link to="/how-it-works" className="text-background/50 hover:text-background transition-colors">Cómo funciona</Link></li>
                 <li><a href="#pricing" className="text-background/50 hover:text-background transition-colors">Precios</a></li>
+                <li><a href="#afiliados" className="text-emerald-400 hover:text-emerald-300 transition-colors font-medium">Programa de afiliados</a></li>
               </ul>
             </div>
 
