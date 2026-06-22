@@ -79,30 +79,19 @@ export default function UsersManager() {
 
             if (usersError) throw usersError;
 
-            // Fetch credits and docs only for these users (efficient!)
+            // Fetch docs only for these users (credits come from users.firmas_creditos)
             const userIds = (usersData || []).map(u => u.id);
 
-            const [creditsRes, docsRes] = await Promise.all([
-                supabase.from("user_credit_purchases")
-                    .select("user_id, credits_total, credits_used")
-                    .in("user_id", userIds),
-                // Usamos RPC segura — sin política RLS directa sobre documents
-                supabase.rpc("admin_get_document_counts", { p_user_ids: userIds }),
-            ]);
-
-            const creditsByUser: Record<string, number> = {};
-            (creditsRes.data || []).forEach(c => {
-                creditsByUser[c.user_id] = (creditsByUser[c.user_id] || 0) + ((c.credits_total || 0) - (c.credits_used || 0));
-            });
+            const docsRes = await supabase.rpc("admin_get_document_counts", { p_user_ids: userIds });
 
             const docsByUser: Record<string, number> = {};
             ((docsRes.data || []) as { user_id: string; doc_count: number }[]).forEach(d => {
                 docsByUser[d.user_id] = Number(d.doc_count);
             });
 
-            const enriched: UserRow[] = (usersData || []).map(u => ({
+            const enriched: UserRow[] = (usersData || []).map((u: any) => ({
                 ...u,
-                credits_available: creditsByUser[u.id] || 0,
+                credits_available: u.firmas_creditos ?? 0,
                 document_count: docsByUser[u.id] || 0,
             }));
 
