@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, PlusCircle, Search, History, User } from "lucide-react";
+import { Loader2, PlusCircle, Search, History, User, Gift } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -14,26 +14,36 @@ interface UserCompact {
     id: string;
     email: string;
     name: string | null;
-    credits_available: number;
+    firmas_creditos: number | null;
 }
 
-interface CreditPurchase {
+interface GiftTransaction {
     id: string;
     user_id: string;
-    user_email?: string;
-    pack_type: string;
-    credits_total: number;
-    credits_used: number | null;
-    price_paid: number | null;
-    created_at: string | null;
+    user_email: string;
+    user_name: string | null;
+    amount: number;
+    description: string | null;
+    created_at: string;
+}
+
+function parseDesc(desc: string | null): { title: string; note: string } {
+    try {
+        const p = JSON.parse(desc ?? "");
+        return { title: p.title || "Créditos de regalo", note: p.note || "" };
+    } catch {
+        return { title: "Créditos de regalo", note: "" };
+    }
 }
 
 export default function CreditsManager() {
     const [users, setUsers] = useState<UserCompact[]>([]);
-    const [recentPurchases, setRecentPurchases] = useState<CreditPurchase[]>([]);
+    const [recentGifts, setRecentGifts] = useState<GiftTransaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedUser, setSelectedUser] = useState<UserCompact | null>(null);
     const [amount, setAmount] = useState("5");
+    const [giftTitle, setGiftTitle] = useState("");
+    const [giftMessage, setGiftMessage] = useState("");
     const [processing, setProcessing] = useState(false);
     const [search, setSearch] = useState("");
 
@@ -42,34 +52,16 @@ export default function CreditsManager() {
     }, []);
 
     const fetchData = async () => {
+        setLoading(true);
         try {
-            const [usersRes, creditsRes, purchasesRes] = await Promise.all([
-                supabase.from("users").select("id, email, name").order("email"),
-                supabase.from("user_credit_purchases").select("user_id, credits_total, credits_used"),
-                supabase.from("user_credit_purchases").select("*").order("created_at", { ascending: false }).limit(20),
+            const [usersRes, giftsRes] = await Promise.all([
+                supabase.from("users").select("id, email, name, firmas_creditos").order("email"),
+                supabase.rpc("admin_get_gift_transactions", { p_limit: 30 }),
             ]);
 
-            // Aggregate credits per user
-            const creditsByUser: Record<string, number> = {};
-            (creditsRes.data || []).forEach(c => {
-                creditsByUser[c.user_id] = (creditsByUser[c.user_id] || 0) + ((c.credits_total || 0) - (c.credits_used || 0));
-            });
-
-            const enrichedUsers = (usersRes.data || []).map(u => ({
-                ...u,
-                credits_available: creditsByUser[u.id] || 0,
-            }));
-            setUsers(enrichedUsers);
-
-            // Enrich purchases with user email
-            const emailMap: Record<string, string> = {};
-            (usersRes.data || []).forEach(u => { emailMap[u.id] = u.email; });
-            const enrichedPurchases = (purchasesRes.data || []).map(p => ({
-                ...p,
-                user_email: emailMap[p.user_id] || p.user_id,
-            }));
-            setRecentPurchases(enrichedPurchases);
-        } catch (error) {
+            setUsers(usersRes.data ?? []);
+            setRecentGifts((giftsRes.data ?? []) as GiftTransaction[]);
+        } catch {
             toast.error("Error cargando datos");
         } finally {
             setLoading(false);
@@ -92,15 +84,18 @@ export default function CreditsManager() {
 
         setProcessing(true);
         try {
-            const { data, error } = await supabase.rpc("grant_credits", {
-                target_email: selectedUser.email,
-                credits_amount: num,
-                description_text: "Asignación manual por equipo de soporte",
+            const { error } = await supabase.rpc("admin_add_credits", {
+                p_target_user_id: selectedUser.id,
+                p_credits: num,
+                p_note: "admin_gift",
+                p_title: giftTitle.trim() || null,
+                p_message: giftMessage.trim() || null,
             });
             if (error) throw error;
             toast.success(`${num} créditos añadidos a ${selectedUser.email}`);
-            // Logging is handled server-side by the RPC
             setAmount("5");
+            setGiftTitle("");
+            setGiftMessage("");
             setSelectedUser(null);
             setSearch("");
             fetchData();
@@ -111,7 +106,11 @@ export default function CreditsManager() {
         }
     };
 
-    if (loading) return <div className="p-12 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-red-500" /></div>;
+    if (loading) return (
+        <div className="p-12 flex justify-center">
+            <Loader2 className="animate-spin h-8 w-8 text-primary" />
+        </div>
+    );
 
     return (
         <div className="space-y-8">
@@ -121,16 +120,16 @@ export default function CreditsManager() {
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
-                {/* Add Credits Form */}
+                {/* Formulario */}
                 <Card className="border-2 border-green-100">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <PlusCircle className="h-5 w-5 text-green-600" /> Asignar Créditos
                         </CardTitle>
-                        <CardDescription>Busca un usuario y añádele créditos</CardDescription>
+                        <CardDescription>Busca un usuario y añádele créditos con mensaje personalizado</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {/* User Search */}
+                        {/* Búsqueda */}
                         <div className="space-y-2">
                             <Label>Buscar Usuario</Label>
                             <div className="relative">
@@ -144,7 +143,7 @@ export default function CreditsManager() {
                             </div>
                         </div>
 
-                        {/* User List / Selector */}
+                        {/* Lista de usuarios */}
                         {search.trim() && !selectedUser && (
                             <div className="max-h-48 overflow-y-auto border rounded-md divide-y">
                                 {filteredUsers.length === 0 && (
@@ -160,15 +159,15 @@ export default function CreditsManager() {
                                             <p className="text-sm font-medium">{u.name || "Sin nombre"}</p>
                                             <p className="text-xs text-muted-foreground">{u.email}</p>
                                         </div>
-                                        <Badge variant="outline" className="text-xs">
-                                            {u.credits_available} créditos
-                                        </Badge>
+                                        <span className="text-sm font-semibold text-primary tabular-nums">
+                                            {u.firmas_creditos ?? 0} crd.
+                                        </span>
                                     </button>
                                 ))}
                             </div>
                         )}
 
-                        {/* Selected User Card */}
+                        {/* Usuario seleccionado */}
                         {selectedUser && (
                             <Card className="bg-blue-50 border-blue-200">
                                 <CardContent className="p-4 flex items-center gap-4">
@@ -180,14 +179,14 @@ export default function CreditsManager() {
                                         <p className="text-xs text-muted-foreground">{selectedUser.email}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-2xl font-bold text-green-600">{selectedUser.credits_available}</p>
+                                        <p className="text-2xl font-bold text-green-600">{selectedUser.firmas_creditos ?? 0}</p>
                                         <p className="text-xs text-muted-foreground">créditos actuales</p>
                                     </div>
                                 </CardContent>
                             </Card>
                         )}
 
-                        {/* Amount */}
+                        {/* Cantidad */}
                         <div className="space-y-2">
                             <Label>Cantidad de Créditos</Label>
                             <div className="flex gap-2">
@@ -212,20 +211,72 @@ export default function CreditsManager() {
                             />
                         </div>
 
-                        {/* Submit */}
+                        {/* Título personalizado */}
+                        <div className="space-y-2">
+                            <Label>
+                                Título del regalo <span className="text-muted-foreground font-normal">(opcional)</span>
+                            </Label>
+                            <Input
+                                placeholder="Ej: ¡Bienvenido a FirmaClara!"
+                                value={giftTitle}
+                                onChange={(e) => setGiftTitle(e.target.value.slice(0, 80))}
+                                maxLength={80}
+                            />
+                        </div>
+
+                        {/* Mensaje personalizado */}
+                        <div className="space-y-2">
+                            <Label>
+                                Mensaje <span className="text-muted-foreground font-normal">(opcional)</span>
+                            </Label>
+                            <Textarea
+                                placeholder="Ej: Te enviamos estos créditos como agradecimiento por tu confianza."
+                                value={giftMessage}
+                                onChange={(e) => setGiftMessage(e.target.value.slice(0, 300))}
+                                maxLength={300}
+                                rows={3}
+                                className="resize-none text-sm"
+                            />
+                            <p className="text-right text-xs text-muted-foreground">{giftMessage.length}/300</p>
+                        </div>
+
+                        {/* Preview */}
+                        {selectedUser && (giftTitle || giftMessage) && (
+                            <div className="rounded-lg border border-green-200 bg-green-50/60 p-3 space-y-1">
+                                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Vista previa (usuario verá)</p>
+                                <div className="flex items-start gap-2 mt-1">
+                                    <Gift className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-semibold text-green-900">
+                                            {giftTitle || "Créditos de regalo"}
+                                        </p>
+                                        {giftMessage && (
+                                            <p className="text-xs text-green-700 mt-0.5">{giftMessage}</p>
+                                        )}
+                                        <p className="text-xs text-green-600/70 mt-1">
+                                            +{amount} créditos · hoy
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <Button
                             className="w-full bg-green-600 hover:bg-green-700 text-white font-bold gap-2"
                             onClick={handleAddCredits}
                             disabled={processing || !selectedUser}
                             size="lg"
                         >
-                            {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
+                            {processing
+                                ? <Loader2 className="h-4 w-4 animate-spin" />
+                                : <PlusCircle className="h-4 w-4" />
+                            }
                             Añadir {amount} Créditos
                         </Button>
                     </CardContent>
                 </Card>
 
-                {/* Recent Transactions */}
+                {/* Historial */}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -234,28 +285,32 @@ export default function CreditsManager() {
                         <CardDescription>Últimas asignaciones de créditos</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                            {recentPurchases.length === 0 && (
-                                <p className="text-sm text-muted-foreground text-center py-4">No hay transacciones</p>
+                        <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                            {recentGifts.length === 0 && (
+                                <p className="text-sm text-muted-foreground text-center py-6">No hay asignaciones todavía</p>
                             )}
-                            {recentPurchases.map(p => (
-                                <div key={p.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-slate-50">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{p.user_email}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {p.pack_type === "admin_gift" ? "🎁 Regalo Admin" :
-                                                p.pack_type === "free_trial" ? "🆓 Bienvenida" :
-                                                    p.pack_type}
-                                        </p>
+                            {recentGifts.map(tx => {
+                                const { title } = parseDesc(tx.description);
+                                return (
+                                    <div key={tx.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-slate-50 gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                                                <Gift className="h-4 w-4 text-green-600" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium truncate">{tx.user_email}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{title}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <p className="text-sm font-bold text-green-600">+{tx.amount}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {format(new Date(tx.created_at), "dd/MM HH:mm", { locale: es })}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-bold text-green-600">+{p.credits_total}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {p.created_at ? format(new Date(p.created_at), "dd/MM HH:mm", { locale: es }) : "—"}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </CardContent>
                 </Card>

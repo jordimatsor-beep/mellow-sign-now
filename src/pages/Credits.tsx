@@ -108,7 +108,7 @@ export default function Credits() {
       const p = JSON.parse(desc ?? "");
       return { title: p.title || "Créditos de regalo", message: p.message || "" };
     } catch {
-      return { title: "Créditos de regalo", message: desc || "" };
+      return { title: "Créditos de regalo", message: "" };
     }
   }
 
