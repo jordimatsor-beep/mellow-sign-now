@@ -99,6 +99,19 @@ export default function Credits() {
   // Solo débitos en la pestaña "Consumo".
   const usageTx = transactions.filter((t) => t.amount < 0);
 
+  // Regalos de admin: type='gift', amount > 0.
+  const giftTx = transactions.filter((t) => t.type === "gift" && t.amount > 0);
+
+  // Parsea la descripción JSON de un regalo admin → {title, message}.
+  function parseGift(desc: string | null): { title: string; message: string } {
+    try {
+      const p = JSON.parse(desc ?? "");
+      return { title: p.title || "Créditos de regalo", message: p.message || "" };
+    } catch {
+      return { title: "Créditos de regalo", message: desc || "" };
+    }
+  }
+
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case "usage":
@@ -224,11 +237,11 @@ export default function Credits() {
             </Button>
           </div>
 
-          {loadingPurchases ? (
+          {loadingPurchases || loadingHistory ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : purchases.length === 0 ? (
+          ) : purchases.length === 0 && giftTx.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
               <CreditCard className="mx-auto mb-3 h-12 w-12 opacity-50" />
               <p className="font-medium">Sin compras todavía</p>
@@ -236,6 +249,35 @@ export default function Credits() {
             </div>
           ) : (
             <div className="space-y-2">
+              {/* Regalos de administrador */}
+              {giftTx.map((tx) => {
+                const { title, message } = parseGift(tx.description);
+                return (
+                  <div key={tx.id} className="rounded-lg border border-green-100 bg-green-50/60 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100">
+                          <Gift className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-green-900">{title}</p>
+                          {message && (
+                            <p className="text-xs text-green-700 mt-0.5 leading-relaxed">{message}</p>
+                          )}
+                          <p className="text-xs text-green-600/70 mt-1">
+                            +{tx.amount} créditos · {formatDate(tx.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                        +{tx.amount}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Compras de Stripe */}
               {purchases.map((p) => {
                 const isFree = !p.price_paid || Number(p.price_paid) === 0;
                 return (

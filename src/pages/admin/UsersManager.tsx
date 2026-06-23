@@ -43,6 +43,8 @@ export default function UsersManager() {
     const [creditDialogOpen, setCreditDialogOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
     const [creditAmount, setCreditAmount] = useState("5");
+    const [giftTitle, setGiftTitle] = useState("");
+    const [giftMessage, setGiftMessage] = useState("");
     const [processing, setProcessing] = useState(false);
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
     const [editingName, setEditingName] = useState("");
@@ -120,6 +122,8 @@ export default function UsersManager() {
     const openCreditDialog = (user: UserRow) => {
         setSelectedUser(user);
         setCreditAmount("5");
+        setGiftTitle("");
+        setGiftMessage("");
         setCreditDialogOpen(true);
     };
 
@@ -134,6 +138,8 @@ export default function UsersManager() {
                 p_target_user_id: selectedUser.id,
                 p_credits: num,
                 p_note: "admin_gift",
+                p_title: giftTitle.trim() || null,
+                p_message: giftMessage.trim() || null,
             });
             if (error) throw error;
             toast.success(`${num} créditos añadidos a ${selectedUser.email}`);
@@ -361,14 +367,15 @@ export default function UsersManager() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label>Créditos actuales</Label>
-                            <p className="text-2xl font-bold text-green-600">{selectedUser?.credits_available || 0}</p>
+                        <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+                            <span className="text-sm text-muted-foreground">Créditos actuales</span>
+                            <span className="text-2xl font-bold text-green-600">{selectedUser?.credits_available || 0}</span>
                         </div>
+
                         <div className="space-y-2">
-                            <Label>Cantidad a añadir</Label>
-                            <div className="flex gap-2 mb-2">
-                                {[1, 5, 10, 25, 50].map(n => (
+                            <Label>Créditos a añadir</Label>
+                            <div className="flex gap-2 flex-wrap">
+                                {[5, 10, 25, 50, 100].map(n => (
                                     <Button
                                         key={n}
                                         variant={creditAmount === String(n) ? "default" : "outline"}
@@ -382,16 +389,49 @@ export default function UsersManager() {
                             <Input
                                 type="number"
                                 min="1"
+                                placeholder="Cantidad personalizada"
                                 value={creditAmount}
                                 onChange={(e) => setCreditAmount(e.target.value)}
                             />
                         </div>
+
+                        <div className="space-y-2">
+                            <Label>Título del mensaje <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                            <Input
+                                placeholder="Ej: ¡Bienvenido a FirmaClara!"
+                                value={giftTitle}
+                                onChange={(e) => setGiftTitle(e.target.value)}
+                                maxLength={80}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Mensaje personalizado <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                            <textarea
+                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                                rows={3}
+                                placeholder="Ej: Como agradecimiento por tu confianza, te regalamos estos créditos."
+                                value={giftMessage}
+                                onChange={(e) => setGiftMessage(e.target.value)}
+                                maxLength={300}
+                            />
+                            <p className="text-xs text-muted-foreground text-right">{giftMessage.length}/300</p>
+                        </div>
+
+                        {(giftTitle || giftMessage) && (
+                            <div className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-1">
+                                <p className="text-xs font-medium text-green-700 uppercase tracking-wide">Vista previa</p>
+                                <p className="text-sm font-semibold text-green-900">{giftTitle || "Créditos de regalo"}</p>
+                                {giftMessage && <p className="text-sm text-green-800">{giftMessage}</p>}
+                                <p className="text-xs text-green-700">+{creditAmount} créditos</p>
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setCreditDialogOpen(false)}>Cancelar</Button>
                         <Button onClick={handleAddCredits} disabled={processing} className="bg-green-600 hover:bg-green-700">
                             {processing ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
-                            Añadir {creditAmount} Créditos
+                            Añadir {creditAmount} créditos
                         </Button>
                     </DialogFooter>
                 </DialogContent>
