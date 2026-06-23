@@ -54,15 +54,34 @@ export default function CreditsManager() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [usersRes, giftsRes] = await Promise.all([
+            const [usersRes, txRes] = await Promise.all([
                 supabase.from("users").select("id, email, name, firmas_creditos").order("email"),
-                supabase.rpc("admin_get_gift_transactions", { p_limit: 30 }),
+                supabase
+                    .from("credit_transactions")
+                    .select("id, user_id, amount, description, created_at")
+                    .eq("type", "gift")
+                    .gt("amount", 0)
+                    .order("created_at", { ascending: false })
+                    .limit(30),
             ]);
 
+            if (usersRes.error) throw usersRes.error;
+            if (txRes.error) throw txRes.error;
+
+            const emailMap: Record<string, { email: string; name: string | null }> = {};
+            (usersRes.data ?? []).forEach(u => { emailMap[u.id] = { email: u.email, name: u.name }; });
+
+            const enriched: GiftTransaction[] = (txRes.data ?? []).map(tx => ({
+                ...tx,
+                user_email: emailMap[tx.user_id]?.email ?? tx.user_id,
+                user_name: emailMap[tx.user_id]?.name ?? null,
+            }));
+
             setUsers(usersRes.data ?? []);
-            setRecentGifts((giftsRes.data ?? []) as GiftTransaction[]);
-        } catch {
-            toast.error("Error cargando datos");
+            setRecentGifts(enriched);
+        } catch (e: any) {
+            console.error("[CreditsManager] fetchData error:", e);
+            toast.error("Error: " + (e?.message ?? "desconocido"));
         } finally {
             setLoading(false);
         }
