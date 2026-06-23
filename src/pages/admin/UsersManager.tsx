@@ -49,55 +49,83 @@ export default function UsersManager() {
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
     const [editingName, setEditingName] = useState("");
 
+    // Fetch on page change (only when not searching — search has its own effect)
     useEffect(() => {
-        fetchUsers();
+        if (!search.trim()) fetchUsers();
     }, [page]);
 
-    // Reset page when search changes
+    // Server-side search on every keystroke change
     useEffect(() => {
         setPage(0);
+        fetchUsers();
     }, [search]);
 
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            // Get total count first (for pagination info)
-            const { count, error: countError } = await supabase
-                .from("users")
-                .select("*", { count: "exact", head: true });
+            const q = search.trim();
 
-            if (countError) throw countError;
-            setTotalCount(count || 0);
+            if (q) {
+                // ── Server-side search across ALL users ──────────────────────
+                const { data: usersData, error, count } = await supabase
+                    .from("users")
+                    .select("*", { count: "exact" })
+                    .or(`email.ilike.%${q}%,name.ilike.%${q}%,company_name.ilike.%${q}%`)
+                    .order("email")
+                    .limit(100);
 
-            // Fetch current page of users
-            const from = page * PAGE_SIZE;
-            const to = from + PAGE_SIZE - 1;
+                if (error) throw error;
+                setTotalCount(count || 0);
 
-            const { data: usersData, error: usersError } = await supabase
-                .from("users")
-                .select("*")
-                .order("created_at", { ascending: false })
-                .range(from, to);
+                const userIds = (usersData || []).map((u: any) => u.id);
+                const docsRes = userIds.length > 0
+                    ? await supabase.rpc("admin_get_document_counts", { p_user_ids: userIds })
+                    : { data: [] };
 
-            if (usersError) throw usersError;
+                const docsByUser: Record<string, number> = {};
+                ((docsRes.data || []) as { user_id: string; doc_count: number }[]).forEach(d => {
+                    docsByUser[d.user_id] = Number(d.doc_count);
+                });
 
-            // Fetch docs only for these users (credits come from users.firmas_creditos)
-            const userIds = (usersData || []).map(u => u.id);
+                setUsers((usersData || []).map((u: any) => ({
+                    ...u,
+                    credits_available: u.firmas_creditos ?? 0,
+                    document_count: docsByUser[u.id] || 0,
+                })));
+            } else {
+                // ── Paginated fetch (no search) ───────────────────────────────
+                const { count, error: countError } = await supabase
+                    .from("users")
+                    .select("*", { count: "exact", head: true });
 
-            const docsRes = await supabase.rpc("admin_get_document_counts", { p_user_ids: userIds });
+                if (countError) throw countError;
+                setTotalCount(count || 0);
 
-            const docsByUser: Record<string, number> = {};
-            ((docsRes.data || []) as { user_id: string; doc_count: number }[]).forEach(d => {
-                docsByUser[d.user_id] = Number(d.doc_count);
-            });
+                const from = page * PAGE_SIZE;
+                const to = from + PAGE_SIZE - 1;
 
-            const enriched: UserRow[] = (usersData || []).map((u: any) => ({
-                ...u,
-                credits_available: u.firmas_creditos ?? 0,
-                document_count: docsByUser[u.id] || 0,
-            }));
+                const { data: usersData, error: usersError } = await supabase
+                    .from("users")
+                    .select("*")
+                    .order("created_at", { ascending: false })
+                    .range(from, to);
 
-            setUsers(enriched);
+                if (usersError) throw usersError;
+
+                const userIds = (usersData || []).map((u: any) => u.id);
+                const docsRes = await supabase.rpc("admin_get_document_counts", { p_user_ids: userIds });
+
+                const docsByUser: Record<string, number> = {};
+                ((docsRes.data || []) as { user_id: string; doc_count: number }[]).forEach(d => {
+                    docsByUser[d.user_id] = Number(d.doc_count);
+                });
+
+                setUsers((usersData || []).map((u: any) => ({
+                    ...u,
+                    credits_available: u.firmas_creditos ?? 0,
+                    document_count: docsByUser[u.id] || 0,
+                })));
+            }
         } catch (error: any) {
             console.error("Error fetching users:", error);
             toast.error("Error cargando usuarios: " + (error.message || "Unknown"));
@@ -106,16 +134,8 @@ export default function UsersManager() {
         }
     };
 
-    // Client-side filter on current page
-    const filtered = useMemo(() => {
-        if (!search.trim()) return users;
-        const q = search.toLowerCase();
-        return users.filter(u =>
-            u.email.toLowerCase().includes(q) ||
-            (u.name || "").toLowerCase().includes(q) ||
-            (u.company_name || "").toLowerCase().includes(q)
-        );
-    }, [users, search]);
+    // Server already filtered when searching; useMemo is identity in that case
+    const filtered = useMemo(() => users, [users]);
 
     const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -203,7 +223,11 @@ export default function UsersManager() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">Gestión de Usuarios</h2>
-                    <p className="text-muted-foreground">{totalCount} usuarios registrados</p>
+                    <p className="text-muted-foreground">
+                    {search.trim()
+                        ? `${totalCount} resultado${totalCount !== 1 ? "s" : ""} para "${search.trim()}"`
+                        : `${totalCount} usuarios registrados`}
+                </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={fetchUsers} className="gap-2">
                     <RefreshCcw className="h-4 w-4" /> Actualizar
@@ -330,8 +354,8 @@ export default function UsersManager() {
                 </CardContent>
             </Card>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
+            {/* Pagination — hidden when searching (server returns all matching results) */}
+            {!search.trim() && totalPages > 1 && (
                 <div className="flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">
                         Página {page + 1} de {totalPages}
