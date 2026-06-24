@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
 import { toast } from "sonner";
+import { sanitizeSupabaseError } from "@/lib/supabaseErrorHandler";
 import { useDataExport } from "@/hooks/useDataExport";
 import { useProfile } from "@/context/ProfileContext";
 import { BrandSettings } from "@/components/settings/BrandSettings";
@@ -97,8 +98,7 @@ export default function Settings() {
       setIsEditing(false);
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error(error);
-      const message = error instanceof Error ? error.message : "Error al actualizar perfil";
-      toast.error(message);
+      toast.error(sanitizeSupabaseError(error as any));
     } finally {
       setLoading(false);
     }
@@ -140,7 +140,7 @@ export default function Settings() {
       setShowPasswordDialog(false);
       setNewPassword("");
     } catch (error: any) {
-      toast.error(error.message || "Error al cambiar la contraseña");
+      toast.error(sanitizeSupabaseError(error));
     } finally {
       setLoading(false);
     }

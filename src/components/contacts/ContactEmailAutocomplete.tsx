@@ -91,6 +91,7 @@ export function ContactEmailAutocomplete({
         autoComplete="off"
         placeholder={placeholder}
         value={value}
+        data-clarity-mask="True"
         onChange={(e) => {
           onChange(e.target.value);
           setOpen(true);

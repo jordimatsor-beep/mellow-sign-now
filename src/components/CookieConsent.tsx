@@ -81,8 +81,8 @@ export function CookieConsent() {
               <strong>Sentry</strong> (monitorización de errores — Functional Software, EE. UU.).
               Ambos servicios pueden transferir datos fuera del Espacio Económico Europeo
               al amparo de Cláusulas Contractuales Tipo.{' '}
-              <Link to="/privacy" className="text-blue-600 hover:underline">
-                Política de privacidad
+              <Link to="/privacy#cookies" className="text-blue-600 hover:underline">
+                Política de cookies
               </Link>
             </p>
 

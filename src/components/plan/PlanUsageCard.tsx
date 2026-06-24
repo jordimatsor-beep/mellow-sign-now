@@ -94,7 +94,14 @@ export function PlanUsageCard() {
         {/* Cuota mensual */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Firmas este mes</span>
+            <div>
+              <span className="text-muted-foreground">Firmas incluidas en tu plan</span>
+              {nextRenewal && (
+                <span className="ml-1.5 text-xs text-muted-foreground/70">
+                  · se renuevan el {format(nextRenewal, "d MMM", { locale: es })}
+                </span>
+              )}
+            </div>
             <span className={cn("font-medium", nearLimit ? "text-amber-600" : "text-foreground")}>
               {firmas_usadas_mes}/{limite}
             </span>
@@ -107,19 +114,13 @@ export function PlanUsageCard() {
 
         {/* Créditos de pack */}
         {firmas_creditos > 0 && (
-          <div className="flex items-center gap-2 text-sm">
-            <CreditCard className="h-4 w-4 text-primary" />
-            <span className="text-muted-foreground">
-              Créditos de pack disponibles:{" "}
-              <span className="font-semibold text-foreground">{firmas_creditos}</span>
+          <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 flex items-center gap-2 text-sm">
+            <CreditCard className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-foreground">
+              <span className="font-semibold">{firmas_creditos}</span>{" "}
+              <span className="text-muted-foreground">crédito{firmas_creditos !== 1 ? "s" : ""} extra · no caducan · se usan cuando se agota la cuota del plan</span>
             </span>
           </div>
-        )}
-
-        {nextRenewal && (
-          <p className="text-xs text-muted-foreground">
-            Próxima renovación: {format(nextRenewal, "d 'de' MMM yyyy", { locale: es })}
-          </p>
         )}
 
         {/* Upgrade cuando se agota la cuota en planes sin overage */}

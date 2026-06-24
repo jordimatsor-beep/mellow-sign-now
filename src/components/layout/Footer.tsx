@@ -115,6 +115,11 @@ export function Footer() {
             <h4 className="mb-4 font-semibold text-white">Legal y Cumplimiento</h4>
             <ul className="space-y-2 text-sm">
               <li>
+                <Link to="/aviso-legal" className="text-slate-400 hover:text-white transition-colors">
+                  Aviso Legal
+                </Link>
+              </li>
+              <li>
                 <LegalModal
                   trigger={<button className="text-slate-400 hover:text-white transition-colors text-left hover:underline">Términos de uso</button>}
                   title="Términos y Condiciones"
@@ -140,6 +145,17 @@ export function Footer() {
                   <Award className="h-3 w-3 text-green-400" />
                   Validez Legal
                 </Link>
+              </li>
+              <li>
+                <button
+                  className="text-slate-400 hover:text-white transition-colors text-left"
+                  onClick={() => {
+                    localStorage.removeItem('firmaclara_cookie_consent');
+                    window.location.reload();
+                  }}
+                >
+                  Configurar cookies
+                </button>
               </li>
             </ul>
           </div>

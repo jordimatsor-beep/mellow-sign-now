@@ -232,7 +232,7 @@ export default function Privacy() {
                 </section>
 
                 {/* 7 */}
-                <section>
+                <section id="cookies">
                     <h2 className="text-xl font-semibold text-slate-800">7. Cookies</h2>
                     <p>Utilizamos cookies y tecnologías similares. Puedes gestionar tus preferencias en el panel de cookies que aparece al acceder por primera vez o desde{' '}
                         <button
@@ -309,7 +309,104 @@ export default function Privacy() {
 
                 {/* 10 */}
                 <section>
-                    <h2 className="text-xl font-semibold text-slate-800">10. Cambios en esta política</h2>
+                    <h2 className="text-xl font-semibold text-slate-800">10. Encargados del tratamiento y transferencias internacionales</h2>
+                    <p>
+                        Para prestar el servicio, FirmaClara utiliza los siguientes encargados del tratamiento (Art. 28 RGPD).
+                        Las transferencias a países fuera del Espacio Económico Europeo (EEE) se amparan en las
+                        Cláusulas Contractuales Tipo (CCT) aprobadas por la Comisión Europea o en la decisión de
+                        adecuación del Data Privacy Framework UE-EE. UU., según se indica.
+                    </p>
+                    <div className="overflow-x-auto mt-4">
+                        <table className="w-full text-sm border-collapse">
+                            <thead>
+                                <tr className="bg-slate-100">
+                                    <th className="text-left p-2 border border-slate-200 font-semibold">Proveedor</th>
+                                    <th className="text-left p-2 border border-slate-200 font-semibold">País</th>
+                                    <th className="text-left p-2 border border-slate-200 font-semibold">Finalidad</th>
+                                    <th className="text-left p-2 border border-slate-200 font-semibold">Datos transferidos</th>
+                                    <th className="text-left p-2 border border-slate-200 font-semibold">Base legal (Art. 46 RGPD)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td className="p-2 border border-slate-200 font-medium">Supabase</td>
+                                    <td className="p-2 border border-slate-200">EE. UU. / AWS eu-west-1</td>
+                                    <td className="p-2 border border-slate-200">Base de datos, autenticación, almacenamiento</td>
+                                    <td className="p-2 border border-slate-200">Todos los datos de cuenta y documentos</td>
+                                    <td className="p-2 border border-slate-200">CCT (art. 46.2.c)</td>
+                                </tr>
+                                <tr className="bg-slate-50">
+                                    <td className="p-2 border border-slate-200 font-medium">Stripe</td>
+                                    <td className="p-2 border border-slate-200">EE. UU.</td>
+                                    <td className="p-2 border border-slate-200">Procesamiento de pagos</td>
+                                    <td className="p-2 border border-slate-200">Email, datos de pago (tokenizados)</td>
+                                    <td className="p-2 border border-slate-200">CCT + Data Privacy Framework</td>
+                                </tr>
+                                <tr>
+                                    <td className="p-2 border border-slate-200 font-medium">Google (Gemini API)</td>
+                                    <td className="p-2 border border-slate-200">EE. UU.</td>
+                                    <td className="p-2 border border-slate-200">Asistente IA Clara (generación de texto)</td>
+                                    <td className="p-2 border border-slate-200">Contenido de mensajes al asistente</td>
+                                    <td className="p-2 border border-slate-200">CCT + Data Privacy Framework</td>
+                                </tr>
+                                <tr className="bg-slate-50">
+                                    <td className="p-2 border border-slate-200 font-medium">Microsoft Clarity</td>
+                                    <td className="p-2 border border-slate-200">EE. UU.</td>
+                                    <td className="p-2 border border-slate-200">Analítica web (solo con consentimiento)</td>
+                                    <td className="p-2 border border-slate-200">Interacciones de sesión (comportamiento)</td>
+                                    <td className="p-2 border border-slate-200">CCT + Data Privacy Framework</td>
+                                </tr>
+                                <tr>
+                                    <td className="p-2 border border-slate-200 font-medium">Sentry</td>
+                                    <td className="p-2 border border-slate-200">EE. UU.</td>
+                                    <td className="p-2 border border-slate-200">Monitorización de errores (solo con consentimiento)</td>
+                                    <td className="p-2 border border-slate-200">Datos técnicos de error, URL, user agent</td>
+                                    <td className="p-2 border border-slate-200">CCT</td>
+                                </tr>
+                                <tr className="bg-slate-50">
+                                    <td className="p-2 border border-slate-200 font-medium">Twilio</td>
+                                    <td className="p-2 border border-slate-200">EE. UU.</td>
+                                    <td className="p-2 border border-slate-200">Envío de OTP por SMS/WhatsApp</td>
+                                    <td className="p-2 border border-slate-200">Número de teléfono del firmante</td>
+                                    <td className="p-2 border border-slate-200">CCT + Data Privacy Framework</td>
+                                </tr>
+                                <tr>
+                                    <td className="p-2 border border-slate-200 font-medium">Vercel</td>
+                                    <td className="p-2 border border-slate-200">EE. UU. / CDN global</td>
+                                    <td className="p-2 border border-slate-200">Hosting y CDN de la aplicación web</td>
+                                    <td className="p-2 border border-slate-200">IPs, logs de acceso</td>
+                                    <td className="p-2 border border-slate-200">CCT</td>
+                                </tr>
+                                <tr className="bg-slate-50">
+                                    <td className="p-2 border border-slate-200 font-medium">Resend</td>
+                                    <td className="p-2 border border-slate-200">EE. UU.</td>
+                                    <td className="p-2 border border-slate-200">Envío de emails transaccionales</td>
+                                    <td className="p-2 border border-slate-200">Email del remitente y firmante, nombre</td>
+                                    <td className="p-2 border border-slate-200">CCT</td>
+                                </tr>
+                                <tr>
+                                    <td className="p-2 border border-slate-200 font-medium">FreeTSA</td>
+                                    <td className="p-2 border border-slate-200">UE (Bélgica)</td>
+                                    <td className="p-2 border border-slate-200">Sellado de tiempo RFC 3161</td>
+                                    <td className="p-2 border border-slate-200">Hash del documento firmado</td>
+                                    <td className="p-2 border border-slate-200">Sin transferencia fuera del EEE</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p className="mt-4 text-sm">
+                        Puedes solicitar copia de las CCT vigentes escribiendo a{' '}
+                        <a href="mailto:dpo@firmaclara.es" className="text-blue-600 hover:underline">
+                            dpo@firmaclara.es
+                        </a>
+                        .
+                    </p>
+                </section>
+
+                {/* 11 */}
+                <section>
+                    <h2 className="text-xl font-semibold text-slate-800">11. Cambios en esta política</h2>
+
                     <p>
                         Podemos actualizar esta política cuando sea necesario (cambios normativos, nuevos proveedores, nuevas funcionalidades). Te notificaremos por email con al menos 15 días de antelación si los cambios afectan sustancialmente al tratamiento de tus datos. La fecha de última actualización siempre figura en la cabecera de este documento.
                     </p>

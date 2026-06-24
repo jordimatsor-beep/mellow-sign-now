@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
-import { Loader2 } from "lucide-react";
+import { DashboardSkeleton } from "@/components/skeletons/DashboardSkeleton";
 
 // Context
 import { AuthProvider } from "@/context/AuthContext";
@@ -43,6 +43,7 @@ const AccountConfirmed = lazy(() => import("@/pages/auth/AccountConfirmed"));
 const Contacts = lazy(() => import("@/pages/Contacts"));
 const Clara = lazy(() => import("@/pages/Clara"));
 const Legal = lazy(() => import("@/pages/Legal"));
+const AvisoLegal = lazy(() => import("@/pages/AvisoLegal"));
 const Terms = lazy(() => import("@/pages/Terms"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const HowItWorks = lazy(() => import("@/pages/HowItWorks"));
@@ -60,8 +61,10 @@ const AdminTeam = lazy(() => import("@/pages/admin/AdminTeam"));
 const PayoutsManager = lazy(() => import("@/pages/admin/PayoutsManager"));
 
 const PageLoader = () => (
-  <div className="flex h-screen items-center justify-center">
-    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+  <div className="flex h-screen items-center justify-center p-6">
+    <div className="w-full max-w-3xl">
+      <DashboardSkeleton />
+    </div>
   </div>
 );
 
@@ -100,10 +103,15 @@ const App = () => {
                   {/* Referral redirect — captura código y redirige a /register */}
                   <Route path="/r/:code" element={<ReferralRedirect />} />
 
+                  {/* Legacy URL redirect */}
+                  <Route path="/referrals" element={<Navigate to="/invita" replace />} />
+
                   {/* Public signing page & Content pages */}
                   <Route element={<PublicLayout />}>
                     <Route path="/sign/:token" element={<SignDocument />} />
                     <Route path="/legal" element={<Legal />} />
+                    <Route path="/aviso-legal" element={<AvisoLegal />} />
+                    <Route path="/legal-notice" element={<Navigate to="/aviso-legal" replace />} />
                     <Route path="/terms" element={<Terms />} />
                     <Route path="/privacy" element={<Privacy />} />
                     <Route path="/how-it-works" element={<HowItWorks />} />

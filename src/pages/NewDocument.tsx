@@ -21,6 +21,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
+import { sanitizeSupabaseError } from "@/lib/supabaseErrorHandler";
 import { isValidTaxId } from "@/lib/validators";
 import { sanitizeFileName } from "@/lib/utils";
 import { ACCEPTED_OFFICE_FORMATS, OFFICE_MIME_TYPES, getOriginalFormat } from "@/lib/documentFormats";
@@ -32,7 +33,7 @@ type DocType = "presupuesto" | "parte" | "contrato" | "otro";
 
 export default function NewDocument() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const draftId = searchParams.get('draftId');
   const templateId = searchParams.get('templateId');
   const { profile } = useProfile();
@@ -74,6 +75,11 @@ export default function NewDocument() {
   const [isConverting, setIsConverting] = useState(false);
   const [convertedFrom, setConvertedFrom] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  // Tab de subida: "upload" o elegir plantilla
+  const [uploadTab, setUploadTab] = useState<"upload" | "template">("upload");
+  const [templates, setTemplates] = useState<{ id: string; title: string; file_url: string }[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   // Fetch credits — single source of truth (RPC get_available_credits via
   // useCredits): excludes expired packs, matching both what consume_credit
@@ -156,119 +162,157 @@ export default function NewDocument() {
     }
   };
 
-  // Load draft data
+  // Load draft data — AbortController + 5s timeout previene freeze en navegación directa
   useEffect(() => {
     if (!draftId) return;
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
     const loadDraft = async () => {
-      const { data, error } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('id', draftId)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('id', draftId)
+          .abortSignal(controller.signal)
+          .single();
 
-      if (error) {
+        if (error) {
+          if (controller.signal.aborted) return;
+          toast.error("Error al cargar el borrador");
+          if (import.meta.env.DEV) console.error(error);
+          return;
+        }
+
+        if (data) {
+          const draft = data as any;
+          setTitle(draft.title || '');
+          setSignerName(draft.signer_name || '');
+          setSignerEmail(draft.signer_email || '');
+          setSignerNif(draft.signer_tax_id || '');
+          setSignerAddress(draft.signer_address || '');
+          setSignerPhone(draft.signer_phone || '');
+          setCustomMessage(draft.custom_message || '');
+
+          if (typeof draft.signature_page === 'number') setSignaturePage(draft.signature_page);
+          if (typeof draft.signature_x === 'number') setSignatureX(draft.signature_x);
+          if (typeof draft.signature_y === 'number') setSignatureY(draft.signature_y);
+
+          if (draft.signature_page === 0) setSignaturePosition("new_page");
+          else if (typeof draft.signature_page === 'number' && draft.signature_page > 0) setSignaturePosition("custom");
+          else setSignaturePosition("last_page");
+
+          if (draft.security_level) {
+            setSecurityLevel(draft.security_level);
+            setWhatsappVerification(draft.security_level === 'whatsapp_otp');
+          }
+
+          if (draft.file_url) {
+            setDraftFileUrl(draft.file_url);
+            setFile(new File([], draft.title ? `${draft.title}.pdf` : "documento_guardado.pdf", { type: "application/pdf" }));
+            setStep('signer');
+            setDocType('otro');
+          }
+        }
+      } catch (err) {
+        if (controller.signal.aborted) return;
         toast.error("Error al cargar el borrador");
-        if (import.meta.env.DEV) console.error(error);
-        return;
-      }
-
-      if (data) {
-        // Cast to any to access properties that might not be in the generated type definition yet
-        const draft = data as any;
-        setTitle(draft.title || '');
-        setSignerName(draft.signer_name || '');
-        setSignerEmail(draft.signer_email || '');
-        setSignerNif(draft.signer_tax_id || ''); // Correct column name
-        setSignerAddress(draft.signer_address || '');
-        setSignerPhone(draft.signer_phone || '');
-        setCustomMessage(draft.custom_message || '');
-
-        // Restore signature position (guard against null from pre-migration rows)
-        if (typeof draft.signature_page === 'number') setSignaturePage(draft.signature_page);
-        if (typeof draft.signature_x === 'number') setSignatureX(draft.signature_x);
-        if (typeof draft.signature_y === 'number') setSignatureY(draft.signature_y);
-
-        // Restore specific position logic if possible (e.g. preset)
-        if (draft.signature_page === 0) setSignaturePosition("new_page");
-        else if (typeof draft.signature_page === 'number' && draft.signature_page > 0) setSignaturePosition("custom");
-        else setSignaturePosition("last_page"); // -1 or null -> default
-
-        // Restore security settings
-        if (draft.security_level) {
-          setSecurityLevel(draft.security_level);
-          setWhatsappVerification(draft.security_level === 'whatsapp_otp');
-        }
-
-        if (draft.file_url) {
-          // Store original URL to reuse on submit without re-downloading
-          setDraftFileUrl(draft.file_url);
-          setFile(new File([], draft.title ? `${draft.title}.pdf` : "documento_guardado.pdf", { type: "application/pdf" }));
-        }
-
-        if (draft.file_url) {
-          setStep('signer');
-          setDocType('otro');
-        }
+        if (import.meta.env.DEV) console.error(err);
+      } finally {
+        clearTimeout(timeout);
       }
     };
 
     loadDraft();
+    return () => { controller.abort(); clearTimeout(timeout); };
   }, [draftId]);
 
-  // ME-04: usar una plantilla → se prerrellena un documento NUEVO (sin draftId,
-  // así handleCreateDocument hace INSERT) reutilizando el archivo y los datos de
-  // la plantilla. El archivo original es inmutable, por lo que referenciar el
-  // mismo file_url no produce modificación cruzada.
+  // ME-04: usar una plantilla → se prerrellena un documento NUEVO (sin draftId).
+  // AbortController + 5s timeout previene freeze en navegación directa (deep link).
   useEffect(() => {
     if (!templateId) return;
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
     const loadTemplate = async () => {
-      const { data, error } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('id', templateId)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('id', templateId)
+          .abortSignal(controller.signal)
+          .single();
 
-      if (error || !data) {
+        if (error || !data) {
+          if (controller.signal.aborted) return;
+          toast.error("No se pudo cargar la plantilla");
+          if (import.meta.env.DEV) console.error(error);
+          return;
+        }
+
+        const tpl = data as any;
+        setTitle(tpl.title || '');
+        setSignerName(tpl.signer_name || '');
+        setSignerEmail(tpl.signer_email || '');
+        setSignerNif(tpl.signer_tax_id || '');
+        setSignerAddress(tpl.signer_address || '');
+        setSignerPhone(tpl.signer_phone || '');
+        setCustomMessage(tpl.custom_message || '');
+
+        if (typeof tpl.signature_page === 'number') setSignaturePage(tpl.signature_page);
+        if (typeof tpl.signature_x === 'number') setSignatureX(tpl.signature_x);
+        if (typeof tpl.signature_y === 'number') setSignatureY(tpl.signature_y);
+        if (tpl.signature_page === 0) setSignaturePosition("new_page");
+        else if (typeof tpl.signature_page === 'number' && tpl.signature_page > 0) setSignaturePosition("custom");
+        else setSignaturePosition("last_page");
+
+        if (tpl.security_level) {
+          setSecurityLevel(tpl.security_level);
+          setWhatsappVerification(tpl.security_level === 'whatsapp_otp');
+        }
+
+        if (tpl.file_url) {
+          setDraftFileUrl(tpl.file_url);
+          setFile(new File([], tpl.title ? `${tpl.title}.pdf` : "documento.pdf", { type: "application/pdf" }));
+          setDocType('otro');
+          setStep('signer');
+        }
+
+        toast.success("Plantilla cargada. Revisa el firmante y envía.");
+      } catch (err) {
+        if (controller.signal.aborted) return;
         toast.error("No se pudo cargar la plantilla");
-        if (import.meta.env.DEV) console.error(error);
-        return;
+        if (import.meta.env.DEV) console.error(err);
+      } finally {
+        clearTimeout(timeout);
       }
-
-      const tpl = data as any;
-      setTitle(tpl.title || '');
-      setSignerName(tpl.signer_name || '');
-      setSignerEmail(tpl.signer_email || '');
-      setSignerNif(tpl.signer_tax_id || '');
-      setSignerAddress(tpl.signer_address || '');
-      setSignerPhone(tpl.signer_phone || '');
-      setCustomMessage(tpl.custom_message || '');
-
-      if (typeof tpl.signature_page === 'number') setSignaturePage(tpl.signature_page);
-      if (typeof tpl.signature_x === 'number') setSignatureX(tpl.signature_x);
-      if (typeof tpl.signature_y === 'number') setSignatureY(tpl.signature_y);
-      if (tpl.signature_page === 0) setSignaturePosition("new_page");
-      else if (typeof tpl.signature_page === 'number' && tpl.signature_page > 0) setSignaturePosition("custom");
-      else setSignaturePosition("last_page");
-
-      if (tpl.security_level) {
-        setSecurityLevel(tpl.security_level);
-        setWhatsappVerification(tpl.security_level === 'whatsapp_otp');
-      }
-
-      if (tpl.file_url) {
-        setDraftFileUrl(tpl.file_url);
-        setFile(new File([], tpl.title ? `${tpl.title}.pdf` : "documento.pdf", { type: "application/pdf" }));
-        setDocType('otro');
-        setStep('signer');
-      }
-
-      toast.success("Plantilla cargada. Revisa el firmante y envía.");
     };
 
     loadTemplate();
+    return () => { controller.abort(); clearTimeout(timeout); };
   }, [templateId]);
+
+  const handleSwitchToTemplateTab = async () => {
+    setUploadTab("template");
+    if (templates.length > 0) return;
+    setLoadingTemplates(true);
+    try {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("id, title, file_url")
+        .eq("is_template", true)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      setTemplates((data ?? []) as { id: string; title: string; file_url: string }[]);
+    } catch {
+      toast.error("No se pudieron cargar las plantillas");
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
 
   // Calls the convert-to-pdf edge function (Gotenberg backend) and returns a
   // PDF File. Uses raw fetch (not supabase.functions.invoke) because the
@@ -494,8 +538,7 @@ export default function NewDocument() {
 
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error(error);
-      const message = error instanceof Error ? error.message : "Error al enviar documento";
-      toast.error(message);
+      toast.error(sanitizeSupabaseError(error as any));
       setUploadStatus("error");
     }
   };
@@ -536,9 +579,8 @@ export default function NewDocument() {
 
         // Cualquier otro fallo: el servidor ya reembolsó el crédito (si lo cobró)
         // y dejó el documento como borrador.
-        const errorMsg = result?.error || fnError?.message || "Error desconocido al enviar";
         if (import.meta.env.DEV) console.error("Error sending document:", fnError || result);
-        toast.error(`No se pudo enviar: ${errorMsg}`);
+        toast.error(sanitizeSupabaseError(fnError) || "No se pudo enviar el documento");
         toast.info("El documento se ha guardado como borrador. Inténtalo de nuevo.");
         setUploadStatus("error");
         setTimeout(() => navigate('/dashboard'), 3500);
@@ -561,7 +603,7 @@ export default function NewDocument() {
       const err = error as Error;
       if (import.meta.env.DEV) console.error("Critical error in handleSendDocument:", err);
       // Si se cobró un crédito, send-invite-v2 lo reembolsa ante el fallo.
-      toast.error("Error al enviar: " + err.message);
+      toast.error(sanitizeSupabaseError(err));
       setUploadStatus("error");
       navigate('/dashboard');
     }
@@ -610,6 +652,57 @@ export default function NewDocument() {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Subir documento</h2>
 
+            {/* Tab toggle: archivo nuevo vs plantilla guardada */}
+            <div className="flex rounded-lg border p-0.5 bg-muted/40 gap-0.5">
+              <button
+                type="button"
+                className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${uploadTab === "upload" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                onClick={() => setUploadTab("upload")}
+              >
+                Subir archivo
+              </button>
+              <button
+                type="button"
+                className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${uploadTab === "template" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                onClick={handleSwitchToTemplateTab}
+              >
+                Usar plantilla
+              </button>
+            </div>
+
+            {uploadTab === "template" ? (
+              <div className="space-y-2">
+                {loadingTemplates ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : templates.length === 0 ? (
+                  <div className="rounded-lg border-2 border-dashed border-muted-foreground/25 p-8 text-center">
+                    <FileText className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground">Aún no tienes plantillas guardadas.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Sube un documento y guárdalo como plantilla desde la pantalla de documentos.</p>
+                  </div>
+                ) : (
+                  templates.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 hover:border-primary/40"
+                      onClick={() => {
+                        setSearchParams({ templateId: t.id });
+                        setUploadTab("upload");
+                      }}
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        <FileText className="h-4 w-4 text-primary" />
+                      </div>
+                      <span className="flex-1 truncate text-sm font-medium">{t.title}</span>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </button>
+                  ))
+                )}
+              </div>
+            ) : (
             <div
               className="rounded-lg border-2 border-dashed border-muted-foreground/25 p-8 text-center transition-colors hover:bg-muted/50"
               onDragOver={(e) => e.preventDefault()}
@@ -638,6 +731,7 @@ export default function NewDocument() {
                 PDF, Word, Excel, PowerPoint y más · Máximo 10MB
               </p>
             </div>
+            )}
 
             {isConverting && (
               <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
@@ -663,6 +757,8 @@ export default function NewDocument() {
                     onClick={() => {
                       setFile(null);
                       setConvertedFrom(null);
+                      setDraftFileUrl(null);
+                      if (searchParams.get('templateId')) setSearchParams({});
                     }}
                   >
                     Cambiar
@@ -689,20 +785,25 @@ export default function NewDocument() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="title">Título del documento</Label>
-              <Input
-                id="title"
-                placeholder="Ej: Presupuesto reforma cocina"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
+            {uploadTab === "upload" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="title">Título del documento</Label>
+                  <Input
+                    id="title"
+                    placeholder="Ej: Presupuesto reforma cocina"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    data-clarity-mask="True"
+                  />
+                </div>
 
-            <Button className="w-full" disabled={!file || !title || isConverting} onClick={() => setStep("signer")}>
-              Continuar
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+                <Button className="w-full" disabled={!file || !title || isConverting} onClick={() => setStep("signer")}>
+                  Continuar
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </>
+            )}
           </div>
         );
 
@@ -726,6 +827,7 @@ export default function NewDocument() {
                     placeholder="Ej: Juan Pérez"
                     value={signerName}
                     onChange={(e) => setSignerName(e.target.value)}
+                    data-clarity-mask="True"
                   />
                 </div>
 
@@ -753,6 +855,7 @@ export default function NewDocument() {
                     value={signerNif}
                     aria-invalid={nifInvalid}
                     onChange={(e) => setSignerNif(e.target.value)}
+                    data-clarity-mask="True"
                   />
                   {nifInvalid && (
                     <p className="text-xs text-destructive">
@@ -771,6 +874,7 @@ export default function NewDocument() {
                     placeholder="Calle, Ciudad..."
                     value={signerAddress}
                     onChange={(e) => setSignerAddress(e.target.value)}
+                    data-clarity-mask="True"
                   />
                 </div>
               </div>
@@ -836,6 +940,7 @@ export default function NewDocument() {
                         type="tel"
                         placeholder="600 123 456"
                         value={signerPhone.replace(/^\+\d+\s*/, '')}
+                        data-clarity-mask="True"
                         onChange={(e) => {
                           const phoneNumber = e.target.value.replace(/[^\d\s]/g, '');
                           setSignerPhone(`${signerPhonePrefix} ${phoneNumber}`);

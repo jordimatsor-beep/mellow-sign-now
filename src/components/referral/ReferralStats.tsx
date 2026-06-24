@@ -57,7 +57,10 @@ export function ReferralStats({ stats }: ReferralStatsProps) {
   const progressLabel =
     stats.credits_earned >= 50
       ? 'Máximo alcanzado · Has ganado 50 firmas con referidos'
-      : `Invita a ${Math.max(1, Math.ceil((nextMilestone - stats.credits_earned) / 5))} personas más para ganar tus próximas 5 firmas`
+      : (() => {
+          const n = Math.max(1, Math.ceil((nextMilestone - stats.credits_earned) / 5));
+          return `Invita a ${n} ${n === 1 ? 'persona' : 'personas'} más para ganar tus próximas 5 firmas`;
+        })()
 
   const counters = [
     { label: 'invitados',        value: invited, highlight: false },

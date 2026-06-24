@@ -12,7 +12,6 @@ import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useCredits } from "@/hooks/useCredits";
 import { WelcomeBanner } from "@/components/dashboard/WelcomeBanner";
-import { LOW_CREDITS_THRESHOLD } from "@/lib/constants";
 import { PlanUsageCard } from "@/components/plan/PlanUsageCard";
 import { OverageBanner } from "@/components/plan/OverageBanner";
 import { usePlanStatus } from "@/hooks/usePlanStatus";
@@ -58,25 +57,17 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  // Conteos reales de documentos (no limitados por la lista de recientes).
-  // Usa count+head para no transferir filas. Antes los KPIs se calculaban sobre
-  // los 50 documentos mas recientes (.limit(50)), asi que "Total" se quedaba
-  // topado en 50 aunque hubiera mas.
+  // Conteos reales de documentos en una sola RPC (1 roundtrip en lugar de 3).
   const { data: docCounts, error: countsError, status: countsStatus } = useQuery({
     queryKey: ['dashboard-documents-counts'] as const,
     queryFn: async () => {
-      const base = () =>
-        supabase.from('documents').select('id', { count: 'exact', head: true }).eq('is_template', false);
-      const [total, pending, signed] = await Promise.all([
-        base(),
-        base().in('status', ['sent', 'viewed']),
-        base().eq('status', 'signed'),
-      ]);
-      if (total.error) throw total.error;
+      const { data, error } = await supabase.rpc('get_document_counts');
+      if (error) throw error;
+      const row = data?.[0] ?? { total: 0, pending: 0, signed: 0 };
       return {
-        total: total.count ?? 0,
-        pending: pending.count ?? 0,
-        signed: signed.count ?? 0,
+        total: Number(row.total),
+        pending: Number(row.pending),
+        signed: Number(row.signed),
       };
     },
     enabled: !!user,
@@ -89,6 +80,16 @@ export default function Dashboard() {
   // saldo agotado/bajo no aplican (el OverageBanner cubre su estado real).
   const { data: planStatus } = usePlanStatus();
   const isProfesional = planStatus?.plan_id === 'profesional';
+
+  // Umbral de aviso de saldo bajo, relativo al límite del plan actual.
+  // Plan Gratis: límite 2 → umbral 0 (nunca avisa, 2 créditos es la cuota completa).
+  // Plan Básico+: umbral = 20% del límite, mínimo 2.
+  const lowCreditsThreshold = (() => {
+    if (!planStatus || isProfesional) return 0;
+    const planLimit = planStatus.limite ?? 0;
+    if (planLimit <= 2) return 0;
+    return Math.max(2, Math.floor(planLimit * 0.2));
+  })();
 
   // Calculate stats — safe even when data is still loading (defaults to 0/[])
   const stats = {
@@ -171,7 +172,7 @@ export default function Dashboard() {
       )}
 
       {/* Saldo bajo (QW-04) — entre 1 y el umbral, solo con uso real previo */}
-      {!loadingCredits && hasSentDocument && credits > 0 && credits <= LOW_CREDITS_THRESHOLD && !isProfesional && (
+      {!loadingCredits && hasSentDocument && credits > 0 && lowCreditsThreshold > 0 && credits <= lowCreditsThreshold && !isProfesional && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
