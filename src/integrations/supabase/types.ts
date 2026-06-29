@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -12,8 +12,66 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      anon_referral_sessions: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          email: string | null
+          expires_at: string
+          ip_prefix: string | null
+          new_user_id: string | null
+          ref_code: string
+          session_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          ip_prefix?: string | null
+          new_user_id?: string | null
+          ref_code: string
+          session_id?: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          ip_prefix?: string | null
+          new_user_id?: string | null
+          ref_code?: string
+          session_id?: string
+        }
+        Relationships: []
+      }
       api_clients: {
         Row: {
           active: boolean
@@ -57,6 +115,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      billing_profiles: {
+        Row: {
+          ciudad: string
+          codigo_postal: string
+          created_at: string | null
+          direccion_fiscal: string
+          email_facturacion: string | null
+          holded_contact_id: string | null
+          id: string
+          nif_cif: string
+          pais: string
+          razon_social: string
+          regimen_fiscal: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ciudad: string
+          codigo_postal: string
+          created_at?: string | null
+          direccion_fiscal: string
+          email_facturacion?: string | null
+          holded_contact_id?: string | null
+          id?: string
+          nif_cif: string
+          pais?: string
+          razon_social: string
+          regimen_fiscal?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ciudad?: string
+          codigo_postal?: string
+          created_at?: string | null
+          direccion_fiscal?: string
+          email_facturacion?: string | null
+          holded_contact_id?: string | null
+          id?: string
+          nif_cif?: string
+          pais?: string
+          razon_social?: string
+          regimen_fiscal?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       clara_conversations: {
         Row: {
@@ -142,6 +248,24 @@ export type Database = {
           },
         ]
       }
+      clara_usage_logs: {
+        Row: {
+          created_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       contacts: {
         Row: {
           address: string | null
@@ -225,6 +349,7 @@ export type Database = {
       credit_transactions: {
         Row: {
           amount: number
+          consumption_source: string | null
           created_at: string
           credit_pack_id: string | null
           description: string
@@ -235,6 +360,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          consumption_source?: string | null
           created_at?: string
           credit_pack_id?: string | null
           description: string
@@ -245,6 +371,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          consumption_source?: string | null
           created_at?: string
           credit_pack_id?: string | null
           description?: string
@@ -282,10 +409,10 @@ export type Database = {
           file_url: string
           id: string
           is_template: boolean
+          original_format: string | null
           otp_code_hash: string | null
           otp_expires_at: string | null
           otp_failed_attempts: number | null
-          original_format: string | null
           security_level:
             | Database["public"]["Enums"]["security_level_enum"]
             | null
@@ -319,10 +446,10 @@ export type Database = {
           file_url: string
           id?: string
           is_template?: boolean
+          original_format?: string | null
           otp_code_hash?: string | null
           otp_expires_at?: string | null
           otp_failed_attempts?: number | null
-          original_format?: string | null
           security_level?:
             | Database["public"]["Enums"]["security_level_enum"]
             | null
@@ -356,10 +483,10 @@ export type Database = {
           file_url?: string
           id?: string
           is_template?: boolean
+          original_format?: string | null
           otp_code_hash?: string | null
           otp_expires_at?: string | null
           otp_failed_attempts?: number | null
-          original_format?: string | null
           security_level?:
             | Database["public"]["Enums"]["security_level_enum"]
             | null
@@ -505,6 +632,60 @@ export type Database = {
           },
         ]
       }
+      invoices: {
+        Row: {
+          base_imponible: number
+          concepto: string
+          created_at: string | null
+          error_detail: string | null
+          holded_invoice_id: string | null
+          holded_status: string | null
+          id: string
+          importe_impuesto: number
+          iva_pct: number
+          numero_fc: string | null
+          product_type: string
+          regimen_fiscal: string
+          stripe_payment_intent_id: string
+          total: number
+          user_id: string
+        }
+        Insert: {
+          base_imponible: number
+          concepto: string
+          created_at?: string | null
+          error_detail?: string | null
+          holded_invoice_id?: string | null
+          holded_status?: string | null
+          id?: string
+          importe_impuesto: number
+          iva_pct: number
+          numero_fc?: string | null
+          product_type: string
+          regimen_fiscal: string
+          stripe_payment_intent_id: string
+          total: number
+          user_id: string
+        }
+        Update: {
+          base_imponible?: number
+          concepto?: string
+          created_at?: string | null
+          error_detail?: string | null
+          holded_invoice_id?: string | null
+          holded_status?: string | null
+          id?: string
+          importe_impuesto?: number
+          iva_pct?: number
+          numero_fc?: string | null
+          product_type?: string
+          regimen_fiscal?: string
+          stripe_payment_intent_id?: string
+          total?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       knowledge_vectors: {
         Row: {
           content: string | null
@@ -592,6 +773,61 @@ export type Database = {
           },
         ]
       }
+      overage_charges: {
+        Row: {
+          amount_eur: number | null
+          billed: boolean
+          charged_at: string | null
+          firma_id: string | null
+          id: string
+          mes_ciclo: string | null
+          stripe_invoice_item_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount_eur?: number | null
+          billed?: boolean
+          charged_at?: string | null
+          firma_id?: string | null
+          id?: string
+          mes_ciclo?: string | null
+          stripe_invoice_item_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount_eur?: number | null
+          billed?: boolean
+          charged_at?: string | null
+          firma_id?: string | null
+          id?: string
+          mes_ciclo?: string | null
+          stripe_invoice_item_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overage_charges_firma_id_fkey"
+            columns: ["firma_id"]
+            isOneToOne: true
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "overage_charges_firma_id_fkey"
+            columns: ["firma_id"]
+            isOneToOne: true
+            referencedRelation: "documents_with_signatures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "overage_charges_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pack_types: {
         Row: {
           credits: number
@@ -616,6 +852,194 @@ export type Database = {
           price_per_credit?: number | null
           stripe_price_id?: string | null
           type?: string
+        }
+        Relationships: []
+      }
+      payout_requests: {
+        Row: {
+          amount_eur: number
+          created_at: string | null
+          iban: string
+          id: string
+          notes: string | null
+          resolved_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount_eur: number
+          created_at?: string | null
+          iban: string
+          id?: string
+          notes?: string | null
+          resolved_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount_eur?: number
+          created_at?: string | null
+          iban?: string
+          id?: string
+          notes?: string | null
+          resolved_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      plan_history: {
+        Row: {
+          changed_at: string | null
+          id: string
+          motivo: string | null
+          plan_anterior: string | null
+          plan_nuevo: string | null
+          stripe_event_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          changed_at?: string | null
+          id?: string
+          motivo?: string | null
+          plan_anterior?: string | null
+          plan_nuevo?: string | null
+          stripe_event_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          changed_at?: string | null
+          id?: string
+          motivo?: string | null
+          plan_anterior?: string | null
+          plan_nuevo?: string | null
+          stripe_event_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      referral_commissions: {
+        Row: {
+          amount_eur: number
+          created_at: string | null
+          id: string
+          paid_at: string | null
+          percentage: number
+          product: string
+          purchase_eur: number
+          referred_id: string
+          referrer_id: string
+          status: string
+          stripe_session: string
+        }
+        Insert: {
+          amount_eur: number
+          created_at?: string | null
+          id?: string
+          paid_at?: string | null
+          percentage?: number
+          product: string
+          purchase_eur: number
+          referred_id: string
+          referrer_id: string
+          status?: string
+          stripe_session: string
+        }
+        Update: {
+          amount_eur?: number
+          created_at?: string | null
+          id?: string
+          paid_at?: string | null
+          percentage?: number
+          product?: string
+          purchase_eur?: number
+          referred_id?: string
+          referrer_id?: string
+          status?: string
+          stripe_session?: string
+        }
+        Relationships: []
+      }
+      referral_rl: {
+        Row: {
+          hits: number
+          ip: string
+          minute: string
+        }
+        Insert: {
+          hits?: number
+          ip: string
+          minute: string
+        }
+        Update: {
+          hits?: number
+          ip?: string
+          minute?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string | null
+          credits_to_referred: number
+          credits_to_referrer: number
+          id: string
+          referred_id: string
+          referrer_id: string
+          rewarded_at: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          credits_to_referred?: number
+          credits_to_referrer?: number
+          id?: string
+          referred_id: string
+          referrer_id: string
+          rewarded_at?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          credits_to_referred?: number
+          credits_to_referrer?: number
+          id?: string
+          referred_id?: string
+          referrer_id?: string
+          rewarded_at?: string | null
+          status?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -858,11 +1282,17 @@ export type Database = {
         Row: {
           address: string | null
           billing_email: string | null
+          brand_color: string | null
+          brand_logo_url: string | null
+          brand_sender_name: string | null
           city: string | null
           company_name: string | null
           country: string | null
           created_at: string | null
           email: string
+          firmas_creditos: number
+          firmas_usadas_mes: number
+          grace_until: string | null
           id: string
           issuer_type: string | null
           legal_accepted: boolean | null
@@ -873,7 +1303,14 @@ export type Database = {
           name: string | null
           onboarding_completed: boolean | null
           phone: string | null
+          plan_id: string
+          plan_renewed_at: string | null
           role: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_cancel_at_period_end: boolean
+          subscription_period_end: string | null
+          subscription_status: string | null
           tax_id: string | null
           updated_at: string | null
           zip_code: string | null
@@ -881,11 +1318,17 @@ export type Database = {
         Insert: {
           address?: string | null
           billing_email?: string | null
+          brand_color?: string | null
+          brand_logo_url?: string | null
+          brand_sender_name?: string | null
           city?: string | null
           company_name?: string | null
           country?: string | null
           created_at?: string | null
           email: string
+          firmas_creditos?: number
+          firmas_usadas_mes?: number
+          grace_until?: string | null
           id: string
           issuer_type?: string | null
           legal_accepted?: boolean | null
@@ -896,7 +1339,14 @@ export type Database = {
           name?: string | null
           onboarding_completed?: boolean | null
           phone?: string | null
+          plan_id?: string
+          plan_renewed_at?: string | null
           role?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_cancel_at_period_end?: boolean
+          subscription_period_end?: string | null
+          subscription_status?: string | null
           tax_id?: string | null
           updated_at?: string | null
           zip_code?: string | null
@@ -904,11 +1354,17 @@ export type Database = {
         Update: {
           address?: string | null
           billing_email?: string | null
+          brand_color?: string | null
+          brand_logo_url?: string | null
+          brand_sender_name?: string | null
           city?: string | null
           company_name?: string | null
           country?: string | null
           created_at?: string | null
           email?: string
+          firmas_creditos?: number
+          firmas_usadas_mes?: number
+          grace_until?: string | null
           id?: string
           issuer_type?: string | null
           legal_accepted?: boolean | null
@@ -919,7 +1375,14 @@ export type Database = {
           name?: string | null
           onboarding_completed?: boolean | null
           phone?: string | null
+          plan_id?: string
+          plan_renewed_at?: string | null
           role?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_cancel_at_period_end?: boolean
+          subscription_period_end?: string | null
+          subscription_status?: string | null
           tax_id?: string | null
           updated_at?: string | null
           zip_code?: string | null
@@ -1007,6 +1470,28 @@ export type Database = {
           },
         ]
       }
+      referral_commission_balance: {
+        Row: {
+          balance_paid: number | null
+          balance_pending: number | null
+          balance_total: number | null
+          commissions_pending: number | null
+          commissions_total: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      referral_stats: {
+        Row: {
+          credits_earned: number | null
+          credits_remaining: number | null
+          total_active: number | null
+          total_invited: number | null
+          total_pending: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       user_credits: {
         Row: {
           available_credits: number | null
@@ -1034,8 +1519,23 @@ export type Database = {
         }
         Returns: undefined
       }
+      add_firmas_creditos: {
+        Args: {
+          p_credits: number
+          p_description?: string
+          p_session: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       admin_add_credits: {
-        Args: { p_credits: number; p_note?: string; p_target_user_id: string }
+        Args: {
+          p_credits: number
+          p_message?: string
+          p_note?: string
+          p_target_user_id: string
+          p_title?: string
+        }
         Returns: Json
       }
       admin_change_role: {
@@ -1055,6 +1555,25 @@ export type Database = {
           user_name: string
         }[]
       }
+      admin_get_document_counts: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          doc_count: number
+          user_id: string
+        }[]
+      }
+      admin_get_gift_transactions: {
+        Args: { p_limit?: number }
+        Returns: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          user_email: string
+          user_id: string
+          user_name: string
+        }[]
+      }
       admin_get_logs: {
         Args: {
           event_type_filter?: string
@@ -1064,8 +1583,6 @@ export type Database = {
         Returns: {
           created_at: string
           document_id: string
-          document_title: string
-          event_data: Json
           event_type: string
           id: string
           user_email: string
@@ -1096,6 +1613,25 @@ export type Database = {
           total_documents: number
         }[]
       }
+      admin_referral_overview: {
+        Args: never
+        Returns: {
+          balance_paid: number
+          balance_pending: number
+          credits_earned: number
+          payout_amount: number
+          payout_created: string
+          payout_iban: string
+          payout_id: string
+          payout_notes: string
+          referral_code: string
+          total_active: number
+          total_invited: number
+          user_email: string
+          user_id: string
+          user_name: string
+        }[]
+      }
       admin_revoke_credits: {
         Args: {
           credit_amount: number
@@ -1104,15 +1640,43 @@ export type Database = {
         }
         Returns: Json
       }
-      cleanup_old_drafts: { Args: never; Returns: number }
-      consume_credit: {
-        Args: { amount: number; p_description?: string }
-        Returns: undefined
+      check_clara_rate_limit: {
+        Args: { p_max?: number; p_window_seconds?: number }
+        Returns: boolean
       }
+      check_referral_rl: {
+        Args: { p_ip: string; p_max?: number }
+        Returns: number
+      }
+      cleanup_old_drafts: { Args: never; Returns: number }
+      consume_credit:
+        | {
+            Args: { amount: number; p_description?: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              amount: number
+              p_description?: string
+              p_document_id?: string
+            }
+            Returns: undefined
+          }
       consume_credit_for_user: {
         Args: { p_description?: string; p_user_id: string }
         Returns: undefined
       }
+      consumir_firma: {
+        Args: {
+          p_description?: string
+          p_document_id?: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      firmas_limite_plan: { Args: { p_plan: string }; Returns: number }
+      generate_referral_code: { Args: never; Returns: string }
       get_admin_stats:
         | { Args: never; Returns: Json }
         | { Args: { p_period?: string }; Returns: Json }
@@ -1141,6 +1705,14 @@ export type Database = {
           title: string
         }[]
       }
+      get_document_counts: {
+        Args: never
+        Returns: {
+          pending: number
+          signed: number
+          total: number
+        }[]
+      }
       get_document_for_signing: {
         Args: { token_uuid: string }
         Returns: {
@@ -1164,6 +1736,11 @@ export type Database = {
           whatsapp_verification: boolean
         }[]
       }
+      get_or_create_referral_code: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
+      get_plan_status: { Args: never; Returns: Json }
       grant_credits: {
         Args: {
           credits_amount: number
@@ -1218,41 +1795,26 @@ export type Database = {
               similarity: number
             }[]
           }
+      process_referral_reward: {
+        Args: { p_referred_id: string }
+        Returns: Json
+      }
       refund_credit: { Args: { p_description?: string }; Returns: undefined }
+      reset_firmas_mensuales: { Args: never; Returns: number }
+      revertir_firma: {
+        Args: {
+          p_description?: string
+          p_document_id?: string
+          p_user_id?: string
+        }
+        Returns: undefined
+      }
       set_user_role: {
         Args: { new_role: string; target_email: string }
         Returns: Json
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
-      submit_signature:
-        | {
-            Args: {
-              p_hash_sha256: string
-              p_ip_address: unknown
-              p_sign_token: string
-              p_signature_image_url: string
-              p_signer_email: string
-              p_signer_name: string
-              p_user_agent: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_hash_sha256: string
-              p_ip_address: unknown
-              p_sign_token: string
-              p_signature_image_url: string
-              p_signer_email: string
-              p_signer_name: string
-              p_tsa_request?: string
-              p_tsa_response?: string
-              p_tsa_timestamp?: string
-              p_user_agent: string
-            }
-            Returns: Json
-          }
     }
     Enums: {
       security_level_enum: "standard" | "whatsapp_otp"
@@ -1381,6 +1943,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       security_level_enum: ["standard", "whatsapp_otp"],

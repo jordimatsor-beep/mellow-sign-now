@@ -68,7 +68,7 @@ serve(async (req) => {
       return json({ error: 'no_customer' }, 400, corsHeaders)
     }
 
-    const baseUrl = isAllowed ? origin : (Deno.env.get('APP_URL') ?? 'https://www.firmaclara.es')
+    const baseUrl = isAllowed ? origin : (Deno.env.get('SITE_URL') ?? Deno.env.get('APP_URL') ?? 'https://www.firmaclara.es')
 
     const portal = await stripe.billingPortal.sessions.create({
       customer: customerId,

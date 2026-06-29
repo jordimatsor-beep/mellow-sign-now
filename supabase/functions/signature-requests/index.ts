@@ -219,7 +219,7 @@ serve(async (req: Request) => {
         });
       }
 
-      const appUrl = Deno.env.get("APP_URL") ?? "https://firmaclara.es";
+      const appUrl = Deno.env.get("SITE_URL") ?? Deno.env.get("APP_URL") ?? "https://firmaclara.es";
       const signingUrl = `${appUrl}/sign/${doc.sign_token}`;
 
       return json(req, 201, {

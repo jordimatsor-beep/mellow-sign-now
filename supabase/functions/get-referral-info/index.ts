@@ -41,7 +41,7 @@ serve(async (req) => {
     if (codeError) throw codeError
 
     const code = codeData as string
-    const baseUrl = Deno.env.get('APP_URL') ?? 'https://firmaclara.es'
+    const baseUrl = Deno.env.get('SITE_URL') ?? Deno.env.get('APP_URL') ?? 'https://firmaclara.es'
     const url = `${baseUrl}/r/${code}`
 
     // Stats del usuario desde la vista referral_stats

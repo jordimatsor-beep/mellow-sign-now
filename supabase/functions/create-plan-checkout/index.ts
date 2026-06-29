@@ -112,7 +112,7 @@ serve(async (req) => {
     // 5. URLs de retorno (origen validado)
     const baseUrl = isAllowed
       ? origin
-      : (validateReturnOrigin(returnUrl) ?? Deno.env.get('APP_URL') ?? 'https://www.firmaclara.es')
+      : (validateReturnOrigin(returnUrl) ?? Deno.env.get('SITE_URL') ?? Deno.env.get('APP_URL') ?? 'https://www.firmaclara.es')
 
     const isPack = plan === 'pack'
     const successFlag = isPack ? 'pack_success' : 'success'

@@ -1,6 +1,6 @@
 -- Función RPC: devuelve total/pending/signed de documentos del usuario actual
 -- en una sola query GROUP BY, sustituyendo las 3 queries paralelas del dashboard.
-CREATE OR REPLACE FUNCTION get_document_counts()
+CREATE OR REPLACE FUNCTION public.get_document_counts()
 RETURNS TABLE(
   total   BIGINT,
   pending BIGINT,
@@ -9,6 +9,7 @@ RETURNS TABLE(
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
+SET search_path = public
 AS $$
   SELECT
     COUNT(*)                                                   AS total,
@@ -19,5 +20,5 @@ AS $$
     AND is_template = false;
 $$;
 
-REVOKE ALL ON FUNCTION get_document_counts() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION get_document_counts() TO authenticated;
+REVOKE ALL ON FUNCTION public.get_document_counts() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_document_counts() TO authenticated;
