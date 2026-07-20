@@ -51,9 +51,9 @@ export function ReferralRow({ entry, index }: ReferralRowProps) {
         <p className="text-sm font-medium">{entry.name}</p>
         <p className="text-xs text-muted-foreground mt-0.5">
           {entry.status === 'rewarded'
-            ? `Activo · +5 créditos · ${dateStr}`
+            ? `Cliente de pago · generas comisión · ${dateStr}`
             : entry.status === 'pending'
-            ? 'Registrado · Pendiente de enviar su primer contrato'
+            ? 'Registrado · Pendiente de contratar un plan'
             : 'No válido'}
         </p>
       </div>

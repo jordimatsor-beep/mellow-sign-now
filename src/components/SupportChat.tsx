@@ -495,7 +495,7 @@ export const SupportChat = forwardRef<SupportChatHandle, SupportChatProps>(
             <div className="mx-4 -mt-4 bg-background rounded-xl border border-border/60 shadow-sm p-4 mb-4 space-y-4">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <ShieldCheck className="h-3.5 w-3.5 text-primary/60" />
-                <span>Normalmente respondemos en minutos</span>
+                <span>Te responderemos lo antes posible</span>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-foreground/80">Asunto</label>

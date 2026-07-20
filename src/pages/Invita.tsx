@@ -7,12 +7,11 @@ import { ReferralCertificate } from '@/components/referral/ReferralCertificate'
 import { ReferralStats } from '@/components/referral/ReferralStats'
 import { HowItWorks } from '@/components/referral/HowItWorks'
 import { ReferralList } from '@/components/referral/ReferralList'
-import { MilestoneCelebration } from '@/components/referral/MilestoneCelebration'
 import { CommissionBalance } from '@/components/referral/CommissionBalance'
 
 export default function Invita() {
   const { user } = useAuth()
-  const { code, url, stats, referrals, commissions, isLoading, error, refetch } = useReferral()
+  const { code, url, stats, referrals, commissions, connectStatus, isLoading, error, refetch } = useReferral()
 
   const handleCopy = async () => {
     if (url) await navigator.clipboard.writeText(url)
@@ -30,11 +29,11 @@ export default function Invita() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <Gift className="h-6 w-6 text-primary" />
-            Invita y gana firmas gratis
+            Invita y gana dinero
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Cada autónomo o pyme que empiece con FirmaClara gracias a ti te da 5 firmas.
-            Los dos ganáis.
+            Cobra el 20% de cada pago de los clientes que traigas, de por vida.
+            Te lo ingresamos en tu cuenta cada mes.
           </p>
         </div>
       </div>
@@ -60,16 +59,18 @@ export default function Invita() {
       {/* Contenido principal */}
       {!isLoading && !error && code && (
         <>
-          <MilestoneCelebration creditsEarned={stats.credits_earned} userId={user?.id} />
-
           {/* Certificado con el enlace */}
           <ReferralCertificate url={url} />
 
-          {/* Contadores + progress bar */}
+          {/* Contadores */}
           <ReferralStats stats={stats} />
 
           {/* Ingresos en dinero por afiliado */}
-          <CommissionBalance commissions={commissions} onPayoutRequested={refetch} />
+          <CommissionBalance
+            commissions={commissions}
+            connectStatus={connectStatus}
+            onPayoutRequested={refetch}
+          />
 
           {/* Cómo funciona */}
           <HowItWorks />

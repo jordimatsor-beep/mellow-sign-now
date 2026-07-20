@@ -952,12 +952,14 @@ export type Database = {
           amount_eur: number
           created_at: string | null
           id: string
+          kind: string
           paid_at: string | null
           percentage: number
           product: string
           purchase_eur: number
           referred_id: string
           referrer_id: string
+          refund_ref: string | null
           status: string
           stripe_session: string
         }
@@ -965,12 +967,14 @@ export type Database = {
           amount_eur: number
           created_at?: string | null
           id?: string
+          kind?: string
           paid_at?: string | null
           percentage?: number
           product: string
           purchase_eur: number
           referred_id: string
           referrer_id: string
+          refund_ref?: string | null
           status?: string
           stripe_session: string
         }
@@ -978,12 +982,14 @@ export type Database = {
           amount_eur?: number
           created_at?: string | null
           id?: string
+          kind?: string
           paid_at?: string | null
           percentage?: number
           product?: string
           purchase_eur?: number
           referred_id?: string
           referrer_id?: string
+          refund_ref?: string | null
           status?: string
           stripe_session?: string
         }
@@ -1680,6 +1686,14 @@ export type Database = {
       get_admin_stats:
         | { Args: never; Returns: Json }
         | { Args: { p_period?: string }; Returns: Json }
+      get_affiliate_payout_batch: {
+        Args: { p_min_eur?: number }
+        Returns: {
+          eligible: boolean
+          net_pending: number
+          user_id: string
+        }[]
+      }
       get_available_credits: { Args: never; Returns: number }
       get_credit_transactions: {
         Args: { p_limit?: number }

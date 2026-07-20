@@ -18,7 +18,7 @@ import {
   FileSignature,
   ChevronRight,
   Users,
-  Gift,
+  Wallet,
   Euro,
   TrendingUp
 } from "lucide-react";
@@ -271,26 +271,22 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Social Proof - Stats */}
+      {/* Señales de confianza — hechos verificables del producto, sin cifras de uso */}
       <section className="py-12 lg:py-16">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-foreground">+2.400</p>
-              <p className="text-sm text-muted-foreground">documentos firmados</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-foreground">+850</p>
-              <p className="text-sm text-muted-foreground">autónomos y pymes</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-foreground">98%</p>
-              <p className="text-sm text-muted-foreground">tasa de firma exitosa</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-foreground">&lt;2 min</p>
-              <p className="text-sm text-muted-foreground">tiempo medio de firma</p>
-            </div>
+            {[
+              { Icon: Scale,      title: 'Validez legal',           desc: 'Conforme al reglamento eIDAS en España y la UE' },
+              { Icon: Lock,       title: 'Sello de tiempo',         desc: 'Cada firma se sella con una autoridad certificada' },
+              { Icon: FileText,   title: 'Certificado de evidencias', desc: 'Documento de auditoría descargable de cada firma' },
+              { Icon: Cloud,      title: 'Sin instalaciones',       desc: 'Tu cliente firma desde el navegador, sin registrarse' },
+            ].map(({ Icon, title, desc }) => (
+              <div key={title} className="space-y-1.5 flex flex-col items-center">
+                <Icon className="h-6 w-6 text-primary" />
+                <p className="text-base font-semibold text-foreground">{title}</p>
+                <p className="text-sm text-muted-foreground">{desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -530,12 +526,12 @@ export default function Index() {
                     </div>
                   </li>
                   <li className="flex items-start gap-3">
-                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <Gift className="h-4 w-4 text-primary" />
+                    <div className="h-9 w-9 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <Wallet className="h-4 w-4 text-emerald-700" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">+5 firmas gratis por referido activo</p>
-                      <p className="text-sm text-muted-foreground">Se añaden a tu cuenta en cuanto envían su primer documento</p>
+                      <p className="font-semibold text-foreground">Pago automático cada mes</p>
+                      <p className="text-sm text-muted-foreground">Recibes tus comisiones en tu cuenta bancaria, sin reclamar nada</p>
                     </div>
                   </li>
                   <li className="flex items-start gap-3">
@@ -543,8 +539,8 @@ export default function Index() {
                       <Users className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Tu referido recibe 3 firmas extra de bienvenida</p>
-                      <p className="text-sm text-muted-foreground">Los dos ganáis desde el primer momento</p>
+                      <p className="font-semibold text-foreground">Sin límite de referidos</p>
+                      <p className="text-sm text-muted-foreground">Cuantos más clientes traigas, más ganas — mes tras mes</p>
                     </div>
                   </li>
                 </ul>

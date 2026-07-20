@@ -68,8 +68,18 @@ async function processWebhookEvent(
     return
   }
 
+  // Este worker solo sabe reprocesar checkout.session.completed. Antes marcaba
+  // como 'processed' cualquier otro tipo, lo que DESCARTABA EN SILENCIO eventos
+  // fallidos de facturación y de afiliados (comisiones y reversiones perdidas
+  // sin dejar rastro). Ahora se marcan como 'dead' con el motivo, para que la
+  // pérdida sea visible y revisable en lugar de invisible.
   if (event.type !== 'checkout.session.completed') {
-    await markEventProcessed(supabaseAdmin, eventRow.event_id)
+    await markEventDead(
+      supabaseAdmin,
+      eventRow.event_id,
+      `El worker de reintentos no sabe reprocesar eventos de tipo "${event.type}". Requiere revisión manual.`
+    )
+    console.error(`Evento fallido no reprocesable (${event.type}) marcado como dead: ${eventRow.event_id}`)
     return
   }
 

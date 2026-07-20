@@ -97,6 +97,15 @@ serve(async (req: Request) => {
         case 'invoice.payment_failed':
           await handleInvoicePaymentFailed(supabaseAdmin, event, eventId)
           break
+        case 'charge.refunded':
+          await handleChargeRefund(supabaseAdmin, stripe, event)
+          break
+        case 'charge.dispute.created':
+          await handleChargeDispute(supabaseAdmin, stripe, event)
+          break
+        case 'account.updated':
+          await handleConnectAccountUpdated(supabaseAdmin, event)
+          break
         default:
           // Evento no manejado: lo marcamos procesado igualmente (idempotencia).
           break
@@ -259,12 +268,20 @@ async function handleCheckoutSessionCompleted(
     const amountCents = Number(getNestedObject(session, ['amount_total']) ?? 0)
     triggerN8nBilling(supabaseAdmin, userId, paymentIntentId, amountCents, metadata as Record<string, unknown>)
       .catch((e) => console.error('triggerN8nBilling non-fatal:', e instanceof Error ? e.message : e))
+  }
 
-    // Comisión de afiliado: 20% al referrer si este usuario fue referido (non-fatal)
-    // Usa amount_subtotal (sin IVA) — correcto fiscalmente para comisiones de afiliado en España
+  // Comisión de afiliado SOLO para packs puntuales (mode payment).
+  // Las suscripciones NO generan comisión aquí: la crea invoice.payment_succeeded en
+  // CADA cobro (primer mes + renovaciones + upgrades) → comisión recurrente "de por vida".
+  // Un pack puntual no emite invoice recurrente, así que su comisión sí nace del checkout.
+  if (mode === 'payment') {
+    const amountCents = Number(getNestedObject(session, ['amount_total']) ?? 0)
+    // amount_subtotal = sin IVA (base correcta para la comisión de afiliado en España)
     const subtotalCents = Number(getNestedObject(session, ['amount_subtotal']) ?? amountCents)
+    // refund_ref = payment_intent → así un reembolso del pack encuentra su comisión.
+    const paymentIntent = getNestedString(session, ['payment_intent'])
     if (subtotalCents > 0 && sessionId) {
-      handleAffiliateCommission(supabaseAdmin, userId, subtotalCents, planId || 'pack_puntual', sessionId)
+      handleAffiliateCommission(supabaseAdmin, userId, subtotalCents, planId || 'pack_puntual', sessionId, paymentIntent)
         .catch((e) => console.error('handleAffiliateCommission non-fatal:', e instanceof Error ? e.message : e))
     }
   }
@@ -275,7 +292,8 @@ async function handleAffiliateCommission(
   buyerUserId: string,
   amountCents: number,
   product: string,
-  stripeSession: string
+  stripeSession: string,
+  refundRef: string | null = null
 ) {
   // Buscar si el comprador fue referido por alguien
   const { data: referral } = await supabaseAdmin
@@ -290,8 +308,8 @@ async function handleAffiliateCommission(
   const purchaseEur = amountCents / 100
   const commissionEur = Math.round(purchaseEur * 20) / 100 // 20%, redondeado a céntimos
 
-  // UNIQUE en stripe_session garantiza idempotencia
-  await supabaseAdmin.from('referral_commissions').insert({
+  // UNIQUE en stripe_session garantiza idempotencia (misma factura → una sola comisión).
+  const { error: insertErr } = await supabaseAdmin.from('referral_commissions').insert({
     referrer_id:   referral.referrer_id,
     referred_id:   buyerUserId,
     amount_eur:    commissionEur,
@@ -299,8 +317,190 @@ async function handleAffiliateCommission(
     purchase_eur:  purchaseEur,
     product,
     stripe_session: stripeSession,
+    refund_ref:    refundRef,
+    kind:          'commission',
     status: 'pending',
-  }).throwOnError()
+  })
+  if (insertErr) {
+    // 23505 = clave duplicada → ya procesado, es un reintento del webhook. No es error.
+    if (insertErr.code === '23505') return
+    throw insertErr
+  }
+
+  // "Referido activo" = ha pagado al menos una vez (ya no depende de enviar documentos).
+  await supabaseAdmin
+    .from('referrals')
+    .update({ status: 'rewarded', rewarded_at: new Date().toISOString() })
+    .eq('referred_id', buyerUserId)
+    .eq('status', 'pending')
+}
+
+// ── Reembolso / disputa: ajuste automático de comisión ─────────────────────
+// Reversa PROPORCIONAL de la comisión asociada a un cobro devuelto o disputado.
+// Se crea SIEMPRE un ajuste negativo (no se cancela la comisión), porque así el
+// mismo mecanismo cubre los dos escenarios sin ramificar:
+//   • Devolución antes de pagarle  → el ajuste resta del saldo del mismo mes.
+//       Ej: +3,80 comisión − 2,00 ajuste = se le pagan 1,80.
+//   • Devolución después de pagarle → el ajuste queda pendiente y se arrastra
+//       a los meses siguientes hasta compensarse. Nunca se le reclama dinero.
+// Proporcionalidad (decisión de negocio): si se devuelve parte del cobro, se
+// revierte solo esa parte de la comisión. Ej: pagó 19€ (comisión 3,80€), se
+// devuelven 10€ → se restan 2,00€ (20% de 10€), no los 3,80€ completos.
+async function reverseAffiliateCommission(
+  supabaseAdmin: SupabaseClient,
+  refundRef: string,
+  reason: 'refund' | 'dispute',
+  eventUniqueId: string,      // id del reembolso/disputa → soporta varios parciales
+  refundedCents: number,      // importe devuelto en ESTE reembolso/disputa
+  originalChargeCents: number // importe original del cobro
+) {
+  if (!refundRef || !eventUniqueId) return
+  if (!(originalChargeCents > 0) || !(refundedCents > 0)) return
+
+  // Comisiones originales de este cobro (no los ajustes ya creados).
+  const { data: commissions } = await supabaseAdmin
+    .from('referral_commissions')
+    .select('id, referrer_id, referred_id, amount_eur, product, status')
+    .eq('refund_ref', refundRef)
+    .eq('kind', 'commission')
+
+  if (!commissions || commissions.length === 0) return
+
+  // Fracción devuelta del cobro (acotada a 1 por seguridad).
+  const ratio = Math.min(1, refundedCents / originalChargeCents)
+
+  for (const c of commissions) {
+    if (c.status === 'cancelled') continue
+
+    const originalEur = Math.abs(Number(c.amount_eur))
+    let adjustmentEur = Math.round(originalEur * ratio * 100) / 100
+    if (adjustmentEur <= 0) continue
+
+    // TOPE DE SEGURIDAD: nunca revertir más comisión de la que se generó.
+    // Con varios reembolsos parciales los redondeos podrían sumar de más y
+    // acabaríamos descontando al afiliado más de lo que ganó.
+    const { data: prevAdjustments } = await supabaseAdmin
+      .from('referral_commissions')
+      .select('amount_eur')
+      .eq('refund_ref', refundRef)
+      .eq('kind', 'adjustment')
+
+    const alreadyReversed = (prevAdjustments ?? [])
+      .reduce((sum, a) => sum + Math.abs(Number(a.amount_eur)), 0)
+    const remaining = Math.round((originalEur - alreadyReversed) * 100) / 100
+    if (remaining <= 0) continue
+    if (adjustmentEur > remaining) adjustmentEur = remaining
+
+    // Clave única por reembolso/disputa concreto (no por cobro): permite varios
+    // reembolsos parciales sobre el mismo cargo sin que el segundo se ignore.
+    const { error: adjErr } = await supabaseAdmin.from('referral_commissions').insert({
+      referrer_id:    c.referrer_id,
+      referred_id:    c.referred_id,
+      amount_eur:     -adjustmentEur,
+      percentage:     20,
+      purchase_eur:   Math.round((refundedCents / 100) * 100) / 100,
+      product:        `ajuste_${reason}:${c.product}`,
+      stripe_session: `${reason}:${eventUniqueId}:${c.id}`,
+      refund_ref:     refundRef,
+      kind:           'adjustment',
+      status:         'pending',
+    })
+    if (adjErr && adjErr.code !== '23505') throw adjErr
+  }
+}
+
+async function handleChargeRefund(
+  supabaseAdmin: SupabaseClient,
+  stripe: Stripe,
+  event: Record<string, unknown>
+) {
+  // Del payload solo usamos el id del cargo, que es estable en todas las
+  // versiones de API. TODO lo demás lo pedimos por API: así la respuesta llega
+  // en la versión fijada por el SDK (2024-04-10) y no nos afecta que la cuenta
+  // esté en una versión donde los campos de factura/pago se han reorganizado.
+  const chargeId = getNestedString(getNestedObject(event, ['data', 'object']), ['id'])
+  if (!chargeId) return
+
+  let ref: string | null = null
+  let chargeCents = 0
+  try {
+    const charge = await stripe.charges.retrieve(chargeId)
+    ref = (charge.invoice as string | null) ?? (charge.payment_intent as string | null) ?? null
+    chargeCents = Number(charge.amount ?? 0)
+  } catch (e) {
+    // Si no podemos resolverlo, lanzamos: el evento queda 'failed' y es visible,
+    // en vez de perder la reversión de la comisión en silencio.
+    throw new Error(`charge.refunded: no se pudo recuperar el charge ${chargeId}: ${e instanceof Error ? e.message : e}`)
+  }
+  if (!ref) return
+
+  // Listamos los reembolsos por API en vez de leer charge.refunds.data del
+  // evento (que viene limitado a 10). Así soportamos cualquier número de
+  // reembolsos parciales sobre el mismo cobro.
+  const refunds = await stripe.refunds.list({ charge: chargeId, limit: 100 })
+
+  for (const r of refunds.data) {
+    const refundCents = Number(r.amount ?? 0)
+    if (!r.id || refundCents <= 0) continue
+    // Los ya procesados chocan con el UNIQUE y se ignoran: solo se crean los nuevos.
+    await reverseAffiliateCommission(supabaseAdmin, ref, 'refund', r.id, refundCents, chargeCents)
+  }
+}
+
+async function handleChargeDispute(
+  supabaseAdmin: SupabaseClient,
+  stripe: Stripe,
+  event: Record<string, unknown>
+) {
+  const dispute = getNestedObject(event, ['data', 'object'])
+  const chargeId = getNestedString(dispute, ['charge'])
+  const disputeId = getNestedString(dispute, ['id'])
+  const disputedCents = Number(getNestedObject(dispute, ['amount']) ?? 0)
+  if (!chargeId || !disputeId) return
+
+  // El objeto disputa solo trae el charge id; recuperamos el charge para saber
+  // si vino de una factura (suscripción) o de un payment_intent (pack), y su importe.
+  let ref: string | null = null
+  let chargeCents = 0
+  try {
+    const charge = await stripe.charges.retrieve(chargeId)
+    ref = (charge.invoice as string | null) ?? (charge.payment_intent as string | null) ?? null
+    chargeCents = Number(charge.amount ?? 0)
+  } catch (e) {
+    console.error('handleChargeDispute: no se pudo recuperar el charge:', e instanceof Error ? e.message : e)
+    return
+  }
+  if (!ref) return
+
+  // Una disputa se trata igual que una devolución, y también proporcionalmente.
+  await reverseAffiliateCommission(supabaseAdmin, ref, 'dispute', disputeId, disputedCents, chargeCents)
+}
+
+// ── account.updated (Stripe Connect) ───────────────────────────────────────
+// Refleja el estado del alta del afiliado. Solo cuando 'payouts_enabled' es
+// true se le pueden transferir comisiones; hasta entonces el motor mensual
+// lo salta y su saldo se acumula.
+async function handleConnectAccountUpdated(
+  supabaseAdmin: SupabaseClient,
+  event: Record<string, unknown>
+) {
+  const account = getNestedObject(event, ['data', 'object'])
+  const accountId = getNestedString(account, ['id'])
+  if (!accountId) return
+
+  const payoutsEnabled = getNestedObject(account, ['payouts_enabled']) === true
+  const detailsSubmitted = getNestedObject(account, ['details_submitted']) === true
+
+  const status = payoutsEnabled
+    ? 'active'
+    : detailsSubmitted
+    ? 'restricted' // datos enviados pero Stripe aún no habilita los pagos
+    : 'pending'    // onboarding a medias
+
+  await supabaseAdmin
+    .from('users')
+    .update({ stripe_connect_status: status })
+    .eq('stripe_connect_account_id', accountId)
 }
 
 async function triggerN8nBilling(
@@ -436,8 +636,52 @@ async function handleInvoicePaymentSucceeded(
   const invoice = getNestedObject(event, ['data', 'object'])
   const customerId = getNestedString(invoice, ['customer'])
   const billingReason = getNestedString(invoice, ['billing_reason'])
-  const user = customerId ? await findUserByCustomer(supabaseAdmin, customerId) : null
+  let user = customerId ? await findUserByCustomer(supabaseAdmin, customerId) : null
+
+  // Stripe NO garantiza el orden de los eventos: esta factura puede llegar
+  // ANTES de checkout.session.completed, que es quien guarda stripe_customer_id.
+  // Sin este fallback se perdería la comisión del primer mes de forma definitiva
+  // (el webhook responde 200 siempre, así que Stripe no reintenta).
+  // La suscripción lleva metadata.user_id puesta por create-plan-checkout.
   if (!user) {
+    // OJO: el payload del webhook llega en la versión de API de la CUENTA
+    // (dahlia 2026), no en la que fija el SDK. Desde Basil (2025-03-31)
+    // `invoice.subscription` se movió a parent.subscription_details.subscription.
+    // Leemos las dos formas para ser inmunes a la versión del endpoint.
+    const subscriptionId =
+      getNestedString(invoice, ['subscription']) ||
+      getNestedString(invoice, ['parent', 'subscription_details', 'subscription'])
+    if (subscriptionId) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(subscriptionId)
+        const metaUserId = (sub.metadata as Record<string, string> | undefined)?.user_id
+        if (metaUserId) {
+          const { data } = await supabaseAdmin
+            .from('users')
+            .select('id, plan_id, stripe_subscription_id, stripe_customer_id')
+            .eq('id', metaUserId)
+            .maybeSingle()
+          user = data as typeof user
+          // Backfill para que las siguientes facturas resuelvan por customer.
+          if (user && customerId && !user.stripe_customer_id) {
+            await supabaseAdmin.from('users')
+              .update({ stripe_customer_id: customerId }).eq('id', user.id)
+          }
+        }
+      } catch (e) {
+        console.error('invoice fallback via subscription metadata failed:', e instanceof Error ? e.message : e)
+      }
+    }
+  }
+
+  if (!user) {
+    const paidCents = Number(getNestedObject(invoice, ['amount_paid']) ?? 0)
+    if (paidCents > 0) {
+      // Hay un cobro real: si lo dejáramos pasar perderíamos silenciosamente la
+      // comisión del afiliado. Lanzamos para que quede registrado como fallido
+      // y sea visible, en vez de desaparecer.
+      throw new Error(`invoice.payment_succeeded: no se pudo resolver el usuario del customer ${customerId} (cobro de ${paidCents} céntimos)`)
+    }
     console.warn(`invoice.payment_succeeded: no user for customer ${customerId}`)
     return
   }
@@ -454,6 +698,25 @@ async function handleInvoicePaymentSucceeded(
 
   // Facturar el overage pendiente del ciclo cerrado (solo Profesional lo genera).
   await billPendingOverage(supabaseAdmin, stripe, user.id, customerId)
+
+  // Comisión de afiliado RECURRENTE: 20% de CADA factura pagada por el referido
+  // (primer mes, renovaciones mensuales y upgrades con prorrateo). Esto es lo que
+  // hace la comisión "de por vida" — el afiliado cobra mientras el cliente pague.
+  // Idempotente por invoice.id; non-fatal para no romper el reset de cuota.
+  const isSubscriptionInvoice =
+    billingReason === 'subscription_create' ||
+    billingReason === 'subscription_cycle' ||
+    billingReason === 'subscription_update'
+  const invoiceId = getNestedString(invoice, ['id'])
+  // subtotal = base sin IVA (incluye plan + overage facturado en este ciclo)
+  const subtotalCents = Number(getNestedObject(invoice, ['subtotal']) ?? 0)
+  const amountPaidCents = Number(getNestedObject(invoice, ['amount_paid']) ?? 0)
+  if (isSubscriptionInvoice && invoiceId && subtotalCents > 0 && amountPaidCents > 0) {
+    // refund_ref = invoice.id → un reembolso/disputa de esta factura encuentra su comisión.
+    await handleAffiliateCommission(
+      supabaseAdmin, user.id, subtotalCents, user.plan_id ?? 'suscripcion', invoiceId, invoiceId
+    ).catch((e) => console.error('handleAffiliateCommission (invoice) non-fatal:', e instanceof Error ? e.message : e))
+  }
 }
 
 // ── invoice.payment_failed ─────────────────────────────────────────────

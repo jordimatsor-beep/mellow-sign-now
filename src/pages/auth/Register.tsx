@@ -144,7 +144,7 @@ export default function Register() {
             {referrerName && (
                 <div className="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
                     <Gift className="h-4 w-4 shrink-0 text-amber-600" />
-                    <span><strong>{referrerName}</strong> te ha invitado. Al enviar tu primer documento, ambos recibiréis créditos extra.</span>
+                    <span><strong>{referrerName}</strong> te ha invitado a FirmaClara.</span>
                 </div>
             )}
             <div className="mb-5 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-primary">

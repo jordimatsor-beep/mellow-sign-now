@@ -267,7 +267,7 @@ export default function Dashboard() {
                     {[
                       { icon: Upload, color: 'text-blue-600 bg-blue-50', label: 'Sube un PDF' },
                       { icon: Plus,   color: 'text-green-600 bg-green-50', label: 'Introduce el email de tu cliente' },
-                      { icon: Check,  color: 'text-purple-600 bg-purple-50', label: 'Tu cliente firma en 1 minuto desde cualquier dispositivo' },
+                      { icon: Check,  color: 'text-purple-600 bg-purple-50', label: 'Tu cliente firma desde cualquier dispositivo, sin registrarse' },
                     ].map(({ icon: Icon, color, label }, i) => (
                       <div key={i} className="flex items-center gap-3">
                         <div className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${color}`}>

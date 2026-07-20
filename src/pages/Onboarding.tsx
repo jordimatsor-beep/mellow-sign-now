@@ -71,7 +71,7 @@ export default function Onboarding() {
 
             <h1 className="text-2xl font-bold">Bienvenido a FirmaClara</h1>
             <p className="mt-3 max-w-sm text-muted-foreground">
-              Envía documentos y que tus clientes los firmen en menos de un minuto.
+              Envía documentos y que tus clientes los firmen sin complicaciones.
               Con prueba técnica verificable.
             </p>
 

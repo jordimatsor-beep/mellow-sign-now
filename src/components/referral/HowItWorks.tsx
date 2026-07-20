@@ -9,13 +9,13 @@ const STEPS = [
   },
   {
     Icon: UserCheck,
-    title: 'Se registran y firman',
-    description: 'Cuando envían su primer contrato, el sistema lo confirma automáticamente',
+    title: 'Contratan un plan',
+    description: 'En cuanto tu referido empieza a pagar, el sistema lo detecta automáticamente',
   },
   {
     Icon: Gift,
-    title: 'Ambos ganáis',
-    description: 'Tú recibes 5 créditos. Ellos, 3 de bienvenida',
+    title: 'Cobras el 20%, de por vida',
+    description: 'De cada pago suyo, mientras siga siendo cliente. Se te ingresa cada mes',
   },
 ]
 

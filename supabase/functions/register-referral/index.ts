@@ -99,6 +99,21 @@ serve(async (req) => {
       ref_code = sessionRow.ref_code
     }
 
+    // Defensa en profundidad: este endpoint es público porque en el registro con
+    // confirmación por email todavía no hay sesión. Pero SI el cliente envía un
+    // JWT válido, exigimos que corresponda a new_user_id — así nadie con una
+    // sesión propia puede atribuirse el registro de otra persona.
+    const authHeader = req.headers.get('Authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+      const jwt = authHeader.slice(7)
+      const { data: { user: caller } } = await adminSupabase.auth.getUser(jwt)
+      if (caller && caller.id !== new_user_id) {
+        return new Response(JSON.stringify({ error: 'user_mismatch' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+    }
+
     // C2-FIX: Verificar que new_user_id existe en auth.users y fue creado < 15 minutos
     const { data: { user: newUser }, error: userErr } = await adminSupabase.auth.admin.getUserById(new_user_id)
     if (userErr || !newUser) {
@@ -182,8 +197,9 @@ serve(async (req) => {
         referrer_id: referrerId,
         referred_id: new_user_id,
         status: 'pending',
-        credits_to_referrer: 5,
-        credits_to_referred: 3,
+        // Sin regalo de firmas: la única recompensa es la comisión del 20%.
+        credits_to_referrer: 0,
+        credits_to_referred: 0,
       })
 
     if (insertErr) {

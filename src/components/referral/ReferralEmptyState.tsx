@@ -23,7 +23,7 @@ export function ReferralEmptyState({ onCopy }: ReferralEmptyStateProps) {
       <p className="font-medium">Todavía no has invitado a nadie</p>
       <p className="max-w-xs text-sm text-muted-foreground">
         Comparte tu enlace con clientes, proveedores o colegas autónomos.
-        Cuando envíen su primer contrato, los dos ganáis créditos.
+        Cuando contraten un plan, cobras el 20% de cada pago suyo.
       </p>
       <Button
         onClick={handleCopy}

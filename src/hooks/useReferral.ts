@@ -27,18 +27,19 @@ export interface CommissionBalance {
   commissions_total: number
 }
 
+export type ConnectStatus = 'none' | 'pending' | 'active' | 'restricted'
+
 export interface ReferralData {
   code: string
   url: string
   stats: ReferralStats
   referrals: ReferralEntry[]
   commissions: CommissionBalance
+  connectStatus: ConnectStatus
   isLoading: boolean
   error: string | null
   refetch: () => void
 }
-
-const MILESTONES = [5, 10, 25, 50]
 
 const DEFAULT_COMMISSIONS: CommissionBalance = {
   balance_pending: 0,
@@ -61,9 +62,9 @@ export function useReferral(): ReferralData {
   })
   const [referrals, setReferrals] = useState<ReferralEntry[]>([])
   const [commissions, setCommissions] = useState<CommissionBalance>(DEFAULT_COMMISSIONS)
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus>('none')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const triggeredMilestones = useRef<Set<number>>(new Set())
   // I1-FIX: ref para leer referrals actuales en el callback de Realtime sin stale closure
   const referralsRef = useRef<ReferralEntry[]>([])
 
@@ -82,6 +83,14 @@ export function useReferral(): ReferralData {
       setStats(data.stats)
       setReferrals(data.referrals)
       setCommissions(data.commissions ?? DEFAULT_COMMISSIONS)
+
+      // Estado del alta en Stripe Connect (necesaria para cobrar automáticamente)
+      const { data: profile } = await supabase
+        .from('users')
+        .select('stripe_connect_status')
+        .eq('id', user.id)
+        .maybeSingle()
+      setConnectStatus((profile?.stripe_connect_status as ConnectStatus) ?? 'none')
     } catch {
       setError('No se pudo cargar la información de referidos.')
     } finally {
@@ -123,41 +132,26 @@ export function useReferral(): ReferralData {
                   : r
               )
             )
-            // I2-FIX: usar credits_to_referrer del payload en vez de hardcodear 5
-            const creditsGained = updated.credits_to_referrer ?? 5
-            setStats((prev) => {
-              const newEarned = prev.credits_earned + creditsGained
-              for (const m of MILESTONES) {
-                if (newEarned >= m && !triggeredMilestones.current.has(m)) {
-                  triggeredMilestones.current.add(m)
-                  const msgs: Record<number, string> = {
-                    5:  '¡Primer hito! Ya tienes 5 créditos ganados',
-                    10: '¡10 créditos ganados con referidos! Sigue así',
-                    25: '¡Increíble! 25 créditos. Eres embajador de FirmaClara',
-                    50: '¡Máximo alcanzado! 50 créditos ganados. Muchísimas gracias',
-                  }
-                  setTimeout(() => toast.success(msgs[m] ?? ''), 600)
-                }
-              }
-              return {
-                ...prev,
-                total_pending: Math.max(0, prev.total_pending - 1),
-                total_active: prev.total_active + 1,
-                credits_earned: newEarned,
-                credits_remaining: Math.max(0, prev.credits_remaining - creditsGained),
-              }
-            })
+            // "Activo" = el referido ha pagado. Ya no hay regalo de firmas:
+            // la recompensa es la comisión del 20% de cada uno de sus pagos.
+            setStats((prev) => ({
+              ...prev,
+              total_pending: Math.max(0, prev.total_pending - 1),
+              total_active: prev.total_active + 1,
+            }))
             // I1-FIX: leer nombre del referido desde la ref, no del closure
             const refEntry = referralsRef.current.find((r) => r.id === updated.id)
             const name = refEntry?.name || 'Alguien'
-            toast.success(`¡${name} acaba de enviar su primer contrato! +${creditsGained} créditos para ti`)
+            toast.success(`¡${name} ya es cliente de pago! Empiezas a cobrar tu 20% de cada pago suyo`)
+            // Refrescar saldo para que aparezca la comisión recién generada
+            fetchData()
           }
         }
       )
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [user]) // Sin `referrals` en deps — se lee desde referralsRef
+  }, [user, fetchData]) // Sin `referrals` en deps — se lee desde referralsRef
 
-  return { code, url, stats, referrals, commissions, isLoading, error, refetch: fetchData }
+  return { code, url, stats, referrals, commissions, connectStatus, isLoading, error, refetch: fetchData }
 }

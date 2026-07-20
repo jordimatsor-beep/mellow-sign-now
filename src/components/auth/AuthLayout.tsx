@@ -91,7 +91,7 @@ export function AuthLayout({ children, title, subtitle, mode = 'login' }: AuthLa
                                     <span className="text-white/80">2 Envíos Gratis</span>
                                 </h3>
                                 <p className="mt-4 text-lg text-white/80 font-light leading-relaxed">
-                                    Únete a miles de profesionales que ya gestionan documentos digitalmente. Sin tarjeta de crédito.
+                                    Gestiona tus documentos digitalmente, con validez legal. Sin tarjeta de crédito.
                                 </p>
                             </div>
 
