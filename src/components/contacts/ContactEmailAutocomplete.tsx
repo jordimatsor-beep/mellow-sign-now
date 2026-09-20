@@ -8,6 +8,7 @@ export interface ContactSuggestion {
   email: string;
   phone?: string | null;
   nif?: string | null;
+  nif_type?: string | null;
   address?: string | null;
 }
 
@@ -40,7 +41,7 @@ export function ContactEmailAutocomplete({
     (async () => {
       const { data } = await supabase
         .from("contacts")
-        .select("id,name,email,phone,nif,address")
+        .select("*")
         .order("name");
       if (active && data) setContacts(data as ContactSuggestion[]);
     })();

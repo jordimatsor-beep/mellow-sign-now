@@ -22,7 +22,14 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
 import { sanitizeSupabaseError } from "@/lib/supabaseErrorHandler";
-import { isValidTaxId } from "@/lib/validators";
+import {
+  ID_DOCUMENT_TYPES,
+  DEFAULT_ID_DOCUMENT,
+  checkIdDocument,
+  formatIdDocument,
+  getIdDocumentType,
+} from "@/lib/idDocuments";
+import { writeWithOptionalColumns } from "@/integrations/supabase/optionalColumns";
 import { sanitizeFileName } from "@/lib/utils";
 import { ACCEPTED_OFFICE_FORMATS, OFFICE_MIME_TYPES, getOriginalFormat } from "@/lib/documentFormats";
 
@@ -57,6 +64,7 @@ export default function NewDocument() {
   const [signerName, setSignerName] = useState("");
   const [signerEmail, setSignerEmail] = useState("");
   const [signerNif, setSignerNif] = useState("");
+  const [signerNifType, setSignerNifType] = useState(DEFAULT_ID_DOCUMENT);
   const [signerPhone, setSignerPhone] = useState("");
   const [signerPhonePrefix, setSignerPhonePrefix] = useState("+34");
   const [signerAddress, setSignerAddress] = useState("");
@@ -110,15 +118,32 @@ export default function NewDocument() {
 
   // Fields are optional for "presupuesto" type
   const isPresupuesto = docType === "presupuesto";
-  // P1-C: si el firmante introduce un CIF/NIF, debe ser válido (checksum MOD-23).
+  // P1-C: el NIF/NIE/CIF español debe pasar el checksum MOD-23 y bloquea el envío.
+  // Un documento extranjero (CUIT, Cédula, Pasaporte…) solo muestra un aviso:
+  // nunca puede impedir enviar el contrato a un firmante internacional.
   // Vacío no es error aquí (la obligatoriedad la cubre la condición del botón).
-  const nifInvalid = signerNif.trim() !== "" && !isValidTaxId(signerNif);
+  const nifCheck = checkIdDocument(signerNifType, signerNif);
+  const nifInvalid = nifCheck.blocking;
+  const nifWarning = !nifCheck.valid && !nifCheck.blocking ? nifCheck.message : null;
+  const signerIdType = getIdDocumentType(signerNifType);
 
-  const handleContactSelect = (contact: { name: string | null; email: string; phone?: string | null; nif?: string | null; address?: string | null }) => {
+  // The signer document type column may not be in the database yet (migrations
+  // here are applied by hand). The write still goes through without it.
+  const warnMissingIdTypeColumn = () => {
+    if (import.meta.env.DEV) {
+      console.warn(
+        "signer_tax_id_type no existe todavia en la BD: guardado sin el tipo de documento. " +
+        "Aplica supabase/migrations/20260921_signer_id_document_type.sql"
+      );
+    }
+  };
+
+  const handleContactSelect = (contact: { name: string | null; email: string; phone?: string | null; nif?: string | null; nif_type?: string | null; address?: string | null }) => {
     setSignerName(contact.name || '');
     setSignerEmail(contact.email);
     if (contact.phone) setSignerPhone(contact.phone);
     if (contact.nif) setSignerNif(contact.nif);
+    if (contact.nif_type) setSignerNifType(contact.nif_type);
     if (contact.address) setSignerAddress(contact.address);
     toast.success("Datos importados de la agenda");
   };
@@ -144,14 +169,19 @@ export default function NewDocument() {
           onClick: async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
-            const { error } = await supabase.from("contacts").insert({
-              user_id: user.id,
-              name: signerName || email.split("@")[0],
-              email,
-              phone: signerPhone || null,
-              nif: signerNif || null,
-              address: signerAddress || null,
-            });
+            const { error } = await writeWithOptionalColumns(
+              {
+                user_id: user.id,
+                name: signerName || email.split("@")[0],
+                email,
+                phone: signerPhone || null,
+                nif: signerNif || null,
+                nif_type: signerNif ? signerNifType : null,
+                address: signerAddress || null,
+              },
+              ["nif_type"],
+              (payload) => supabase.from("contacts").insert(payload as never)
+            );
             if (error) toast.error("No se pudo guardar el contacto");
             else toast.success("Contacto guardado en tu agenda");
           },
@@ -191,6 +221,7 @@ export default function NewDocument() {
           setSignerName(draft.signer_name || '');
           setSignerEmail(draft.signer_email || '');
           setSignerNif(draft.signer_tax_id || '');
+          setSignerNifType(draft.signer_tax_id_type || DEFAULT_ID_DOCUMENT);
           setSignerAddress(draft.signer_address || '');
           setSignerPhone(draft.signer_phone || '');
           setCustomMessage(draft.custom_message || '');
@@ -257,6 +288,7 @@ export default function NewDocument() {
         setSignerName(tpl.signer_name || '');
         setSignerEmail(tpl.signer_email || '');
         setSignerNif(tpl.signer_tax_id || '');
+        setSignerNifType(tpl.signer_tax_id_type || DEFAULT_ID_DOCUMENT);
         setSignerAddress(tpl.signer_address || '');
         setSignerPhone(tpl.signer_phone || '');
         setCustomMessage(tpl.custom_message || '');
@@ -465,9 +497,8 @@ export default function NewDocument() {
 
       if (draftId) {
         // Update existing draft
-        const { data: updatedDoc, error: updateError } = await supabase
-          .from('documents')
-          .update({
+        const { data: updatedDoc, error: updateError } = await writeWithOptionalColumns(
+          {
             title,
             file_url: fileUrl, // Update file URL (new version)
             status: 'draft', // Keep as draft initially (will optionally switch to sent below)
@@ -485,19 +516,21 @@ export default function NewDocument() {
             signature_page: signaturePage,
             signature_x: signatureX,
             signature_y: signatureY,
-            original_format: convertedFrom
-          })
-          .eq('id', draftId)
-          .select()
-          .single();
+            original_format: convertedFrom,
+            signer_tax_id_type: signerNif ? signerNifType : null,
+          },
+          ['signer_tax_id_type'],
+          (payload) =>
+            supabase.from('documents').update(payload as never).eq('id', draftId).select().single(),
+          warnMissingIdTypeColumn
+        );
 
         doc = updatedDoc;
         error = updateError;
       } else {
         // Create new
-        const { data: newDoc, error: insertError } = await supabase
-          .from('documents')
-          .insert({
+        const { data: newDoc, error: insertError } = await writeWithOptionalColumns(
+          {
             user_id: user.id,
             title,
             file_url: fileUrl,
@@ -515,10 +548,13 @@ export default function NewDocument() {
             signature_page: signaturePage,
             signature_x: signatureX,
             signature_y: signatureY,
-            original_format: convertedFrom
-          })
-          .select()
-          .single();
+            original_format: convertedFrom,
+            signer_tax_id_type: signerNif ? signerNifType : null,
+          },
+          ['signer_tax_id_type'],
+          (payload) => supabase.from('documents').insert(payload as never).select().single(),
+          warnMissingIdTypeColumn
+        );
 
         doc = newDoc;
         error = insertError;
@@ -846,22 +882,38 @@ export default function NewDocument() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="nif">
-                    CIF / NIF {!isPresupuesto && "*"}
+                    Identificación {!isPresupuesto && "*"}
                     {isPresupuesto && <span className="text-muted-foreground text-xs ml-1">(opcional)</span>}
                   </Label>
-                  <Input
-                    id="nif"
-                    placeholder="Ej: 12345678Z"
-                    value={signerNif}
-                    aria-invalid={nifInvalid}
-                    onChange={(e) => setSignerNif(e.target.value)}
-                    data-clarity-mask="True"
-                  />
-                  {nifInvalid && (
-                    <p className="text-xs text-destructive">
-                      Revisa el CIF/NIF: la letra de control no es válida.
-                    </p>
-                  )}
+                  {/* Document type + number. Signers outside Spain (CUIT, Cédula,
+                      Pasaporte…) must be able to get through this field without
+                      inventing a Spanish NIF. */}
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Select value={signerNifType} onValueChange={setSignerNifType}>
+                      <SelectTrigger className="sm:w-[44%]" aria-label="Tipo de documento">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ID_DOCUMENT_TYPES.map((type) => (
+                          <SelectItem key={type.code} value={type.code}>
+                            <span>{type.label}</span>
+                            <span className="text-muted-foreground ml-2 text-xs">{type.country}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      id="nif"
+                      className="flex-1"
+                      placeholder={`Ej: ${signerIdType.placeholder}`}
+                      value={signerNif}
+                      aria-invalid={nifInvalid}
+                      onChange={(e) => setSignerNif(e.target.value)}
+                      data-clarity-mask="True"
+                    />
+                  </div>
+                  {nifInvalid && <p className="text-xs text-destructive">{nifCheck.message}</p>}
+                  {nifWarning && <p className="text-xs text-amber-600">{nifWarning}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -1147,7 +1199,9 @@ export default function NewDocument() {
                 <div className="text-right">
                   <p>{signerName}</p>
                   <p className="text-xs text-muted-foreground">{signerEmail}</p>
-                  {signerNif && <p className="text-xs text-muted-foreground">NIF: {signerNif}</p>}
+                  {signerNif && (
+                    <p className="text-xs text-muted-foreground">{formatIdDocument(signerNifType, signerNif)}</p>
+                  )}
                   {signerPhone && <p className="text-xs text-muted-foreground">{signerPhone}</p>}
                 </div>
               </div>

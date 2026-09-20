@@ -7,6 +7,9 @@ import { withTimeout } from "@/lib/withTimeout";
 import { useProfile } from "@/context/ProfileContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { ID_DOCUMENT_TYPES, DEFAULT_ID_DOCUMENT, getIdDocumentType, formatIdDocument } from "@/lib/idDocuments";
+import { writeWithOptionalColumns } from "@/integrations/supabase/optionalColumns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +50,7 @@ interface ContactType {
     email: string;
     phone?: string;
     nif?: string;
+    nif_type?: string | null;
     address?: string;
     created_at: string;
 }
@@ -64,6 +68,7 @@ export default function Contacts() {
         email: "",
         phone: "",
         nif: "",
+        nif_type: DEFAULT_ID_DOCUMENT,
         address: ""
     });
 
@@ -114,19 +119,28 @@ export default function Contacts() {
                 email: string;
                 phone: string | null;
                 nif: string | null;
+                nif_type: string | null;
                 address: string | null;
             }
         }) => {
             if (data.isUpdate && data.contactId) {
                 const { error } = await withTimeout(
-                    supabase.from('contacts').update(data.payload).eq('id', data.contactId),
-                    3000, "Contact update"
+                    writeWithOptionalColumns(
+                        data.payload,
+                        ['nif_type'],
+                        (payload) => supabase.from('contacts').update(payload as never).eq('id', data.contactId!)
+                    ),
+                    5000, "Contact update"
                 );
                 if (error) throw error;
             } else {
                 const { error } = await withTimeout(
-                    supabase.from('contacts').insert(data.payload),
-                    3000, "Contact create"
+                    writeWithOptionalColumns(
+                        data.payload,
+                        ['nif_type'],
+                        (payload) => supabase.from('contacts').insert(payload as never)
+                    ),
+                    5000, "Contact create"
                 );
                 if (error) throw error;
             }
@@ -162,6 +176,7 @@ export default function Contacts() {
             email: formData.email,
             phone: formData.phone || null,
             nif: formData.nif || null,
+            nif_type: formData.nif ? formData.nif_type : null,
             address: formData.address || null
         };
 
@@ -183,6 +198,7 @@ export default function Contacts() {
             email: contact.email,
             phone: contact.phone || "",
             nif: contact.nif || "",
+            nif_type: contact.nif_type || DEFAULT_ID_DOCUMENT,
             address: contact.address || ""
         });
         setIsDialogOpen(true);
@@ -190,7 +206,7 @@ export default function Contacts() {
 
     const resetForm = () => {
         setEditingContact(null);
-        setFormData({ name: "", email: "", phone: "", nif: "", address: "" });
+        setFormData({ name: "", email: "", phone: "", nif: "", nif_type: DEFAULT_ID_DOCUMENT, address: "" });
     };
 
     return (
@@ -272,7 +288,7 @@ export default function Contacts() {
                                                 {contact.phone || "-"}
                                             </TableCell>
                                             <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
-                                                {contact.nif || "-"}
+                                                {contact.nif ? formatIdDocument(contact.nif_type, contact.nif) : "-"}
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">
@@ -332,8 +348,34 @@ export default function Contacts() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="nif">NIF/CIF</Label>
-                                    <Input id="nif" placeholder="DNI o CIF" value={formData.nif} onChange={e => setFormData({ ...formData, nif: e.target.value })} />
+                                    <Label htmlFor="nif">Identificación</Label>
+                                    {/* Type + number, so international contacts can be stored as
+                                        what they actually are (CUIT, Cédula, Pasaporte…). */}
+                                    <div className="flex flex-col gap-2 sm:flex-row">
+                                        <Select
+                                            value={formData.nif_type}
+                                            onValueChange={value => setFormData({ ...formData, nif_type: value })}
+                                        >
+                                            <SelectTrigger className="sm:w-[45%]" aria-label="Tipo de documento">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {ID_DOCUMENT_TYPES.map(type => (
+                                                    <SelectItem key={type.code} value={type.code}>
+                                                        <span>{type.label}</span>
+                                                        <span className="text-muted-foreground ml-2 text-xs">{type.country}</span>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Input
+                                            id="nif"
+                                            className="flex-1"
+                                            placeholder={getIdDocumentType(formData.nif_type).placeholder}
+                                            value={formData.nif}
+                                            onChange={e => setFormData({ ...formData, nif: e.target.value })}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 

@@ -17,6 +17,7 @@ interface Contact {
     email: string;
     phone?: string | null;
     nif?: string | null;
+    nif_type?: string | null;
     address?: string | null;
 }
 

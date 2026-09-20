@@ -274,6 +274,7 @@ export type Database = {
           id: string
           name: string | null
           nif: string | null
+          nif_type: string | null
           phone: string | null
           user_id: string
         }
@@ -284,6 +285,7 @@ export type Database = {
           id?: string
           name?: string | null
           nif?: string | null
+          nif_type?: string | null
           phone?: string | null
           user_id: string
         }
@@ -294,6 +296,7 @@ export type Database = {
           id?: string
           name?: string | null
           nif?: string | null
+          nif_type?: string | null
           phone?: string | null
           user_id?: string
         }
@@ -429,6 +432,7 @@ export type Database = {
           signer_name: string | null
           signer_phone: string | null
           signer_tax_id: string | null
+          signer_tax_id_type: string | null
           status: string | null
           title: string
           updated_at: string | null
@@ -466,6 +470,7 @@ export type Database = {
           signer_name?: string | null
           signer_phone?: string | null
           signer_tax_id?: string | null
+          signer_tax_id_type?: string | null
           status?: string | null
           title: string
           updated_at?: string | null
@@ -503,6 +508,7 @@ export type Database = {
           signer_name?: string | null
           signer_phone?: string | null
           signer_tax_id?: string | null
+          signer_tax_id_type?: string | null
           status?: string | null
           title?: string
           updated_at?: string | null

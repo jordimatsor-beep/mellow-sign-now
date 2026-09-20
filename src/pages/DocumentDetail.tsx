@@ -509,6 +509,7 @@ export default function DocumentDetail() {
                 signer_email: doc.signer_email,
                 signer_phone: doc.signer_phone,
                 signer_tax_id: doc.signer_tax_id,
+                signer_tax_id_type: (doc as { signer_tax_id_type?: string | null }).signer_tax_id_type ?? null,
                 signer_address: doc.signer_address,
                 custom_message: doc.custom_message,
                 signature_type: doc.signature_type,
