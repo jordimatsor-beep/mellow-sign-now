@@ -65,9 +65,12 @@ export function PdfViewer({ url, data, className, downloadName, onReachedEnd }: 
         pdfjs.GlobalWorkerOptions.workerSrc = worker;
 
         // Use pre-fetched bytes when available; otherwise fetch from URL.
+        // The copy matters: pdf.js transfers the buffer to its worker, which
+        // detaches the caller's array. Without it a second render of the same
+        // bytes (e.g. reopening the modal) would receive an empty buffer.
         let pdfData: Uint8Array | ArrayBuffer;
         if (data) {
-          pdfData = data;
+          pdfData = new Uint8Array(data);
         } else {
           const res = await fetch(url);
           if (!res.ok) throw new Error("fetch failed");
@@ -114,7 +117,8 @@ export function PdfViewer({ url, data, className, downloadName, onReachedEnd }: 
           // If the whole document fits without scrolling, unlock immediately.
           requestAnimationFrame(() => checkEnd());
         }
-      } catch {
+      } catch (err) {
+        if (import.meta.env.DEV) console.error("PdfViewer: render failed", err);
         if (!cancelled) {
           setError(true);
           setLoading(false);

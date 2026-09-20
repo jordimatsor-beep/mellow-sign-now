@@ -12,16 +12,21 @@
  * blocker, so the user stays inside the app while the file downloads.
  */
 
-/** Triggers a browser download for an in-memory Blob, staying in the app. */
-export function triggerBlobDownload(blob: Blob, filename: string): void {
-  const objectUrl = URL.createObjectURL(blob);
+/** Clicks a hidden <a download> anchor. Does not revoke the href. */
+function clickDownloadAnchor(href: string, filename: string): void {
   const a = document.createElement("a");
-  a.href = objectUrl;
+  a.href = href;
   a.download = filename;
   a.rel = "noopener";
   document.body.appendChild(a);
   a.click();
   a.remove();
+}
+
+/** Triggers a browser download for an in-memory Blob, staying in the app. */
+export function triggerBlobDownload(blob: Blob, filename: string): void {
+  const objectUrl = URL.createObjectURL(blob);
+  clickDownloadAnchor(objectUrl, filename);
   // Revoke later so the download has time to start.
   setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
 }
@@ -33,6 +38,15 @@ export function triggerBlobDownload(blob: Blob, filename: string): void {
  * Throws if the fetch fails so callers can show a toast.
  */
 export async function downloadUrl(url: string, filename: string): Promise<void> {
+  // A blob: URL already points at bytes held in memory. Re-fetching it buys
+  // nothing and goes through the page's CSP `connect-src`, which silently
+  // blocked the download on production. Anchor it directly instead.
+  // The caller owns the object URL, so we must not revoke it here.
+  if (url.startsWith("blob:")) {
+    clickDownloadAnchor(url, filename);
+    return;
+  }
+
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Descarga fallida (HTTP ${res.status})`);
   const blob = await res.blob();

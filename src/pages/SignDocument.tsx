@@ -932,6 +932,7 @@ export default function SignDocument() {
         open={viewerOpen}
         onOpenChange={setViewerOpen}
         url={pdfBlobUrl}
+        data={pdfBytes}
         title={docData?.title || "Documento"}
         filename={safeFilename(docData?.title)}
       />

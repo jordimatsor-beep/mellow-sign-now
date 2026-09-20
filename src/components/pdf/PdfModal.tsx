@@ -15,12 +15,14 @@ interface PdfModalProps {
   onOpenChange: (open: boolean) => void;
   /** blob: URL or signed PDF URL. */
   url: string | null;
+  /** Pre-fetched PDF bytes. Avoids re-fetching the document to render it. */
+  data?: Uint8Array | null;
   title?: string;
   /** Filename for the download button. Defaults to the title. */
   filename?: string;
 }
 
-export function PdfModal({ open, onOpenChange, url, title, filename }: PdfModalProps) {
+export function PdfModal({ open, onOpenChange, url, data, title, filename }: PdfModalProps) {
   const name = safeFilename(filename || title);
 
   return (
@@ -44,7 +46,7 @@ export function PdfModal({ open, onOpenChange, url, title, filename }: PdfModalP
         </DialogHeader>
 
         {open && url && (
-          <PdfViewer url={url} downloadName={name} className="min-h-0 flex-1" />
+          <PdfViewer url={url} data={data ?? undefined} downloadName={name} className="min-h-0 flex-1" />
         )}
       </DialogContent>
     </Dialog>
