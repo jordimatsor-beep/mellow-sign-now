@@ -37,11 +37,13 @@ serve(async (req) => {
     let docId: string | null = null;
     let userAgent = req.headers.get('user-agent') || 'unknown';
 
+    // Created outside the try so the catch can still record the failure.
+    const supabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
     try {
-        const supabase = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        )
 
         // Parse body
         let body;
@@ -323,6 +325,17 @@ serve(async (req) => {
 
     } catch (error: any) {
         console.error("Send-OTP Error:", error)
+
+        // Record the failure so an internal error can never again be invisible.
+        // A varchar(64) column silently rejected every OTP for five months:
+        // the signer saw a generic message and otp_logs stayed empty, because
+        // every failure path before delivery skipped logging entirely.
+        // block_reason is varchar(50): "error:" (6) + 44 = 50 exactly. Writing
+        // more would fail with the very error this logging exists to surface.
+        if (docId && supabase) {
+            const reason = String(error?.message || 'unknown').slice(0, 44);
+            await logAttempt(supabase, docId, ipAddress, userAgent, false, false, `error:${reason}`);
+        }
         // Only expose messages that are meaningful (and safe) for the signer.
         // Internal errors (Security Check, Database, Configuration, provider
         // responses) must never reach the client.
