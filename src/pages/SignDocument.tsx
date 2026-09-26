@@ -16,6 +16,7 @@ import { es } from "date-fns/locale";
 
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
+import { documentRequiresOtp, resolveDeliveredChannel } from "@/lib/otp";
 import type { DocumentForSigning } from "@/integrations/supabase/helpers";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { PdfModal } from "@/components/pdf/PdfModal";
@@ -138,6 +139,11 @@ export default function SignDocument() {
   };
 
   // Sends the OTP through the given channel. Returns true on success.
+  //
+  // The backend decides the FINAL channel: an SMS can fall back to email when
+  // Twilio fails or is not configured. We must show the channel it actually
+  // used, or the signer waits for an SMS while the code sits in their inbox —
+  // and ends up unable to sign.
   const sendOtp = async (channel: "sms" | "email"): Promise<boolean> => {
     const label = channel === "sms" ? "SMS" : "email";
     const toastId = toast.loading(`Enviando código de seguridad por ${label}...`);
@@ -148,7 +154,18 @@ export default function SignDocument() {
       const message = await extractFnError(error, data);
       if (message) throw new Error(message);
 
-      toast.success(`Código enviado por ${label}`, { id: toastId });
+      const delivered = resolveDeliveredChannel(channel, data?.channel);
+      setOtpChannel(delivered);
+
+      const deliveredLabel = delivered === "sms" ? "SMS" : "email";
+      if (delivered !== channel) {
+        toast.success(`No pudimos enviarlo por ${label}. Te lo hemos enviado por ${deliveredLabel}`, {
+          id: toastId,
+          duration: 8000,
+        });
+      } else {
+        toast.success(`Código enviado por ${deliveredLabel}`, { id: toastId });
+      }
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : "No se pudo enviar el código";
@@ -397,10 +414,13 @@ export default function SignDocument() {
   const handleSign = async () => {
     if (!canvasRef.current || !docData) return;
 
-    // Check if WhatsApp verification is required (security_level or legacy flag)
-    // Assuming backend returns security_level in docData (we need to fetch it)
-    // If docData was updated to include security_level check:
-    const requiresOtp = docData.security_level === 'whatsapp_otp';
+    // Whether this document needs an OTP. BOTH signals are checked on purpose:
+    // `whatsapp_verification` is computed by the signing RPC from the very same
+    // column, so it acts as a backstop if `security_level` ever fails to reach
+    // this page. Relying on `security_level` alone (May 2026) left signers
+    // stuck: the page skipped the code while sign-complete-v2 still demanded
+    // it, and no OTP was ever requested for five months.
+    const requiresOtp = documentRequiresOtp(docData);
 
     if (requiresOtp) {
       // Auto-select the delivery channel instead of hard-requiring a phone:
@@ -494,6 +514,20 @@ export default function SignDocument() {
       if (import.meta.env.DEV) console.error(err);
 
       const message = err instanceof Error ? err.message : "Error al guardar la firma";
+
+      // Self-recovery: the backend is the source of truth about whether this
+      // document needs an OTP. If it asks for a code we never requested (the
+      // document's security level did not reach this page), start the OTP flow
+      // instead of leaving the signer staring at an error they cannot act on.
+      if (message.includes("requiere código OTP") && !otpCode) {
+        toast.dismiss(toastId);
+        const channel: "sms" | "email" = docData.signer_phone ? "sms" : "email";
+        setOtpChannel(channel);
+        const ok = await sendOtp(channel);
+        setStep(ok ? "otp" : "view");
+        return;
+      }
+
       toast.error(message, { id: toastId });
       setStep("view"); // Go back to view so they can try again
     }
@@ -901,7 +935,7 @@ export default function SignDocument() {
               <p className="text-sm text-red-500 font-medium animate-pulse">{otpError}</p>
             )}
 
-            <div className="flex justify-center w-full">
+            <div className="flex w-full flex-col items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
@@ -913,6 +947,21 @@ export default function SignDocument() {
                   ? `Reenviar en ${resendCooldown}s`
                   : `Reenviar por ${otpChannel === "sms" ? "SMS" : "email"}`}
               </Button>
+
+              {/* Escape hatch: if the SMS never arrives (carrier delays, wrong
+                  number, provider down) the signer can switch to email instead
+                  of being stuck unable to sign. */}
+              {otpChannel === "sms" && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => handleResendOtp("email")}
+                  disabled={resendCooldown > 0}
+                  className="text-xs text-muted-foreground"
+                >
+                  ¿No te llega el SMS? Recibir el código por email
+                </Button>
+              )}
             </div>
           </div>
 

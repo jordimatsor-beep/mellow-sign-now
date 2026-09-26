@@ -234,9 +234,25 @@ serve(async (req) => {
             const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
             const fromNumber = Deno.env.get('TWILIO_FROM_NUMBER') || Deno.env.get('TWILIO_PHONE_NUMBER');
 
-            if (!fromNumber) {
-                throw new Error("Configuration Error: Missing Twilio Number");
-            }
+            // Twilio must be fully configured to even attempt an SMS. If it is
+            // not, we must NOT report success: the signer would sit waiting for
+            // a code that was never sent and could not sign the document.
+            if (!accountSid || !authToken || !fromNumber) {
+                console.error('Twilio no configurado: faltan TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM_NUMBER');
+                if (doc.signer_email) {
+                    const emailOk = await sendEmailOtp(doc.signer_email, otp, doc.title || 'Sin título');
+                    if (emailOk) {
+                        await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'sms_unconfigured_email_fallback');
+                        effectiveChannel = 'email';
+                    } else {
+                        await logAttempt(supabase, doc.id, ipAddress, userAgent, false, false, 'provider_error_email');
+                        throw new Error('No se pudo enviar el código de seguridad');
+                    }
+                } else {
+                    await logAttempt(supabase, doc.id, ipAddress, userAgent, false, false, 'sms_unconfigured');
+                    throw new Error('No se pudo enviar el código de seguridad');
+                }
+            } else {
 
             // If the configured number has whatsapp: prefix, route via WhatsApp API.
             // Both To and From must carry the prefix for WhatsApp messages.
@@ -249,7 +265,6 @@ serve(async (req) => {
 
             // phone numbers not logged to protect signer PII
 
-            if (accountSid && authToken) {
                 const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
 
                 const params = new URLSearchParams()
@@ -288,15 +303,21 @@ serve(async (req) => {
                     // Log SUCCESS
                     await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'sms_sent');
                 }
-
-            } else {
-                console.log('[DEV MODE] OTP would be sent via SMS (code omitted for security)');
-                await logAttempt(supabase, doc.id, ipAddress, userAgent, true, false, 'dev_mode');
             }
         }
 
+        // `channel` is the channel the code was ACTUALLY delivered through,
+        // which is not always the one requested (SMS can fall back to email).
+        // The signing page needs it to tell the signer where to look, otherwise
+        // they wait for an SMS while the code sits in their inbox.
+        const deliveredChannel = effectiveChannel === 'email' ? 'email' : 'sms';
+
         return new Response(
-            JSON.stringify({ success: true, message: `Código enviado correctamente por ${effectiveChannel === 'email' ? 'email' : 'SMS'}` }),
+            JSON.stringify({
+                success: true,
+                channel: deliveredChannel,
+                message: `Código enviado correctamente por ${deliveredChannel === 'email' ? 'email' : 'SMS'}`
+            }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
 
